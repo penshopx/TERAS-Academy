@@ -1,0 +1,83 @@
+Ya. Dengan status tersebut, **arah TERAS Academy sekarang sudah cukup jelas untuk masuk ke fase Product Presentation Hardening**.
+
+Saya akan menjadikan daftar Anda sebagai **baseline kerja**, dengan prinsip utama:
+
+> **Tidak ada perubahan backend, schema, business rules, authorization, safety logic, readiness engine, Path A/B, maupun audit trail.**
+
+Fokus hanya pada **bagaimana TERAS dipahami, dilihat, dan digunakan dari sisi pengguna.**
+
+### Urutan eksekusi yang saya sarankan
+
+**1. Landing page — final structure**
+
+* Wordmark TERAS baru
+* **Build Proof. Show Readiness.**
+* Hero + Readiness Cockpit
+* Capability Passport preview
+* Cara Kerja TERAS
+* Why TERAS
+* Safety Philosophy
+* Capability Passport
+* CTA penutup
+
+**2. CTA**
+Hanya:
+
+* **Mulai TERAS**
+* **Masuk**
+
+Tidak ada variasi CTA lain yang memiliki fungsi sama.
+
+**3. Protected pages**
+Saat pengguna belum login, jangan sekadar dilempar ke landing page. Tampilkan konteks:
+
+> **Masuk untuk melanjutkan ke TERAS**
+> Journey, Readiness, dan Capability Passport tersedia setelah Anda masuk.
+
+Dengan tombol **Masuk** dan opsi kembali ke **Beranda**.
+
+**4. Identity consistency**
+Pastikan identitas yang sama digunakan pada:
+
+* logo/wordmark
+* favicon
+* browser title
+* login experience
+* dashboard
+* Capability Passport
+* Readiness Cockpit
+* email/system notification bila ada.
+
+**5. Authenticated visual review**
+Setelah sesi login tersedia, baru lakukan audit visual terhadap:
+
+`Learner → Trainer → Assessor → Readiness → Capability Passport`
+
+Tujuannya bukan mencari fitur baru, tetapi memastikan seluruh bagian **terlihat sebagai satu produk TERAS**, bukan kumpulan modul terpisah.
+
+---
+
+### Prinsip desain yang sebaiknya dikunci
+
+Saya akan menetapkan tiga kalimat sebagai inti komunikasi TERAS:
+
+> **Build Proof. Show Readiness.**
+
+> **Kemampuan tidak cukup hanya dinilai. Kemampuan harus dibuktikan.**
+
+> **Safety failure cannot be hidden by an average score.**
+
+Lalu seluruh landing page menjawab tiga pertanyaan:
+
+**Apa yang TERAS lakukan?**
+→ Membantu membangun capability.
+
+**Bagaimana TERAS membuktikannya?**
+→ Evidence, practice, assessment, dan safety gates.
+
+**Apa hasil akhirnya?**
+→ **Readiness + Capability Passport.**
+
+Dengan struktur ini, TERAS tidak tampil sebagai **LMS biasa**, tetapi sebagai **evidence-based capability and readiness platform**.
+
+**Jadi statusnya sekarang: mesin sudah selesai untuk tahap ini; pekerjaan berikutnya adalah membuat mesin tersebut terlihat, terasa, dan terbaca dengan benar.**

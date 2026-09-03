@@ -106,28 +106,28 @@ function PublicHome() {
         <header className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3" aria-label="TERAS Academy">
             <span className="text-2xl font-extrabold tracking-[0.18em] text-[#00c3ff]">TERAS</span>
-            <span className="border-l border-white/20 pl-3 text-[10px] font-bold uppercase leading-tight tracking-[0.2em] text-white/60">Capability<br />Academy</span>
+            <span className="hidden border-l border-white/20 pl-3 text-[10px] font-bold uppercase leading-tight tracking-[0.2em] text-white/60 sm:inline">Capability<br />Academy</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/sign-in" className="text-sm font-semibold text-white/75 transition hover:text-white">Masuk</Link>
             <Link href="/sign-up" className="rounded-lg bg-[#00c3ff] px-4 py-2.5 text-sm font-bold text-black transition hover:bg-[#70dcff]">Mulai TERAS</Link>
           </div>
         </header>
-        <section className="grid flex-1 items-center gap-14 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
+        <section className="grid min-h-[760px] items-center gap-14 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
           <div className="max-w-3xl">
             <p className="font-mono text-xs font-bold tracking-[0.24em] text-[#00c3ff]">EVIDENCE-BASED CAPABILITY DEVELOPMENT</p>
             <h1 className="mt-6 text-5xl font-extrabold leading-[0.98] tracking-[-0.045em] sm:text-7xl">
-              Belajar hingga
-              <span className="mt-2 block text-[#00c3ff]">siap dibuktikan.</span>
+              Build Proof.
+              <span className="mt-2 block text-[#00c3ff]">Show Readiness.</span>
             </h1>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-white/65">
-              TERAS menghubungkan pembelajaran, praktik, evidence, assessment, dan remediation menjadi readiness yang dapat dipercaya.
+              Platform pengembangan kompetensi berbasis evidence untuk membangun kemampuan, menghasilkan bukti, mengikuti assessment, dan mengetahui tingkat readiness.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Link href="/sign-up" className="inline-flex items-center gap-2 rounded-lg bg-[#00c3ff] px-6 py-3.5 font-bold text-black transition hover:bg-[#70dcff]">
-                Mulai perjalanan <ArrowRight className="h-4 w-4" />
+                Mulai TERAS <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/sign-in" className="rounded-lg border border-white/20 bg-white/5 px-6 py-3.5 font-bold text-white transition hover:border-[#00c3ff]/70 hover:bg-white/10">Masuk ke workspace</Link>
+              <Link href="/sign-in" className="rounded-lg border border-white/20 bg-white/5 px-6 py-3.5 font-bold text-white transition hover:border-[#00c3ff]/70 hover:bg-white/10">Masuk</Link>
             </div>
             <div className="mt-10 flex flex-wrap gap-x-7 gap-y-3 text-sm text-white/55">
               <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#00c3ff]" /> Safety gate tidak dapat dilewati</span>
@@ -176,6 +176,64 @@ function PublicHome() {
             </div>
           </div>
         </section>
+
+        <section className="border-y border-white/10 py-8">
+          <p className="text-center font-mono text-[10px] tracking-[0.22em] text-white/35">CARA KERJA TERAS</p>
+          <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-6">
+            {['Diagnostic', 'Learning', 'Practice', 'Evidence', 'Assessment', 'Readiness'].map((step, index) => (
+              <div key={step} className="relative rounded-lg border border-white/10 bg-white/[0.025] px-3 py-4 text-center">
+                <p className="font-mono text-[10px] text-[#00c3ff]">0{index + 1}</p>
+                <p className="mt-1 text-sm font-bold">{step}</p>
+                {index < 5 && <ArrowRight className="absolute -right-2 top-1/2 z-10 hidden h-3 w-3 -translate-y-1/2 text-white/25 md:block" />}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="py-24">
+          <div className="max-w-3xl">
+            <p className="font-mono text-xs font-bold tracking-[0.22em] text-[#00c3ff]">WHY TERAS</p>
+            <h2 className="mt-5 text-4xl font-extrabold tracking-tight sm:text-5xl">Kemampuan tidak cukup hanya dinilai. <span className="text-[#00c3ff]">Kemampuan harus dibuktikan.</span></h2>
+          </div>
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
+            {[
+              ['Evidence-Based', 'Setiap capaian terhubung dengan bukti praktik yang valid, relevan, cukup, dan dapat ditelusuri.'],
+              ['Assessment & Remediation', 'Gap menghasilkan rencana perbaikan dan reassessment—bukan sekadar skor akhir.'],
+              ['Capability Passport', 'Learning, practice, evidence, assessment, dan readiness bertemu dalam satu rekam jejak longitudinal.'],
+            ].map(([title, description], index) => (
+              <article key={title} className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
+                <p className="font-mono text-xs text-[#00c3ff]">0{index + 1}</p>
+                <h3 className="mt-7 text-xl font-bold">{title}</h3>
+                <p className="mt-3 text-sm leading-7 text-white/50">{description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="grid gap-10 rounded-3xl border border-red-400/20 bg-[radial-gradient(circle_at_85%_20%,rgba(248,113,113,0.12),transparent_32%),#0b0b0c] p-7 md:grid-cols-[0.9fr_1.1fr] md:p-12">
+          <div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-red-300/20 bg-red-300/10">
+              <ShieldCheck className="h-5 w-5 text-red-300" />
+            </div>
+            <p className="mt-8 font-mono text-xs font-bold tracking-[0.2em] text-red-300">SAFETY PHILOSOPHY</p>
+            <h2 className="mt-4 text-4xl font-extrabold tracking-tight">Score is not enough.</h2>
+          </div>
+          <div className="flex flex-col justify-center">
+            <p className="text-2xl font-bold leading-snug text-white">Safety failure cannot be hidden by an average score.</p>
+            <p className="mt-5 leading-7 text-white/50">Saat kriteria keselamatan kritis gagal, nilai tinggi pada area lain tidak dapat mengubah keputusan menjadi competent. Readiness tetap diblokir sampai reassessment membuktikan kemampuan yang aman.</p>
+          </div>
+        </section>
+
+        <section className="py-24 text-center">
+          <p className="font-mono text-xs font-bold tracking-[0.22em] text-[#00c3ff]">CAPABILITY PASSPORT</p>
+          <h2 className="mx-auto mt-5 max-w-4xl text-4xl font-extrabold tracking-tight sm:text-6xl">Ketahui posisi Anda. Ketahui yang perlu diperbaiki. <span className="text-[#00c3ff]">Ketahui kapan Anda siap.</span></h2>
+          <p className="mx-auto mt-6 max-w-2xl leading-7 text-white/50">Capability Passport menjadi output terpadu dari seluruh perjalanan capability—tanpa menghapus percobaan, gap, atau perkembangan sebelumnya.</p>
+          <div className="mt-9 flex justify-center gap-3">
+            <Link href="/sign-up" className="inline-flex items-center gap-2 rounded-lg bg-[#00c3ff] px-6 py-3.5 font-bold text-black transition hover:bg-[#70dcff]">Mulai TERAS <ArrowRight className="h-4 w-4" /></Link>
+            <Link href="/sign-in" className="rounded-lg border border-white/20 bg-white/5 px-6 py-3.5 font-bold text-white transition hover:border-[#00c3ff]/70">Masuk</Link>
+          </div>
+        </section>
+
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 font-mono text-[10px] tracking-[0.15em] text-white/35">
           <span>TERAS ACADEMY · CAPABILITY WITH EVIDENCE</span>
           <span>DIAGNOSTIC → LEARNING → PRACTICE → ASSESSMENT → READINESS</span>
@@ -191,6 +249,23 @@ function SignInPage() {
 
 function SignUpPage() {
   return <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
+}
+
+function ProtectedPageMessage() {
+  return (
+    <main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#050505] px-6 text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(0,195,255,0.15),transparent_35%)]" />
+      <div className="relative w-full max-w-xl rounded-2xl border border-white/10 bg-white/[0.035] p-8 text-center shadow-2xl shadow-black sm:p-12">
+        <p className="font-mono text-xs font-bold tracking-[0.22em] text-[#00c3ff]">TERAS ACADEMY</p>
+        <h1 className="mt-5 text-3xl font-extrabold tracking-tight sm:text-4xl">Masuk untuk melanjutkan ke TERAS</h1>
+        <p className="mt-5 leading-7 text-white/55">Journey, Readiness, dan Capability Passport tersedia setelah Anda masuk ke workspace.</p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Link href="/sign-in" className="rounded-lg bg-[#00c3ff] px-6 py-3 font-bold text-black transition hover:bg-[#70dcff]">Masuk</Link>
+          <Link href="/" className="rounded-lg border border-white/20 px-6 py-3 font-bold transition hover:border-[#00c3ff]/70">Kembali ke Beranda</Link>
+        </div>
+      </div>
+    </main>
+  );
 }
 
 function HomeRedirect() {
@@ -228,7 +303,7 @@ function WorkspaceRoutes() {
 }
 
 function ProtectedWorkspace() {
-  return <><Show when="signed-in"><WorkspaceRoutes /></Show><Show when="signed-out"><Redirect to="/" /></Show></>;
+  return <><Show when="signed-in"><WorkspaceRoutes /></Show><Show when="signed-out"><ProtectedPageMessage /></Show></>;
 }
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
