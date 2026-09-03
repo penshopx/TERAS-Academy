@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Activity, Lock, Unlock, CheckCircle2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LearnerCondition } from "@/components/learner-condition";
 
 export default function Readiness() {
   const { data: readiness, isLoading, error } = useGetLearnerReadiness();
@@ -25,6 +26,8 @@ export default function Readiness() {
           <Badge variant="outline" className="font-mono">{readiness.pathway.name}</Badge>
         </div>
       </div>
+
+      <LearnerCondition owner="Learner" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 cockpit-panel border-primary/30">

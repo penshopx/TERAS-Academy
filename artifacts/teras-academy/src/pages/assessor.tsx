@@ -10,6 +10,7 @@ import { Activity, BookOpen, AlertTriangle, Scale, ArrowRight } from "lucide-rea
 import { type ElementType, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { LearnerCondition } from "@/components/learner-condition";
 
 export default function AssessorDesk() {
   const { data: dashboard, isLoading, error } = useGetAssessorDashboard();
@@ -39,6 +40,7 @@ export default function AssessorDesk() {
   const detail = detailQuery.data; const criticalFailure = detail?.criteria.some(c => c.critical && scores[c.id] !== undefined && (scores[c.id] ?? 0) < 2);
   return <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
     <div><h1 className="text-3xl font-bold tracking-tight">Assessor Command Center</h1><p className="text-muted-foreground mt-1 text-sm font-mono uppercase">ID: {dashboard.assessor.id} | {dashboard.assessor.name}</p></div>
+    <LearnerCondition owner="Assessor" />
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">{metrics.map(({ label, value, Icon, color }) => <Card key={label} className="border-border bg-card"><CardContent className="p-6"><div className="flex items-center justify-between pb-2"><p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">{label}</p><Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} /></div><div className={`text-3xl font-bold font-mono ${color}`}>{value}</div></CardContent></Card>)}</div>
     <Card className="cockpit-panel mt-6">
       <CardHeader><CardTitle>Decision Queue</CardTitle></CardHeader>

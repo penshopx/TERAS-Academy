@@ -2,6 +2,7 @@ import { useGetCapabilityPassport } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Award, Calendar, Layers, ShieldCheck } from "lucide-react";
+import { LearnerCondition } from "@/components/learner-condition";
 
 export default function Passport() {
   const { data: passport, isLoading, error } = useGetCapabilityPassport();
@@ -44,6 +45,8 @@ export default function Passport() {
           </div>
         </CardContent>
       </Card>
+
+      <LearnerCondition owner="Learner" />
 
       <h2 className="text-2xl font-bold tracking-tight mt-10 mb-4 border-b border-border pb-2">Verified Achievements</h2>
       

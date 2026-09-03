@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Activity, AlertTriangle, ArrowRight, Briefcase, FileSignature, Target, Zap } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { LearnerCondition } from "@/components/learner-condition";
 
 export default function Dashboard() {
   const { data: dashboard, isLoading, error } = useGetLearnerDashboard();
@@ -27,6 +28,8 @@ export default function Dashboard() {
           <Badge variant="outline" className="font-mono">{dashboard.pathway.name}</Badge>
         </div>
       </div>
+
+      <LearnerCondition owner="Learner" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="cockpit-panel border-primary/20 lg:col-span-2">

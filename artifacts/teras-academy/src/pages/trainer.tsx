@@ -10,6 +10,7 @@ import { Activity, Users, AlertCircle, FileText, ArrowRight } from "lucide-react
 import { type ElementType, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { LearnerCondition } from "@/components/learner-condition";
 
 type QueueItem = { id: string; kind: string; title: string; moduleName: string };
 
@@ -63,6 +64,7 @@ export default function TrainerDesk() {
 
   return <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
     <div><h1 className="text-3xl font-bold tracking-tight">Trainer Command Center</h1><p className="text-muted-foreground mt-1 text-sm font-mono uppercase">ID: {dashboard.trainer.id} | {dashboard.trainer.name}</p></div>
+    <LearnerCondition owner="Trainer" />
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {metrics.map(({ label, value, Icon, color }) => <Card key={label} className={label === "Blocked" ? "border-destructive/50 bg-destructive/5" : "border-border bg-card"}><CardContent className="p-6"><div className="flex items-center justify-between pb-2"><p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">{label}</p><Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} /></div><div className={`text-3xl font-bold font-mono ${color}`}>{value}</div></CardContent></Card>)}
     </div>
