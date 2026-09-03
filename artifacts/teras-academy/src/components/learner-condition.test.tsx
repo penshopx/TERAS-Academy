@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { LearnerConditionView } from "./learner-condition";
+import { LearnerConditionState, LearnerConditionView } from "./learner-condition";
 
 const dashboard = {
   learner: { name: "Ayu Pratama" },
@@ -21,6 +21,28 @@ const currentGate = {
   name: "Supervised practice",
   requirement: "Pass the critical isolation assessment.",
 };
+
+const readiness = {
+  status: "Ready",
+  score: 100,
+  blockers: [],
+  currentGate,
+};
+
+function renderConditionState(overrides: Partial<React.ComponentProps<typeof LearnerConditionState>> = {}) {
+  return renderToStaticMarkup(
+    <LearnerConditionState
+      owner="Learner"
+      dashboard={dashboard}
+      readiness={readiness}
+      dashboardLoading={false}
+      readinessLoading={false}
+      dashboardError={null}
+      readinessError={null}
+      {...overrides}
+    />,
+  );
+}
 
 test("renders a clear learner condition with explicit safety and no blockers", () => {
   const markup = renderToStaticMarkup(
@@ -70,6 +92,32 @@ test("renders a blocked learner condition with safety and every blocker visible"
     assert.match(markup, new RegExp(blocker));
   }
 });
+
+test("keeps the learner condition loading state visible without stale safety data", () => {
+  const markup = renderConditionState({
+    dashboard: undefined,
+    readiness: undefined,
+    dashboardLoading: true,
+    readinessLoading: true,
+  });
+
+  assert.match(markup, /Loading learner condition/);
+  assert.doesNotMatch(markup, /SAFETY CLEAR|SAFETY BLOCKED|Ayu Pratama/);
+});
+
+for (const failedSource of ["dashboard", "readiness"] as const) {
+  test(`renders unavailable without stale safety data when ${failedSource} fails`, () => {
+    const markup = renderConditionState({
+      [`${failedSource}Error`]: new Error(`${failedSource} failed`),
+      [`${failedSource}Loading`]: false,
+      [failedSource === "dashboard" ? "readinessLoading" : "dashboardLoading"]: true,
+    });
+
+    assert.match(markup, /Learner condition is unavailable/);
+    assert.match(markup, /Safety status cannot be confirmed/);
+    assert.doesNotMatch(markup, /Loading learner condition|SAFETY CLEAR|SAFETY BLOCKED|Ayu Pratama|Solar PV Technician/);
+  });
+}
 
 test("all authenticated role pages include the canonical condition panel", async () => {
   const routes = [

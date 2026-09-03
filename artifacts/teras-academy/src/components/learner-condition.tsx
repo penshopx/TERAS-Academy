@@ -32,18 +32,51 @@ type LearnerConditionViewProps = LearnerConditionProps & {
   };
 };
 
+type LearnerConditionStateProps = LearnerConditionProps & {
+  dashboard: LearnerConditionViewProps["dashboard"] | undefined;
+  readiness: LearnerConditionViewProps["readiness"] | undefined;
+  dashboardLoading: boolean;
+  readinessLoading: boolean;
+  dashboardError: unknown;
+  readinessError: unknown;
+};
+
 export function LearnerCondition({ owner }: LearnerConditionProps) {
   const dashboardQuery = useGetLearnerDashboard();
   const readinessQuery = useGetLearnerReadiness();
-  const dashboard = dashboardQuery.data;
-  const readiness = readinessQuery.data;
 
-  if (dashboardQuery.isLoading || readinessQuery.isLoading) {
+  return (
+    <LearnerConditionState
+      owner={owner}
+      dashboard={dashboardQuery.data}
+      readiness={readinessQuery.data}
+      dashboardLoading={dashboardQuery.isLoading}
+      readinessLoading={readinessQuery.isLoading}
+      dashboardError={dashboardQuery.error}
+      readinessError={readinessQuery.error}
+    />
+  );
+}
+
+export function LearnerConditionState({
+  owner,
+  dashboard,
+  readiness,
+  dashboardLoading,
+  readinessLoading,
+  dashboardError,
+  readinessError,
+}: LearnerConditionStateProps) {
+  if (dashboardError || readinessError) {
+    return <Card className="border-destructive/40 bg-destructive/5"><CardContent className="p-5 text-sm text-destructive">Learner condition is unavailable. Safety status cannot be confirmed until dashboard and readiness data are available.</CardContent></Card>;
+  }
+
+  if (dashboardLoading || readinessLoading) {
     return <Card className="border-primary/20"><CardContent className="p-5 text-sm text-muted-foreground">Loading learner condition…</CardContent></Card>;
   }
 
-  if (dashboardQuery.error || readinessQuery.error || !dashboard || !readiness) {
-    return <Card className="border-destructive/40 bg-destructive/5"><CardContent className="p-5 text-sm text-destructive">Learner condition is unavailable.</CardContent></Card>;
+  if (!dashboard || !readiness) {
+    return <Card className="border-destructive/40 bg-destructive/5"><CardContent className="p-5 text-sm text-destructive">Learner condition is unavailable. Safety status cannot be confirmed until dashboard and readiness data are available.</CardContent></Card>;
   }
 
   return <LearnerConditionView owner={owner} dashboard={dashboard} readiness={readiness} />;
