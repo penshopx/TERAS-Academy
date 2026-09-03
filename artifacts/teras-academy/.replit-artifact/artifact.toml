@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "TERAS Academy"
+description = "Evidence-based capability development platform for learning, practice, assessment, evidence, remediation, readiness, and longitudinal capability passports."
+version = "1.0.0"
+id = "artifacts/teras-academy"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20177
+
+[services.development]
+run = "pnpm --filter @workspace/teras-academy run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/teras-academy", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/teras-academy/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20177"
+BASE_PATH = "/"

@@ -3,13 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: TERAS Academy capability development API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: learner
+    description: Learner journey and capability records
+  - name: trainer
+    description: Trainer workspace
+  - name: assessor
+    description: Assessor workspace
+  - name: programs
+    description: Capability programs and curriculum
 paths:
   /healthz:
     get:
@@ -24,7 +32,344 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /programs:
+    get:
+      operationId: listPrograms
+      tags: [programs]
+      summary: List capability programs
+      responses:
+        "200":
+          description: Program catalogue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProgramSummary"
+  /programs/{programId}:
+    get:
+      operationId: getProgram
+      tags: [programs]
+      summary: Get a capability program
+      parameters:
+        - $ref: "#/components/parameters/ProgramId"
+      responses:
+        "200":
+          description: Program detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgramDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /learner/dashboard:
+    get:
+      operationId: getLearnerDashboard
+      tags: [learner]
+      summary: Get the learner dashboard
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnerDashboard"
+  /learner/journey:
+    get:
+      operationId: getLearnerJourney
+      tags: [learner]
+      summary: Get the learner capability journey
+      responses:
+        "200":
+          description: Journey timeline
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JourneyStep"
+  /learner/learning-plan:
+    get:
+      operationId: getLearnerLearningPlan
+      tags: [learner]
+      summary: Get the individual learning plan
+      responses:
+        "200":
+          description: Individual learning plan
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearningPlanItem"
+  /modules/{moduleId}:
+    get:
+      operationId: getModule
+      tags: [learner, programs]
+      summary: Get module learning and practice detail
+      parameters:
+        - $ref: "#/components/parameters/ModuleId"
+      responses:
+        "200":
+          description: Module detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /practice/tasks:
+    get:
+      operationId: listPracticeTasks
+      tags: [learner, trainer]
+      summary: List practice tasks
+      responses:
+        "200":
+          description: Practice task list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PracticeTask"
+  /practice/tasks/{taskId}/attempts:
+    post:
+      operationId: createPracticeAttempt
+      tags: [learner]
+      summary: Submit a practice attempt
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PracticeAttemptInput"
+      responses:
+        "201":
+          description: Practice attempt created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeAttempt"
+  /evidence:
+    get:
+      operationId: listEvidence
+      tags: [learner, trainer, assessor]
+      summary: List learner evidence
+      responses:
+        "200":
+          description: Evidence records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EvidenceRecord"
+    post:
+      operationId: createEvidence
+      tags: [learner]
+      summary: Submit an evidence record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvidenceInput"
+      responses:
+        "201":
+          description: Evidence submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvidenceRecord"
+  /assessments:
+    get:
+      operationId: listAssessments
+      tags: [learner, assessor]
+      summary: List learner assessments
+      responses:
+        "200":
+          description: Assessment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssessmentSummary"
+  /assessments/{assessmentId}:
+    get:
+      operationId: getAssessment
+      tags: [learner, assessor]
+      summary: Get assessment criteria and results
+      parameters:
+        - $ref: "#/components/parameters/AssessmentId"
+      responses:
+        "200":
+          description: Assessment detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /gaps:
+    get:
+      operationId: listGaps
+      tags: [learner, trainer, assessor]
+      summary: List learner capability gaps
+      responses:
+        "200":
+          description: Gap list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Gap"
+  /remediation:
+    get:
+      operationId: listRemediation
+      tags: [learner, trainer, assessor]
+      summary: List remediation plans
+      responses:
+        "200":
+          description: Remediation plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RemediationPlan"
+  /remediation/{remediationId}/complete:
+    post:
+      operationId: completeRemediation
+      tags: [learner]
+      summary: Mark a remediation activity complete
+      parameters:
+        - $ref: "#/components/parameters/RemediationId"
+      responses:
+        "200":
+          description: Updated remediation plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemediationPlan"
+  /readiness:
+    get:
+      operationId: getLearnerReadiness
+      tags: [learner, assessor]
+      summary: Get learner readiness and gate progress
+      responses:
+        "200":
+          description: Readiness summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessSummary"
+  /passport:
+    get:
+      operationId: getCapabilityPassport
+      tags: [learner]
+      summary: Get the longitudinal capability passport
+      responses:
+        "200":
+          description: Capability passport
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilityPassport"
+  /trainer/dashboard:
+    get:
+      operationId: getTrainerDashboard
+      tags: [trainer]
+      summary: Get trainer workspace summary
+      responses:
+        "200":
+          description: Trainer dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainerDashboard"
+  /trainer/review-queue:
+    get:
+      operationId: getTrainerReviewQueue
+      tags: [trainer]
+      summary: List practice and evidence reviews
+      responses:
+        "200":
+          description: Trainer review queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewQueueItem"
+  /assessor/dashboard:
+    get:
+      operationId: getAssessorDashboard
+      tags: [assessor]
+      summary: Get assessor workspace summary
+      responses:
+        "200":
+          description: Assessor dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessorDashboard"
+  /assessor/queue:
+    get:
+      operationId: getAssessorQueue
+      tags: [assessor]
+      summary: List assessments awaiting assessor action
+      responses:
+        "200":
+          description: Assessor queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewQueueItem"
 components:
+  parameters:
+    ProgramId:
+      name: programId
+      in: path
+      required: true
+      schema:
+        type: string
+    ModuleId:
+      name: moduleId
+      in: path
+      required: true
+      schema:
+        type: string
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+    AssessmentId:
+      name: assessmentId
+      in: path
+      required: true
+      schema:
+        type: string
+    RemediationId:
+      name: remediationId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +378,407 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    ProgramSummary:
+      type: object
+      properties:
+        id: { type: string }
+        domain: { type: string }
+        name: { type: string }
+        description: { type: string }
+        moduleCount: { type: integer }
+        learnerCount: { type: integer }
+        status: { type: string }
+      required: [id, domain, name, description, moduleCount, learnerCount, status]
+    ProgramDetail:
+      allOf:
+        - $ref: "#/components/schemas/ProgramSummary"
+        - type: object
+          properties:
+            pathways:
+              type: array
+              items:
+                $ref: "#/components/schemas/PathwaySummary"
+            modules:
+              type: array
+              items:
+                $ref: "#/components/schemas/ModuleSummary"
+          required: [pathways, modules]
+    PathwaySummary:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string }
+        outcome: { type: string }
+      required: [id, name, type, outcome]
+    ModuleSummary:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+        capability: { type: string }
+        evidence: { type: string }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        status: { type: string }
+      required: [id, code, name, capability, evidence, progress, status]
+    LearnerDashboard:
+      type: object
+      properties:
+        learner:
+          $ref: "#/components/schemas/LearnerProfile"
+        program:
+          $ref: "#/components/schemas/ProgramSummary"
+        pathway:
+          $ref: "#/components/schemas/PathwaySummary"
+        capabilityProgress: { type: integer, minimum: 0, maximum: 100 }
+        readiness:
+          $ref: "#/components/schemas/ReadinessSummary"
+        currentLearning:
+          $ref: "#/components/schemas/ModuleSummary"
+        currentPractice:
+          $ref: "#/components/schemas/PracticeTask"
+        mainGap:
+          anyOf:
+            - $ref: "#/components/schemas/Gap"
+            - type: "null"
+        evidenceCounts:
+          $ref: "#/components/schemas/EvidenceCounts"
+        nextAction:
+          $ref: "#/components/schemas/NextAction"
+      required: [learner, program, pathway, capabilityProgress, readiness, currentLearning, currentPractice, mainGap, evidenceCounts, nextAction]
+    LearnerProfile:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        initials: { type: string }
+        role: { type: string }
+        organization: { type: ["string", "null"] }
+      required: [id, name, initials, role, organization]
+    EvidenceCounts:
+      type: object
+      properties:
+        total: { type: integer }
+        valid: { type: integer }
+        underReview: { type: integer }
+        needsRevision: { type: integer }
+      required: [total, valid, underReview, needsRevision]
+    NextAction:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        href: { type: string }
+        priority: { type: string }
+      required: [title, description, href, priority]
+    JourneyStep:
+      type: object
+      properties:
+        id: { type: string }
+        label: { type: string }
+        description: { type: string }
+        status: { type: string }
+        date: { type: ["string", "null"], format: date-time }
+        href: { type: ["string", "null"] }
+      required: [id, label, description, status, date, href]
+    LearningPlanItem:
+      type: object
+      properties:
+        id: { type: string }
+        module:
+          $ref: "#/components/schemas/ModuleSummary"
+        priority: { type: string }
+        reason: { type: string }
+        estimatedMinutes: { type: integer }
+        status: { type: string }
+      required: [id, module, priority, reason, estimatedMinutes, status]
+    ModuleDetail:
+      type: object
+      properties:
+        module:
+          $ref: "#/components/schemas/ModuleSummary"
+        learningOutcomes:
+          type: array
+          items: { type: string }
+        theory:
+          type: array
+          items: { type: string }
+        practiceTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/PracticeTask"
+        assessment:
+          $ref: "#/components/schemas/AssessmentSummary"
+        evidenceRequirement:
+          $ref: "#/components/schemas/EvidenceRequirement"
+      required: [module, learningOutcomes, theory, practiceTasks, assessment, evidenceRequirement]
+    PracticeTask:
+      type: object
+      properties:
+        id: { type: string }
+        moduleId: { type: string }
+        title: { type: string }
+        description: { type: string }
+        mode: { type: string }
+        durationMinutes: { type: integer }
+        status: { type: string }
+        output: { type: string }
+        safetyNote: { type: ["string", "null"] }
+      required: [id, moduleId, title, description, mode, durationMinutes, status, output, safetyNote]
+    PracticeAttemptInput:
+      type: object
+      properties:
+        reflection: { type: string, minLength: 1 }
+        outputSummary: { type: string, minLength: 1 }
+      required: [reflection, outputSummary]
+    PracticeAttempt:
+      type: object
+      properties:
+        id: { type: string }
+        taskId: { type: string }
+        submittedAt: { type: string, format: date-time }
+        status: { type: string }
+        reflection: { type: string }
+        outputSummary: { type: string }
+        feedback:
+          type: ["string", "null"]
+      required: [id, taskId, submittedAt, status, reflection, outputSummary, feedback]
+    EvidenceInput:
+      type: object
+      properties:
+        moduleId: { type: string }
+        taskId: { type: string }
+        title: { type: string, minLength: 1 }
+        type: { type: string }
+        description: { type: string, minLength: 1 }
+        fileName: { type: ["string", "null"] }
+      required: [moduleId, taskId, title, type, description, fileName]
+    EvidenceRecord:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        type: { type: string }
+        moduleId: { type: string }
+        moduleName: { type: string }
+        taskId: { type: string }
+        description: { type: string }
+        status: { type: string }
+        submittedAt: { type: string, format: date-time }
+        reviewer: { type: ["string", "null"] }
+        reviewerComment: { type: ["string", "null"] }
+        fileName: { type: ["string", "null"] }
+        quality:
+          $ref: "#/components/schemas/EvidenceQuality"
+      required: [id, title, type, moduleId, moduleName, taskId, description, status, submittedAt, reviewer, reviewerComment, fileName, quality]
+    EvidenceQuality:
+      type: object
+      properties:
+        valid: { type: boolean }
+        relevant: { type: boolean }
+        sufficient: { type: boolean }
+        traceable: { type: boolean }
+      required: [valid, relevant, sufficient, traceable]
+    EvidenceRequirement:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+        description: { type: string }
+        allowedTypes:
+          type: array
+          items: { type: string }
+      required: [id, code, name, description, allowedTypes]
+    AssessmentSummary:
+      type: object
+      properties:
+        id: { type: string }
+        moduleId: { type: string }
+        name: { type: string }
+        status: { type: string }
+        score: { type: integer, minimum: 0, maximum: 100 }
+        attemptCount: { type: integer }
+        criticalFailure: { type: boolean }
+      required: [id, moduleId, name, status, score, attemptCount, criticalFailure]
+    AssessmentDetail:
+      type: object
+      properties:
+        assessment:
+          $ref: "#/components/schemas/AssessmentSummary"
+        criteria:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentCriterionResult"
+        attempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentAttempt"
+      required: [assessment, criteria, attempts]
+    AssessmentCriterionResult:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        label: { type: string }
+        layer: { type: string }
+        critical: { type: boolean }
+        score: { type: ["integer", "null"], minimum: 0, maximum: 3 }
+        observation: { type: ["string", "null"] }
+        evidenceId: { type: ["string", "null"] }
+      required: [id, code, label, layer, critical, score, observation, evidenceId]
+    AssessmentAttempt:
+      type: object
+      properties:
+        id: { type: string }
+        number: { type: integer }
+        submittedAt: { type: string, format: date-time }
+        assessor: { type: ["string", "null"] }
+        status: { type: string }
+        decision: { type: ["string", "null"] }
+      required: [id, number, submittedAt, assessor, status, decision]
+    Gap:
+      type: object
+      properties:
+        id: { type: string }
+        capability: { type: string }
+        criterion: { type: string }
+        severity: { type: string }
+        priority: { type: string }
+        diagnosis: { type: string }
+        status: { type: string }
+        gate: { type: string }
+        recommendedAction: { type: string }
+      required: [id, capability, criterion, severity, priority, diagnosis, status, gate, recommendedAction]
+    RemediationPlan:
+      type: object
+      properties:
+        id: { type: string }
+        gapId: { type: string }
+        title: { type: string }
+        description: { type: string }
+        status: { type: string }
+        dueLabel: { type: ["string", "null"] }
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/RemediationActivity"
+      required: [id, gapId, title, description, status, dueLabel, activities]
+    RemediationActivity:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        status: { type: string }
+        type: { type: string }
+      required: [id, title, description, status, type]
+    GateProgress:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+        status: { type: string }
+        requirement: { type: string }
+      required: [id, code, name, status, requirement]
+    ReadinessSummary:
+      type: object
+      properties:
+        status: { type: string }
+        score: { type: integer, minimum: 0, maximum: 100 }
+        currentGate:
+          $ref: "#/components/schemas/GateProgress"
+        nextGate:
+          anyOf:
+            - $ref: "#/components/schemas/GateProgress"
+            - type: "null"
+        gates:
+          type: array
+          items:
+            $ref: "#/components/schemas/GateProgress"
+        blockers:
+          type: array
+          items: { type: string }
+        outstandingGapCount: { type: integer }
+        missingEvidenceCount: { type: integer }
+      required: [status, score, currentGate, nextGate, gates, blockers, outstandingGapCount, missingEvidenceCount]
+    CapabilityPassport:
+      type: object
+      properties:
+        learner:
+          $ref: "#/components/schemas/LearnerProfile"
+        headline: { type: string }
+        subtitle: { type: string }
+        readiness:
+          $ref: "#/components/schemas/ReadinessSummary"
+        achievements:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapabilityAchievement"
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/JourneyStep"
+      required: [learner, headline, subtitle, readiness, achievements, timeline]
+    CapabilityAchievement:
+      type: object
+      properties:
+        id: { type: string }
+        capability: { type: string }
+        level: { type: string }
+        program: { type: string }
+        pathway: { type: string }
+        achievedAt: { type: ["string", "null"], format: date-time }
+        evidenceCount: { type: integer }
+        status: { type: string }
+      required: [id, capability, level, program, pathway, achievedAt, evidenceCount, status]
+    ReviewQueueItem:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string }
+        learnerName: { type: string }
+        moduleName: { type: string }
+        title: { type: string }
+        status: { type: string }
+        priority: { type: string }
+        updatedAt: { type: string, format: date-time }
+      required: [id, kind, learnerName, moduleName, title, status, priority, updatedAt]
+    TrainerDashboard:
+      type: object
+      properties:
+        trainer:
+          $ref: "#/components/schemas/LearnerProfile"
+        assignedLearnerCount: { type: integer }
+        pendingFeedbackCount: { type: integer }
+        pendingEvidenceCount: { type: integer }
+        activeRemediationCount: { type: integer }
+        blockedLearnerCount: { type: integer }
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewQueueItem"
+      required: [trainer, assignedLearnerCount, pendingFeedbackCount, pendingEvidenceCount, activeRemediationCount, blockedLearnerCount, recentActivity]
+    AssessorDashboard:
+      type: object
+      properties:
+        assessor:
+          $ref: "#/components/schemas/LearnerProfile"
+        pendingAssessmentCount: { type: integer }
+        pendingEvidenceCount: { type: integer }
+        reassessmentCount: { type: integer }
+        blockedGateCount: { type: integer }
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewQueueItem"
+      required: [assessor, pendingAssessmentCount, pendingEvidenceCount, reassessmentCount, blockedGateCount, recentActivity]
 
