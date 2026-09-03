@@ -50,12 +50,14 @@ export function DecisionSummary({
     <div className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
       <div>
         <div className="text-xs font-mono text-muted-foreground">REQUESTED DECISION</div>
-        {requestedControl ?? <div className="mt-2 text-lg font-bold">{requestedDecision}</div>}
+        <div data-testid="requested-decision-value">
+          {requestedControl ?? <div className="mt-2 text-lg font-bold">{requestedDecision}</div>}
+        </div>
         <p className="mt-2 text-xs text-muted-foreground">Your selection before safety enforcement is applied.</p>
       </div>
       <div className={criticalFailure ? "rounded-md border border-destructive/40 bg-destructive/5 p-3" : "rounded-md border border-primary/30 bg-primary/5 p-3"}>
         <div className="text-xs font-mono text-muted-foreground">OFFICIAL DECISION TO BE STORED</div>
-        <div className={`mt-2 text-lg font-bold ${criticalFailure ? "text-destructive" : "text-primary"}`}>{officialDecision}</div>
+        <div className={`mt-2 text-lg font-bold ${criticalFailure ? "text-destructive" : "text-primary"}`} data-testid="official-decision-value">{officialDecision}</div>
         <p className="mt-1 text-xs text-muted-foreground">{criticalFailure ? "Overridden by critical-criterion safety enforcement." : "Matches the requested decision based on current scores."}</p>
       </div>
     </div>

@@ -28,7 +28,9 @@ for (const score of [0, 1]) {
     );
 
     assert.equal(getOfficialDecision("Competent", criticalFailure), "Not competent");
+    assert.match(markup, /data-testid="requested-decision-value"/);
     assert.match(markup, /REQUESTED DECISION[\s\S]*Competent/);
+    assert.match(markup, /data-testid="official-decision-value">Not competent/);
     assert.match(markup, /OFFICIAL DECISION TO BE STORED[\s\S]*Not competent/);
     assert.match(markup, /Overridden by critical-criterion safety enforcement/);
   });
@@ -46,4 +48,12 @@ test("submission still sends the requested decision unless safety enforcement ov
   assert.equal(getOfficialDecision("Competent", false), "Competent");
   assert.equal(getOfficialDecision("Not competent", false), "Not competent");
   assert.equal(getOfficialDecision("Competent", true), "Not competent");
+});
+
+test("assessor selects expose stable keyboard-accessible names", async () => {
+  const source = await readFile(new URL("../pages/assessor.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /aria-label=\{`Score for \$\{c\.code\} — \$\{c\.label\}`\}/);
+  assert.match(source, /aria-label="Requested decision"/);
+  assert.match(source, /data-testid="requested-decision-select"/);
 });

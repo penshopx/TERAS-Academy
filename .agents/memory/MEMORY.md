@@ -2,3 +2,4 @@
 - [Post-merge schema bootstrap](post-merge-migrations.md) — reconcile existing schemas before push, but skip table-specific preflight when the database is empty.
 - [Non-interactive post-merge migrations](post-merge-migrations.md) — preflight data-preserving backfills before Drizzle push because force mode may still prompt without a TTY.
 - [Authenticated presentation hardening](authenticated-presentation-hardening.md) — freeze completed foundations; focus next on accessibility, consistency, and regression protection.
+- [Assessor browser fixtures](assessor-browser-fixtures.md) — keyboard decision tests need isolated pending critical rubrics, not mutable shared assessment state.

@@ -166,7 +166,7 @@ export default function AssessorDesk() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-2">
                   <Select value={scores[c.id]?.toString()} onValueChange={value => setScores(current => ({ ...current, [c.id]: Number(value) }))}>
-                    <SelectTrigger>
+                    <SelectTrigger aria-label={`Score for ${c.code} — ${c.label}`} data-testid={`criterion-score-${c.id}`}>
                       <SelectValue placeholder="Score 0–3" />
                     </SelectTrigger>
                     <SelectContent>
@@ -189,8 +189,8 @@ export default function AssessorDesk() {
               requestedDecision={decision}
               criticalFailure={criticalFailure}
               requestedControl={
-                <Select value={decision} onValueChange={value => setDecision(value as "Competent" | "Not competent")}>
-                  <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                  <Select value={decision} onValueChange={value => setDecision(value as "Competent" | "Not competent")}>
+                  <SelectTrigger className="mt-2" aria-label="Requested decision" data-testid="requested-decision-select"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Competent">Competent</SelectItem>
                     <SelectItem value="Not competent">Not competent</SelectItem>
