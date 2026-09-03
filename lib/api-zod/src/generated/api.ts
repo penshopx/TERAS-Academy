@@ -184,6 +184,25 @@ export const GetLearnerDashboardResponse = zod.object({
 
 
 /**
+ * @summary Select a capability pathway
+ */
+export const SelectLearnerPathwayBody = zod.object({
+  "pathwayId": zod.string()
+})
+
+export const SelectLearnerPathwayResponse = zod.object({
+  "pathway": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "outcome": zod.string()
+}),
+  "programId": zod.string(),
+  "selectedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Get the learner capability journey
  */
 export const GetLearnerJourneyResponseItem = zod.object({

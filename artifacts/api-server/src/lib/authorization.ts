@@ -23,3 +23,17 @@ export async function authorizeWorkspaceRole(req: Request, res: Response, role: 
   res.status(userId ? 403 : 401).json({ error: "You are not authorized for this action" });
   return null;
 }
+
+export async function authorizeLearner(req: Request, res: Response): Promise<string | null> {
+  const { userId } = getAuth(req);
+  const configuredUserId = process.env.CLERK_LEARNER_USER_ID;
+  if (process.env.NODE_ENV !== "production") {
+    return (await learnerContext()).learner.id;
+  }
+  if (userId && configuredUserId && userId === configuredUserId) {
+    return (await learnerContext()).learner.id;
+  }
+  req.log.warn({ userId: userId ?? null }, "Unauthorized learner mutation");
+  res.status(userId ? 403 : 401).json({ error: "You are not authorized for this action" });
+  return null;
+}

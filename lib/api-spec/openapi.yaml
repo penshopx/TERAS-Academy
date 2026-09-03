@@ -74,6 +74,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearnerDashboard"
+  /learner/pathway:
+    post:
+      operationId: selectLearnerPathway
+      tags: [learner]
+      summary: Select a capability pathway
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PathwaySelectionInput"
+      responses:
+        "201":
+          description: Pathway selection recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PathwaySelectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /learner/journey:
     get:
       operationId: getLearnerJourney
@@ -531,6 +557,19 @@ components:
         type: { type: string }
         outcome: { type: string }
       required: [id, name, type, outcome]
+    PathwaySelectionInput:
+      type: object
+      properties:
+        pathwayId: { type: string }
+      required: [pathwayId]
+    PathwaySelectionResponse:
+      type: object
+      properties:
+        pathway:
+          $ref: "#/components/schemas/PathwaySummary"
+        programId: { type: string }
+        selectedAt: { type: string, format: date-time }
+      required: [pathway, programId, selectedAt]
     ModuleSummary:
       type: object
       properties:

@@ -18,8 +18,9 @@ async function seed(): Promise<void> {
   await insert(programsTable, [{ id:"solar-pv-tech", domain:"Renewable Energy", name:"Solar PV Technician", description:"Capability pathway for safe residential Solar PV installation.", status:"Active" }]);
   await insert(pathwaysTable, [
     {id:"path-a",programId:"solar-pv-tech",name:"Path A — Installation",type:"Primary",outcome:"Install and commission residential PV systems"},
-    {id:"path-b",programId:"solar-pv-tech",name:"Path B — Design",type:"Architecture-ready",outcome:"Design and assure PV systems"},
   ]);
+  const pathB={id:"path-b",programId:"solar-pv-tech",name:"Path B — Design",type:"Secondary",outcome:"Design and assure PV systems"};
+  await db.insert(pathwaysTable).values(pathB).onConflictDoUpdate({target:pathwaysTable.id,set:pathB});
   await insert(modulesTable, modules.map(([id, code, name, capability], i) => ({id, programId:"solar-pv-tech", sequence:i+1, code, name, capability, evidence:`${code} practical evidence`, learningOutcomes:[`Apply ${name.toLowerCase()} procedures`], theory:[`${name} guide`]})));
   await insert(practiceTasksTable, modules.map(([id,,name], i) => ({id:`task-${id}`,moduleId:id,title:`${name} practical`,description:`Complete the ${name.toLowerCase()} supervised exercise.`,mode:i===2?"Workshop":"Guided practice",durationMinutes:45,output:"Supervisor-ready work record",safetyNote:i===2?"Safe isolation procedure is mandatory.":null})));
   await insert(evidenceRequirementsTable, modules.map(([id, code, name]) => ({id:`req-${id}`,moduleId:id,code:`EV-${code}`,name:`${name} evidence`,description:`Traceable evidence for ${name}.`,allowedTypes:["Photo","Checklist","Report"]})));
@@ -32,19 +33,19 @@ async function seed(): Promise<void> {
   ]);
   await insert(enrollmentsTable, [{id:"enrol-demo",learnerId:"learner-demo",programId:"solar-pv-tech",pathwayId:"path-a",trainerId:"trainer-aria",assessorId:"assessor-sam"}]);
   await insert(evidenceTable, [
-    {id:"evidence-m03",learnerId:"learner-demo",moduleId:"m03",taskId:"task-m03",title:"Safe isolation checklist",type:"Checklist",description:"Recorded safe isolation and proving sequence.",fileName:"m03-safe-isolation.pdf",createdAt:now},
-    {id:"evidence-m07",learnerId:"learner-demo",moduleId:"m07",taskId:"task-m07",title:"Commissioning test record",type:"Report",description:"Inverter commissioning values and checks.",fileName:"m07-commissioning.pdf",createdAt:now},
+    {id:"evidence-m03",learnerId:"learner-demo",pathwayId:"path-a",moduleId:"m03",taskId:"task-m03",title:"Safe isolation checklist",type:"Checklist",description:"Recorded safe isolation and proving sequence.",fileName:"m03-safe-isolation.pdf",createdAt:now},
+    {id:"evidence-m07",learnerId:"learner-demo",pathwayId:"path-a",moduleId:"m07",taskId:"task-m07",title:"Commissioning test record",type:"Report",description:"Inverter commissioning values and checks.",fileName:"m07-commissioning.pdf",createdAt:now},
   ]);
   await insert(evidenceReviewsTable, [
     {id:"review-m03",evidenceId:"evidence-m03",reviewerId:"trainer-aria",status:"Valid",comment:"Clear traceable safety record.",quality:{valid:true,relevant:true,sufficient:true,traceable:true},createdAt:now},
     {id:"review-m07",evidenceId:"evidence-m07",reviewerId:"assessor-sam",status:"Under review",comment:null,quality:{valid:false,relevant:true,sufficient:false,traceable:true},createdAt:now},
   ]);
-  await insert(assessmentAttemptsTable, [{id:"attempt-m03-1",assessmentId:"assessment-m03",learnerId:"learner-demo",number:1,assessorId:"assessor-sam",status:"Completed",decision:"Competent",createdAt:now}]);
+  await insert(assessmentAttemptsTable, [{id:"attempt-m03-1",assessmentId:"assessment-m03",learnerId:"learner-demo",pathwayId:"path-a",number:1,assessorId:"assessor-sam",status:"Completed",decision:"Competent",createdAt:now}]);
   await insert(criterionObservationsTable, [
     {id:"obs-m03-1",attemptId:"attempt-m03-1",criterionId:"crit-m03-isolation",score:3,observation:"Sequence completed without prompting.",evidenceId:"evidence-m03"},
     {id:"obs-m03-2",attemptId:"attempt-m03-1",criterionId:"crit-m03-test",score:3,observation:"Tester proven before and after use.",evidenceId:"evidence-m03"},
   ]);
-  await insert(gapsTable, [{id:"gap-m07",learnerId:"learner-demo",moduleId:"m07",capability:"Inverter commissioning",criterion:"TECH-02",severity:"Moderate",priority:"High",diagnosis:"Test record requires assessor confirmation.",gate:"G2",recommendedAction:"Complete guided commissioning review."}]);
+  await insert(gapsTable, [{id:"gap-m07",learnerId:"learner-demo",pathwayId:"path-a",moduleId:"m07",capability:"Inverter commissioning",criterion:"TECH-02",severity:"Moderate",priority:"High",diagnosis:"Test record requires assessor confirmation.",gate:"G2",recommendedAction:"Complete guided commissioning review."}]);
   await insert(gapEventsTable, [{id:"gap-event-m07",gapId:"gap-m07",status:"Open"}]);
   await insert(remediationPlansTable, [{id:"rem-m07",gapId:"gap-m07",title:"Commissioning record reinforcement",description:"Review and resubmit a complete commissioning record.",dueLabel:"This week"}]);
   await insert(remediationActivitiesTable, [{id:"rem-act-m07",planId:"rem-m07",title:"Review commissioning checklist",description:"Work through the annotated checklist with trainer.",type:"Coaching"}]);
@@ -54,6 +55,6 @@ async function seed(): Promise<void> {
     {id:"gate-g2",programId:"solar-pv-tech",sequence:2,code:"G2",name:"Technical commissioning",requirement:"Valid commissioning evidence and no open critical gaps."},
     {id:"gate-g3",programId:"solar-pv-tech",sequence:3,code:"G3",name:"Work-ready",requirement:"All modules and evidence complete."},
   ]);
-  await insert(readinessEventsTable, [{id:"ready-demo-g1",enrollmentId:"enrol-demo",gateId:"gate-g1",status:"Passed",score:55,blockers:[],createdAt:now},{id:"ready-demo-g2",enrollmentId:"enrol-demo",gateId:"gate-g2",status:"In progress",score:55,blockers:["Commissioning evidence review pending"],createdAt:now}]);
+  await insert(readinessEventsTable, [{id:"ready-demo-g1",enrollmentId:"enrol-demo",pathwayId:"path-a",gateId:"gate-g1",status:"Passed",score:55,blockers:[],createdAt:now},{id:"ready-demo-g2",enrollmentId:"enrol-demo",pathwayId:"path-a",gateId:"gate-g2",status:"In progress",score:55,blockers:["Commissioning evidence review pending"],createdAt:now}]);
 }
 seed().then(() => process.stdout.write("TERAS seed complete\n")).catch((error: unknown) => { process.stderr.write(`${error}\n`); process.exitCode = 1; });

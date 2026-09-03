@@ -36,6 +36,8 @@ import type {
   LearningPlanItem,
   ModuleDetail,
   NotFoundResponse,
+  PathwaySelectionInput,
+  PathwaySelectionResponse,
   PracticeAttempt,
   PracticeAttemptInput,
   PracticeTask,
@@ -385,6 +387,77 @@ export function useGetLearnerDashboard<TData = Awaited<ReturnType<typeof getLear
 
 
 
+
+export const getSelectLearnerPathwayUrl = () => {
+
+
+
+
+  return `/api/learner/pathway`
+}
+
+/**
+ * @summary Select a capability pathway
+ */
+export const selectLearnerPathway = async (pathwaySelectionInput: PathwaySelectionInput, options?: Parameters<typeof customFetch>[1]): Promise<PathwaySelectionResponse> => {
+
+  return customFetch<PathwaySelectionResponse>(getSelectLearnerPathwayUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pathwaySelectionInput)
+  }
+);}
+
+
+
+
+
+export const getSelectLearnerPathwayMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectLearnerPathway>>, TError,{data: BodyType<PathwaySelectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof selectLearnerPathway>>, TError,{data: BodyType<PathwaySelectionInput>}, TContext> => {
+
+const mutationKey = ['selectLearnerPathway'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof selectLearnerPathway>>, {data: BodyType<PathwaySelectionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  selectLearnerPathway(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SelectLearnerPathwayMutationResult = NonNullable<Awaited<ReturnType<typeof selectLearnerPathway>>>
+    export type SelectLearnerPathwayMutationBody = BodyType<PathwaySelectionInput>
+    export type SelectLearnerPathwayMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Select a capability pathway
+ */
+export const useSelectLearnerPathway = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectLearnerPathway>>, TError,{data: BodyType<PathwaySelectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof selectLearnerPathway>>,
+        TError,
+        {data: BodyType<PathwaySelectionInput>},
+        TContext
+      > => {
+      return useMutation(getSelectLearnerPathwayMutationOptions(options));
+    }
 
 export const getGetLearnerJourneyUrl = () => {
 

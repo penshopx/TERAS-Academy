@@ -35,6 +35,8 @@ export * from './moduleDetail';
 export * from './moduleSummary';
 export * from './nextAction';
 export * from './notFoundResponse';
+export * from './pathwaySelectionInput';
+export * from './pathwaySelectionResponse';
 export * from './pathwaySummary';
 export * from './practiceAttempt';
 export * from './practiceAttemptInput';

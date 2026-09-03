@@ -6,15 +6,15 @@ import { assessmentSummary, DEMO_LEARNER, evidenceRecords, gapRecords, learnerCo
 import { authorizeWorkspaceRole } from "../lib/authorization";
 const router: IRouter=Router();
 const id=(prefix:string)=>`${prefix}-${crypto.randomUUID()}`;
-async function assessmentDetail(assessment:{id:string;moduleId:string;name:string}){const [criteria,attempts,obs,people]=await Promise.all([db.select().from(assessmentCriteriaTable).where(eq(assessmentCriteriaTable.assessmentId,assessment.id)),db.select().from(assessmentAttemptsTable).where(and(eq(assessmentAttemptsTable.assessmentId,assessment.id),eq(assessmentAttemptsTable.learnerId,DEMO_LEARNER))),db.select().from(criterionObservationsTable),db.select().from(peopleTable)]);const latestAttempt=attempts.sort((a,b)=>b.number-a.number||b.createdAt.getTime()-a.createdAt.getTime())[0],observations=new Map(obs.filter(o=>o.attemptId===latestAttempt?.id).map(o=>[o.criterionId,o])),persons=new Map(people.map(p=>[p.id,p.name]));return{assessment:await assessmentSummary(assessment),criteria:criteria.map(c=>{const o=observations.get(c.id);return{id:c.id,code:c.code,label:c.label,layer:c.layer,critical:c.critical,score:o?.score??null,observation:o?.observation??null,evidenceId:o?.evidenceId??null};}),attempts:attempts.sort((a,b)=>b.number-a.number||b.createdAt.getTime()-a.createdAt.getTime()).map(a=>({id:a.id,number:a.number,submittedAt:a.createdAt,assessor:a.assessorId?persons.get(a.assessorId)??null:null,status:a.status,decision:a.decision}))};}
-router.get("/assessments",async(req,res):Promise<void>=>{req.log.info("Listing assessments");const rows=await db.select().from(assessmentsTable);res.json(ListAssessmentsResponse.parse(await Promise.all(rows.map(assessmentSummary))));});
+async function assessmentDetail(assessment:{id:string;moduleId:string;name:string}){const context=await learnerContext(),[criteria,attempts,obs,people]=await Promise.all([db.select().from(assessmentCriteriaTable).where(eq(assessmentCriteriaTable.assessmentId,assessment.id)),db.select().from(assessmentAttemptsTable).where(and(eq(assessmentAttemptsTable.assessmentId,assessment.id),eq(assessmentAttemptsTable.learnerId,DEMO_LEARNER),eq(assessmentAttemptsTable.pathwayId,context.pathway.id))),db.select().from(criterionObservationsTable),db.select().from(peopleTable)]);const latestAttempt=attempts.sort((a,b)=>b.number-a.number||b.createdAt.getTime()-a.createdAt.getTime())[0],observations=new Map(obs.filter(o=>o.attemptId===latestAttempt?.id).map(o=>[o.criterionId,o])),persons=new Map(people.map(p=>[p.id,p.name]));return{assessment:await assessmentSummary(assessment,context.pathway.id),criteria:criteria.map(c=>{const o=observations.get(c.id);return{id:c.id,code:c.code,label:c.label,layer:c.layer,critical:c.critical,score:o?.score??null,observation:o?.observation??null,evidenceId:o?.evidenceId??null};}),attempts:attempts.sort((a,b)=>b.number-a.number||b.createdAt.getTime()-a.createdAt.getTime()).map(a=>({id:a.id,number:a.number,submittedAt:a.createdAt,assessor:a.assessorId?persons.get(a.assessorId)??null:null,status:a.status,decision:a.decision}))};}
+router.get("/assessments",async(req,res):Promise<void>=>{req.log.info("Listing assessments");const rows=await db.select().from(assessmentsTable);res.json(ListAssessmentsResponse.parse(await Promise.all(rows.map(assessment=>assessmentSummary(assessment)))));});
 router.get("/assessments/:assessmentId",async(req,res):Promise<void>=>{
  const parsed=GetAssessmentParams.safeParse(req.params);if(!parsed.success){res.status(400).json({error:parsed.error.message});return;}
  const [assessment]=await db.select().from(assessmentsTable).where(eq(assessmentsTable.id,parsed.data.assessmentId));if(!assessment){res.status(404).json({error:"Assessment not found"});return;}
  res.json(GetAssessmentResponse.parse(await assessmentDetail(assessment)));
 });
-router.get("/assessor/queue",async(_req,res):Promise<void>=>{const [assessments,modules]=await Promise.all([db.select().from(assessmentsTable),db.select().from(modulesTable)]), ctx=await learnerContext();const summaries=await Promise.all(assessments.map(assessmentSummary));res.json(GetAssessorQueueResponse.parse(summaries.filter(s=>s.status!=="Completed"||s.criticalFailure).map(s=>({id:s.id,kind:"Assessment",learnerName:ctx.learner.name,moduleName:modules.find(m=>m.id===s.moduleId)?.name??"Module",title:s.name,status:s.status,priority:s.criticalFailure?"Critical":"Normal",updatedAt:new Date()}))));});
-router.get("/assessor/dashboard",async(_req,res):Promise<void>=>{const [ctx,queue,evidence,gaps]=await Promise.all([learnerContext(),db.select().from(assessmentsTable),evidenceRecords(),gapRecords()]);const summaries=await Promise.all(queue.map(assessmentSummary));const assessor=await db.select().from(peopleTable).where(eq(peopleTable.id,ctx.enrollment.assessorId!)).then(x=>x[0]);const activity=(await Promise.all(summaries.filter(s=>s.status!=="Completed").map(async s=>({id:s.id,kind:"Assessment",learnerName:ctx.learner.name,moduleName:s.moduleId,title:s.name,status:s.status,priority:s.criticalFailure?"Critical":"Normal",updatedAt:new Date()}))));res.json(GetAssessorDashboardResponse.parse({assessor,pendingAssessmentCount:summaries.filter(s=>s.status!=="Completed").length,pendingEvidenceCount:evidence.filter(e=>e.status==="Under review").length,reassessmentCount:summaries.filter(s=>s.criticalFailure).length,blockedGateCount:gaps.filter(g=>g.status!=="Resolved"&&g.severity==="Critical").length,recentActivity:activity}));});
+router.get("/assessor/queue",async(_req,res):Promise<void>=>{const [assessments,modules]=await Promise.all([db.select().from(assessmentsTable),db.select().from(modulesTable)]), ctx=await learnerContext();const summaries=await Promise.all(assessments.map(assessment=>assessmentSummary(assessment,ctx.pathway.id)));res.json(GetAssessorQueueResponse.parse(summaries.filter(s=>s.status!=="Completed"||s.criticalFailure).map(s=>({id:s.id,kind:"Assessment",learnerName:ctx.learner.name,moduleName:modules.find(m=>m.id===s.moduleId)?.name??"Module",title:s.name,status:s.status,priority:s.criticalFailure?"Critical":"Normal",updatedAt:new Date()}))));});
+router.get("/assessor/dashboard",async(_req,res):Promise<void>=>{const [ctx,queue]=await Promise.all([learnerContext(),db.select().from(assessmentsTable)]);const [evidence,gaps,summaries]=await Promise.all([evidenceRecords(ctx.pathway.id),gapRecords(ctx.pathway.id),Promise.all(queue.map(assessment=>assessmentSummary(assessment,ctx.pathway.id)))]);const assessor=await db.select().from(peopleTable).where(eq(peopleTable.id,ctx.enrollment.assessorId!)).then(x=>x[0]);const activity=(await Promise.all(summaries.filter(s=>s.status!=="Completed").map(async s=>({id:s.id,kind:"Assessment",learnerName:ctx.learner.name,moduleName:s.moduleId,title:s.name,status:s.status,priority:s.criticalFailure?"Critical":"Normal",updatedAt:new Date()}))));res.json(GetAssessorDashboardResponse.parse({assessor,pendingAssessmentCount:summaries.filter(s=>s.status!=="Completed").length,pendingEvidenceCount:evidence.filter(e=>e.status==="Under review").length,reassessmentCount:summaries.filter(s=>s.criticalFailure).length,blockedGateCount:gaps.filter(g=>g.status!=="Resolved"&&g.severity==="Critical").length,recentActivity:activity}));});
 router.post("/assessor/assessments/:assessmentId/decision",async(req,res):Promise<void>=>{
   const params=SubmitAssessmentDecisionParams.safeParse(req.params);
   if(!params.success){req.log.warn("Invalid assessor decision parameters");res.status(400).json({error:params.error.message});return;}
@@ -45,11 +45,12 @@ router.post("/assessor/assessments/:assessmentId/decision",async(req,res):Promis
   const attemptId=id("assessment-attempt");
   await db.transaction(async tx=>{
      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${assessment.id}), hashtext(${context.learner.id}))`);
-     const attempts=await tx.select().from(assessmentAttemptsTable).where(and(eq(assessmentAttemptsTable.assessmentId,assessment.id),eq(assessmentAttemptsTable.learnerId,context.learner.id)));
+      const attempts=await tx.select().from(assessmentAttemptsTable).where(and(eq(assessmentAttemptsTable.assessmentId,assessment.id),eq(assessmentAttemptsTable.learnerId,context.learner.id),eq(assessmentAttemptsTable.pathwayId,context.pathway.id)));
     await tx.insert(assessmentAttemptsTable).values({
       id:attemptId,
       assessmentId:assessment.id,
       learnerId:context.learner.id,
+       pathwayId:context.pathway.id,
       number:Math.max(0,...attempts.map(item=>item.number))+1,
       assessorId,
       status:decision==="Competent"?"Completed":"Needs reassessment",
@@ -66,7 +67,7 @@ router.post("/assessor/assessments/:assessmentId/decision",async(req,res):Promis
       evidenceId:item.evidenceId,
       createdBy:assessorId,
     })));
-     const moduleGaps=await tx.select().from(gapsTable).where(and(eq(gapsTable.moduleId,assessment.moduleId),eq(gapsTable.learnerId,context.learner.id)));
+      const moduleGaps=await tx.select().from(gapsTable).where(and(eq(gapsTable.moduleId,assessment.moduleId),eq(gapsTable.learnerId,context.learner.id),eq(gapsTable.pathwayId,context.pathway.id)));
     if(moduleGaps.length)await tx.insert(gapEventsTable).values(moduleGaps.map(gap=>({
       id:id("gap-event"),
       gapId:gap.id,
@@ -81,6 +82,7 @@ router.post("/assessor/assessments/:assessmentId/decision",async(req,res):Promis
       if(gate)await tx.insert(readinessEventsTable).values({
         id:id("readiness-event"),
         enrollmentId:context.enrollment.id,
+         pathwayId:context.pathway.id,
         gateId:gate.id,
         status:decision==="Competent"?"Passed":"In progress",
         score:Math.round(body.data.criteria.reduce((sum,item)=>sum+item.score,0)/body.data.criteria.length/3*100),

@@ -1,0 +1,1 @@
+- [Composite FK migrations](composite-fk-migrations.md) — create referenced unique constraints before composite foreign keys when evolving live PostgreSQL tables.

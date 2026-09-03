@@ -1,14 +1,37 @@
-import { useGetProgram } from "@workspace/api-client-react";
+import { getGetCapabilityPassportQueryKey, getGetLearnerDashboardQueryKey, getGetLearnerJourneyQueryKey, getGetLearnerLearningPlanQueryKey, getGetProgramQueryKey, useGetLearnerDashboard, useGetProgram, useSelectLearnerPathway } from "@workspace/api-client-react";
 import { useParams, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { Activity, ChevronRight, Layers, LayoutTemplate } from "lucide-react";
+import { Activity, Check, ChevronRight, Layers, LayoutTemplate } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProgramDetail() {
   const { programId } = useParams();
   const { data: program, isLoading, error } = useGetProgram(programId || "");
+  const { data: dashboard } = useGetLearnerDashboard();
+  const pathwayMutation = useSelectLearnerPathway();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const selectPathway = (pathwayId: string, pathwayName: string) => {
+    pathwayMutation.mutate({ data: { pathwayId } }, {
+      onSuccess: () => {
+        toast({ title: "Pathway activated", description: `${pathwayName} is now your active capability pathway.` });
+        [
+          getGetProgramQueryKey(programId || ""),
+          getGetLearnerDashboardQueryKey(),
+          getGetLearnerJourneyQueryKey(),
+          getGetLearnerLearningPlanQueryKey(),
+          getGetCapabilityPassportQueryKey(),
+        ].forEach(queryKey => queryClient.invalidateQueries({ queryKey }));
+      },
+      onError: () => toast({ title: "Pathway selection failed", description: "The pathway could not be activated.", variant: "destructive" }),
+    });
+  };
 
   if (!programId) return null;
 
@@ -84,13 +107,28 @@ export default function ProgramDetail() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {program.pathways.map((pathway) => (
-                  <div key={pathway.id} className="p-4 rounded-md border border-border bg-background/50">
-                    <Badge variant="outline" className="mb-2 font-mono text-[10px]">{pathway.type}</Badge>
-                    <div className="font-semibold">{pathway.name}</div>
-                    <div className="text-xs text-muted-foreground mt-1">Outcome: {pathway.outcome}</div>
-                  </div>
-                ))}
+                {program.pathways.map((pathway) => {
+                  const isActive = dashboard?.pathway.id === pathway.id;
+                  return (
+                    <div key={pathway.id} className={`p-4 rounded-md border bg-background/50 ${isActive ? "border-primary/60 ring-1 ring-primary/20" : "border-border"}`}>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <Badge variant="outline" className="font-mono text-[10px]">{pathway.type}</Badge>
+                        {isActive && <Badge className="font-mono text-[10px]"><Check className="mr-1 h-3 w-3" /> ACTIVE</Badge>}
+                      </div>
+                      <div className="font-semibold">{pathway.name}</div>
+                      <div className="text-xs text-muted-foreground mt-1 mb-4">Outcome: {pathway.outcome}</div>
+                      <Button
+                        size="sm"
+                        variant={isActive ? "secondary" : "outline"}
+                        className="w-full font-mono text-xs"
+                        disabled={isActive || pathwayMutation.isPending}
+                        onClick={() => selectPathway(pathway.id, pathway.name)}
+                      >
+                        {isActive ? "ACTIVE PATHWAY" : pathwayMutation.isPending ? "ACTIVATING..." : "ACTIVATE PATHWAY"}
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

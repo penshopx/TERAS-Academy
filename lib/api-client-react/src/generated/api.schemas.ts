@@ -49,6 +49,16 @@ export type ProgramDetail = ProgramSummary & {
   modules: ModuleSummary[];
 };
 
+export interface PathwaySelectionInput {
+  pathwayId: string;
+}
+
+export interface PathwaySelectionResponse {
+  pathway: PathwaySummary;
+  programId: string;
+  selectedAt: string;
+}
+
 export interface LearnerProfile {
   id: string;
   name: string;

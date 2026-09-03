@@ -1,6 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
-  boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex,
+  boolean, foreignKey, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -23,7 +23,7 @@ export const programsTable = pgTable("teras_programs", {
 export const pathwaysTable = pgTable("teras_pathways", {
   id: text("id").primaryKey(), programId: text("program_id").notNull().references(() => programsTable.id),
   name: text("name").notNull(), type: text("type").notNull(), outcome: text("outcome").notNull(), ...audit,
-});
+}, table => [unique("teras_pathways_id_program_unique").on(table.id, table.programId)]);
 export const modulesTable = pgTable("teras_modules", {
   id: text("id").primaryKey(), programId: text("program_id").notNull().references(() => programsTable.id),
   sequence: integer("sequence").notNull(), code: text("code").notNull(), name: text("name").notNull(),
@@ -54,12 +54,22 @@ export const enrollmentsTable = pgTable("teras_enrollments", {
   programId: text("program_id").notNull().references(() => programsTable.id),
   pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id), trainerId: text("trainer_id").references(() => peopleTable.id),
   assessorId: text("assessor_id").references(() => peopleTable.id), ...audit,
-});
+}, table => [unique("teras_enrollments_id_program_unique").on(table.id, table.programId)]);
+/** Pathway changes are immutable learner decisions; the enrollment row remains the original assignment. */
+export const enrollmentPathwayEventsTable = pgTable("teras_enrollment_pathway_events", {
+  id: text("id").primaryKey(), enrollmentId: text("enrollment_id").notNull().references(() => enrollmentsTable.id),
+  pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id),
+  programId: text("program_id").notNull().references(() => programsTable.id), sequence: integer("sequence").notNull(), ...audit,
+}, table => [
+  uniqueIndex("teras_enrollment_pathway_events_sequence_unique").on(table.enrollmentId, table.sequence),
+  foreignKey({columns:[table.enrollmentId,table.programId],foreignColumns:[enrollmentsTable.id,enrollmentsTable.programId],name:"teras_pathway_events_enrollment_program_fk"}),
+  foreignKey({columns:[table.pathwayId,table.programId],foreignColumns:[pathwaysTable.id,pathwaysTable.programId],name:"teras_pathway_events_pathway_program_fk"}),
+]);
 
 /** Append-only learner activity and review history. No state row is overwritten. */
 export const practiceAttemptsTable = pgTable("teras_practice_attempts", {
   id: text("id").primaryKey(), taskId: text("task_id").notNull().references(() => practiceTasksTable.id),
-  learnerId: text("learner_id").notNull().references(() => peopleTable.id), reflection: text("reflection").notNull(),
+  learnerId: text("learner_id").notNull().references(() => peopleTable.id), pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id), reflection: text("reflection").notNull(),
   outputSummary: text("output_summary").notNull(), status: text("status").notNull(), feedback: text("feedback"), ...audit,
 });
 /** Trainer feedback is an immutable event, separate from the learner's submitted attempt. */
@@ -70,7 +80,7 @@ export const practiceReviewsTable = pgTable("teras_practice_reviews", {
 });
 export const evidenceTable = pgTable("teras_evidence", {
   id: text("id").primaryKey(), learnerId: text("learner_id").notNull().references(() => peopleTable.id),
-  moduleId: text("module_id").notNull().references(() => modulesTable.id), taskId: text("task_id").notNull().references(() => practiceTasksTable.id),
+  pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id), moduleId: text("module_id").notNull().references(() => modulesTable.id), taskId: text("task_id").notNull().references(() => practiceTasksTable.id),
   title: text("title").notNull(), type: text("type").notNull(), description: text("description").notNull(), fileName: text("file_name"), ...audit,
 });
 export const evidenceReviewsTable = pgTable("teras_evidence_reviews", {
@@ -80,10 +90,10 @@ export const evidenceReviewsTable = pgTable("teras_evidence_reviews", {
 });
 export const assessmentAttemptsTable = pgTable("teras_assessment_attempts", {
   id: text("id").primaryKey(), assessmentId: text("assessment_id").notNull().references(() => assessmentsTable.id),
-  learnerId: text("learner_id").notNull().references(() => peopleTable.id), number: integer("number").notNull(),
+  learnerId: text("learner_id").notNull().references(() => peopleTable.id), pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id), number: integer("number").notNull(),
   assessorId: text("assessor_id").references(() => peopleTable.id), status: text("status").notNull(),
   decision: text("decision"), decisionRationale: text("decision_rationale"), ...audit,
-}, table => [uniqueIndex("teras_assessment_attempts_assessment_learner_number_unique").on(table.assessmentId, table.learnerId, table.number)]);
+}, table => [uniqueIndex("teras_assessment_attempts_assessment_learner_pathway_number_unique").on(table.assessmentId, table.learnerId, table.pathwayId, table.number)]);
 export const criterionObservationsTable = pgTable("teras_criterion_observations", {
   id: text("id").primaryKey(), attemptId: text("attempt_id").notNull().references(() => assessmentAttemptsTable.id),
   criterionId: text("criterion_id").notNull().references(() => assessmentCriteriaTable.id), score: integer("score").notNull(),
@@ -91,7 +101,7 @@ export const criterionObservationsTable = pgTable("teras_criterion_observations"
 });
 export const gapsTable = pgTable("teras_gaps", {
   id: text("id").primaryKey(), learnerId: text("learner_id").notNull().references(() => peopleTable.id),
-  moduleId: text("module_id").references(() => modulesTable.id), capability: text("capability").notNull(), criterion: text("criterion").notNull(),
+  pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id), moduleId: text("module_id").references(() => modulesTable.id), capability: text("capability").notNull(), criterion: text("criterion").notNull(),
   severity: text("severity").notNull(), priority: text("priority").notNull(), diagnosis: text("diagnosis").notNull(),
   gate: text("gate").notNull(), recommendedAction: text("recommended_action").notNull(), ...audit,
 });
@@ -116,14 +126,14 @@ export const readinessGatesTable = pgTable("teras_readiness_gates", {
 });
 export const readinessEventsTable = pgTable("teras_readiness_events", {
   id: text("id").primaryKey(), enrollmentId: text("enrollment_id").notNull().references(() => enrollmentsTable.id),
-  gateId: text("gate_id").notNull().references(() => readinessGatesTable.id), status: text("status").notNull(),
+  pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id), gateId: text("gate_id").notNull().references(() => readinessGatesTable.id), status: text("status").notNull(),
   score: integer("score").notNull(), blockers: text("blockers").array().notNull().default([]), ...audit,
 });
 
 export const programRelations = relations(programsTable, ({ many }) => ({ modules: many(modulesTable), pathways: many(pathwaysTable) }));
 export const moduleRelations = relations(modulesTable, ({ many }) => ({ tasks: many(practiceTasksTable), assessments: many(assessmentsTable) }));
 
-const tables = { peopleTable, programsTable, pathwaysTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, practiceAttemptsTable, practiceReviewsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable };
+const tables = { peopleTable, programsTable, pathwaysTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, enrollmentPathwayEventsTable, practiceAttemptsTable, practiceReviewsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable };
 export const insertSchemas = Object.fromEntries(Object.entries(tables).map(([name, table]) => [name, createInsertSchema(table).omit({ createdAt: true })]));
 export type Person = typeof peopleTable.$inferSelect;
 export type Program = typeof programsTable.$inferSelect;
