@@ -29,7 +29,7 @@ type Remediation = Array<{ id: string; status: string }>;
 type Passport = {
   readiness: { status: string };
   achievements: Array<{ capability: string; status: string }>;
-  timeline: Array<{ id: string; label: string }>;
+  timeline: Array<{ id: string; pathwayId: string | null; pathwayName: string | null; label: string }>;
 };
 type Journey = Array<{ id: string; status: string }>;
 
@@ -123,6 +123,7 @@ async function run() {
     // must not receive the development demo learner allowance.
     await post("/learner/pathway", "assessor", { pathwayId: "path-a" }, 403);
     await post("/learner/pathway", "anonymous", { pathwayId: "path-a" }, 401);
+    await post("/learner/pathway", "learner", { pathwayId: "path-b" }, 201);
     await post("/learner/pathway", "learner", { pathwayId: "path-a" }, 201);
 
     const m03 = await request<AssessmentDetail>("/assessments/assessment-m03", "assessor");
@@ -236,10 +237,14 @@ async function run() {
       "Learner evidence, gap, or remediation history disappeared",
     );
     assert(journey.some((step) => step.id === "journey-current"), "Learner journey did not expose its current readiness gate");
+    const pathATimeline = passport.timeline.find((step) => step.pathwayId === "path-a");
+    const pathBTimeline = passport.timeline.find((step) => step.pathwayId === "path-b");
     assert(
       passport.readiness.status === cleared.status &&
         passport.achievements.some((item) => item.capability === "Electrical safety" && item.status === "Achieved") &&
-        passport.timeline.some((step) => step.id === "pathway-enrol"),
+        passport.timeline.some((step) => step.id === "pathway-enrol") &&
+        pathATimeline?.pathwayName?.startsWith("Path A") &&
+        pathBTimeline?.pathwayName?.startsWith("Path B"),
       "Capability Passport did not preserve the longitudinal achievement, pathway, and readiness record",
     );
     process.stdout.write("Safety blocker integration check passed\n");

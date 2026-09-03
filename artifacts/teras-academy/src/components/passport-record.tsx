@@ -12,7 +12,7 @@ type PassportRecordProps = {
 const displayText = (value: string | null | undefined, fallback: string) => value?.trim() || fallback;
 
 const getPathwayLabel = (step: JourneyStep) =>
-  `${step.label} ${step.description}`.match(/\bPath\s+[AB]\b/i)?.[0] ?? "Path not recorded";
+  displayText(step.pathwayName, step.pathwayId ? `Pathway ${step.pathwayId}` : "Pathway not recorded");
 
 const getTimelineStatusStyle = (status: string | null | undefined) => {
   const normalized = status?.trim().toLowerCase() ?? "";

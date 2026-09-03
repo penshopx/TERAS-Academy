@@ -8,6 +8,10 @@
 
 export interface JourneyStep {
   id: string;
+  /** @nullable */
+  pathwayId: string | null;
+  /** @nullable */
+  pathwayName: string | null;
   label: string;
   description: string;
   status: string;

@@ -254,6 +254,8 @@ export const SelectLearnerPathwayResponse = zod.object({
  */
 export const GetLearnerJourneyResponseItem = zod.object({
   "id": zod.string(),
+  "pathwayId": zod.string().nullable(),
+  "pathwayName": zod.string().nullable(),
   "label": zod.string(),
   "description": zod.string(),
   "status": zod.string(),
@@ -729,6 +731,8 @@ export const GetCapabilityPassportResponse = zod.object({
 })),
   "timeline": zod.array(zod.object({
   "id": zod.string(),
+  "pathwayId": zod.string().nullable(),
+  "pathwayName": zod.string().nullable(),
   "label": zod.string(),
   "description": zod.string(),
   "status": zod.string(),
