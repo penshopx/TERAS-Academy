@@ -1,0 +1,10 @@
+import { Router, type IRouter } from "express";
+import { GetTrainerDashboardResponse, GetTrainerReviewQueueResponse } from "@workspace/api-zod";
+import { db, peopleTable, practiceAttemptsTable, practiceTasksTable, modulesTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { evidenceRecords, gapRecords, learnerContext, remediationRecords } from "../lib/teras";
+const router: IRouter=Router();
+async function queue(){const [ctx,evidence,attempts,tasks,modules]=await Promise.all([learnerContext(),evidenceRecords(),db.select().from(practiceAttemptsTable),db.select().from(practiceTasksTable),db.select().from(modulesTable)]);return [...evidence.filter(e=>e.status!=="Valid").map(e=>({id:e.id,kind:"Evidence",learnerName:ctx.learner.name,moduleName:e.moduleName,title:e.title,status:e.status,priority:e.moduleId==="m03"?"Critical":"High",updatedAt:e.submittedAt})),...attempts.filter(a=>a.learnerId===ctx.learner.id&&a.status==="Submitted").map(a=>({id:a.id,kind:"Practice",learnerName:ctx.learner.name,moduleName:modules.find(m=>m.id===tasks.find(t=>t.id===a.taskId)?.moduleId)?.name??"Module",title:"Practice attempt",status:a.status,priority:"Normal",updatedAt:a.createdAt}))];}
+router.get("/trainer/review-queue",async(req,res):Promise<void>=>{req.log.info("Loading trainer review queue");res.json(GetTrainerReviewQueueResponse.parse(await queue()));});
+router.get("/trainer/dashboard",async(_req,res):Promise<void>=>{const [ctx,items,evidence,gaps,plans]=await Promise.all([learnerContext(),queue(),evidenceRecords(),gapRecords(),remediationRecords()]);const trainer=await db.select().from(peopleTable).where(eq(peopleTable.id,ctx.enrollment.trainerId!)).then(x=>x[0]);res.json(GetTrainerDashboardResponse.parse({trainer,assignedLearnerCount:1,pendingFeedbackCount:items.filter(i=>i.kind==="Practice").length,pendingEvidenceCount:evidence.filter(e=>e.status==="Under review").length,activeRemediationCount:plans.filter(p=>p.status!=="Completed").length,blockedLearnerCount:gaps.some(g=>g.severity==="Critical"&&g.status!=="Resolved")?1:0,recentActivity:items}));});
+export default router;
