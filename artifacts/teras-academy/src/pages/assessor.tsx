@@ -11,6 +11,7 @@ import { type ElementType, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { LearnerCondition } from "@/components/learner-condition";
+import { DecisionSummary, getOfficialDecision, hasCriticalFailure, prioritizeDecisionQueue } from "@/components/assessor-decision";
 
 export default function AssessorDesk() {
   const { data: dashboard, isLoading, error } = useGetAssessorDashboard();
@@ -32,19 +33,15 @@ export default function AssessorDesk() {
   const submit = () => {
     const detail = detailQuery.data;
     if (!assessmentId || !detail || !observation.trim() || detail.criteria.some(c => scores[c.id] === undefined)) { toast({ title: "Complete the rubric", description: "A decision, overall observation, and score for every criterion are required.", variant: "destructive" }); return; }
-    const criticalFail = detail.criteria.some(c => c.critical && (scores[c.id] ?? 0) < 2);
-    decisionMutation.mutate({ assessmentId, data: { decision: criticalFail ? "Not competent" : decision, observation, criteria: detail.criteria.map(c => ({ criterionId: c.id, score: scores[c.id]!, observation: observations[c.id] || null, evidenceId: null })) } }, { onSuccess: () => { toast({ title: "Decision recorded", description: criticalFail ? "Critical criterion failure recorded. Readiness remains blocked." : "The assessment decision and readiness state have been updated." }); setAssessmentId(null); [getListAssessmentsQueryKey(), getListGapsQueryKey(), getGetLearnerDashboardQueryKey(), getGetLearnerJourneyQueryKey(), getGetLearnerLearningPlanQueryKey(), getGetLearnerReadinessQueryKey(), getGetCapabilityPassportQueryKey(), getGetAssessorDashboardQueryKey(), getGetAssessorQueueQueryKey(), getGetAssessmentQueryKey(assessmentId), getGetModuleQueryKey(detail.assessment.moduleId), getGetProgramQueryKey("solar-pv-tech")].forEach(queryKey => queryClient.invalidateQueries({ queryKey })); }, onError: () => toast({ title: "Decision failed", description: "The assessment decision could not be recorded.", variant: "destructive" }) });
+    const criticalFail = hasCriticalFailure(detail.criteria, scores);
+    decisionMutation.mutate({ assessmentId, data: { decision: getOfficialDecision(decision, criticalFail), observation, criteria: detail.criteria.map(c => ({ criterionId: c.id, score: scores[c.id]!, observation: observations[c.id] || null, evidenceId: null })) } }, { onSuccess: () => { toast({ title: "Decision recorded", description: criticalFail ? "Critical criterion failure recorded. Readiness remains blocked." : "The assessment decision and readiness state have been updated." }); setAssessmentId(null); [getListAssessmentsQueryKey(), getListGapsQueryKey(), getGetLearnerDashboardQueryKey(), getGetLearnerJourneyQueryKey(), getGetLearnerLearningPlanQueryKey(), getGetLearnerReadinessQueryKey(), getGetCapabilityPassportQueryKey(), getGetAssessorDashboardQueryKey(), getGetAssessorQueueQueryKey(), getGetAssessmentQueryKey(assessmentId), getGetModuleQueryKey(detail.assessment.moduleId), getGetProgramQueryKey("solar-pv-tech")].forEach(queryKey => queryClient.invalidateQueries({ queryKey })); }, onError: () => toast({ title: "Decision failed", description: "The assessment decision could not be recorded.", variant: "destructive" }) });
   };
   if (isLoading) return <div className="h-full flex items-center justify-center"><Activity className="w-8 h-8 text-primary animate-pulse" /></div>;
   if (error || !dashboard) return <div className="text-destructive">Failed to load assessor dashboard.</div>;
   const detail = detailQuery.data;
-  const criticalFailure = detail?.criteria.some(c => c.critical && scores[c.id] !== undefined && (scores[c.id] ?? 0) < 2);
+  const criticalFailure = detail ? hasCriticalFailure(detail.criteria, scores) : false;
   const storedDecision = detail?.attempts.find(attempt => attempt.decision)?.decision ?? null;
-  const effectiveDecision = criticalFailure ? "Not competent" : decision;
-  const queue = [...dashboard.recentActivity].sort((a, b) => {
-    const priority = (value: string) => value === "Critical" ? 0 : 1;
-    return priority(a.priority) - priority(b.priority) || new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
-  });
+  const queue = prioritizeDecisionQueue(dashboard.recentActivity);
   return <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
     <div><h1 className="text-3xl font-bold tracking-tight">Assessor Command Center</h1><p className="text-muted-foreground mt-1 text-sm font-mono uppercase">ID: {dashboard.assessor.id} | {dashboard.assessor.name}</p></div>
     <LearnerCondition owner="Assessor" />
@@ -188,9 +185,10 @@ export default function AssessorDesk() {
               <label className="text-xs font-mono">OVERALL OBSERVATION</label>
               <Textarea value={observation} onChange={e => setObservation(e.target.value)} placeholder="Record the decision rationale…" />
             </div>
-            <div className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
-              <div>
-                <label className="text-xs font-mono text-muted-foreground">REQUESTED DECISION</label>
+            <DecisionSummary
+              requestedDecision={decision}
+              criticalFailure={criticalFailure}
+              requestedControl={
                 <Select value={decision} onValueChange={value => setDecision(value as "Competent" | "Not competent")}>
                   <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -198,14 +196,8 @@ export default function AssessorDesk() {
                     <SelectItem value="Not competent">Not competent</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="mt-2 text-xs text-muted-foreground">Your selection before safety enforcement is applied.</p>
-              </div>
-              <div className={criticalFailure ? "rounded-md border border-destructive/40 bg-destructive/5 p-3" : "rounded-md border border-primary/30 bg-primary/5 p-3"}>
-                <div className="text-xs font-mono text-muted-foreground">OFFICIAL DECISION TO BE STORED</div>
-                <div className={`mt-2 text-lg font-bold ${criticalFailure ? "text-destructive" : "text-primary"}`}>{effectiveDecision}</div>
-                <p className="mt-1 text-xs text-muted-foreground">{criticalFailure ? "Overridden by critical-criterion safety enforcement." : "Matches the requested decision based on current scores."}</p>
-              </div>
-            </div>
+              }
+            />
             {storedDecision && <div className="text-xs text-muted-foreground">Latest prior stored decision: <span className="font-semibold text-foreground">{storedDecision}</span>. Recording creates the next official result.</div>}
           </div>
         )}
