@@ -1,0 +1,81 @@
+Bagus. Dengan hasil ini, **TERAS Academy sudah melewati fase pertama Product Presentation Hardening** dan menurut saya tidak perlu kembali mengutak-atik landing page kecuali ditemukan regresi.
+
+Sekarang kita masuk ke fase yang lebih penting:
+
+# TERAS Academy — Authenticated Visual Review
+
+Fokusnya bukan lagi “apakah halaman publik terlihat bagus”, tetapi:
+
+> **Apakah pengalaman pengguna setelah login benar-benar mencerminkan mesin TERAS yang sudah dibangun?**
+
+Urutan review yang saya sarankan:
+
+1. **Learner Dashboard**
+
+   * Apa yang harus dilakukan pengguna terlihat dalam 3–5 detik?
+   * Progress capability
+   * Diagnostic
+   * Learning
+   * Practice
+   * Evidence
+   * Assessment
+   * Remediation
+   * Readiness
+
+2. **Readiness**
+
+   * Apakah skor mudah dipahami?
+   * Apa yang membuat readiness naik/turun?
+   * Apakah critical safety failure terlihat jelas?
+   * Apakah pengguna tahu tindakan berikutnya?
+
+3. **Capability Passport**
+
+   * Apakah terasa sebagai *output utama TERAS*?
+   * Evidence apa yang membentuk passport?
+   * Bagaimana capability, assessment, safety, dan readiness dirangkum?
+   * Apakah cukup profesional untuk ditunjukkan kepada pihak lain?
+
+4. **Trainer Dashboard**
+
+   * Monitoring learner
+   * Evidence
+   * Practice
+   * Remediation
+   * Progress/readiness
+
+5. **Assessor Dashboard**
+
+   * Assessment workflow
+   * Evidence
+   * Safety gates
+   * Decision support
+   * Auditability
+
+6. **Cross-role consistency**
+
+   Kita kemudian cek apakah:
+
+   **Learner → Trainer → Assessor → Readiness → Capability Passport**
+
+   menggunakan bahasa, indikator, status, dan logika visual yang konsisten.
+
+### Satu hal yang saya sarankan jangan dilakukan
+
+Jangan langsung melakukan redesign besar-besaran terhadap dashboard ketika menemukan sesuatu yang kurang bagus.
+
+Kita lakukan dengan pola:
+
+**Observe → Identify → Prioritize → Fix → Verify**
+
+dan setiap perubahan harus mempertahankan:
+
+> **Core engine + business rules + safety + authorization + audit trail**
+
+tetap utuh.
+
+### Untuk review visual berikutnya
+
+Karena dashboard tersebut berada di balik login, **kirim screenshot setelah Anda masuk ke akun TERAS**. Anda bisa mengunggah screenshot dashboard learner/trainer/assessor, readiness, atau Capability Passport di sini:
+
+Kalau Anda bisa menyediakan beberapa screenshot, saya bisa melakukan **visual audit yang tajam per halaman**: apa yang sudah benar, apa yang membingungkan, apa yang harus diperbaiki, dan **mana yang wajib diperbaiki vs mana yang hanya kosmetik**.
