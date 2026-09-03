@@ -4,6 +4,7 @@ import { db, assessmentAttemptsTable, assessmentCriteriaTable, assessmentsTable,
 import { and, eq, sql } from "drizzle-orm";
 import { assessmentSummary, DEMO_LEARNER, evidenceRecords, gapRecords, learnerContext } from "../lib/teras";
 import { authorizeWorkspaceRole } from "../lib/authorization";
+import { enforceSafetyDecision } from "../lib/safety";
 const router: IRouter=Router();
 const id=(prefix:string)=>`${prefix}-${crypto.randomUUID()}`;
 async function assessmentDetail(assessment:{id:string;moduleId:string;name:string}){const context=await learnerContext(),[criteria,attempts,obs,people]=await Promise.all([db.select().from(assessmentCriteriaTable).where(eq(assessmentCriteriaTable.assessmentId,assessment.id)),db.select().from(assessmentAttemptsTable).where(and(eq(assessmentAttemptsTable.assessmentId,assessment.id),eq(assessmentAttemptsTable.learnerId,DEMO_LEARNER),eq(assessmentAttemptsTable.pathwayId,context.pathway.id))),db.select().from(criterionObservationsTable),db.select().from(peopleTable)]);const latestAttempt=attempts.sort((a,b)=>b.number-a.number||b.createdAt.getTime()-a.createdAt.getTime())[0],observations=new Map(obs.filter(o=>o.attemptId===latestAttempt?.id).map(o=>[o.criterionId,o])),persons=new Map(people.map(p=>[p.id,p.name]));return{assessment:await assessmentSummary(assessment,context.pathway.id),criteria:criteria.map(c=>{const o=observations.get(c.id);return{id:c.id,code:c.code,label:c.label,layer:c.layer,critical:c.critical,score:o?.score??null,observation:o?.observation??null,evidenceId:o?.evidenceId??null};}),attempts:attempts.sort((a,b)=>b.number-a.number||b.createdAt.getTime()-a.createdAt.getTime()).map(a=>({id:a.id,number:a.number,submittedAt:a.createdAt,assessor:a.assessorId?persons.get(a.assessorId)??null:null,status:a.status,decision:a.decision}))};}
@@ -39,8 +40,7 @@ router.post("/assessor/assessments/:assessmentId/decision",async(req,res):Promis
     res.status(400).json({error:"A score is required for every assessment criterion"});
     return;
   }
-  const criticalFailure=criteria.some(criterion=>criterion.critical&&(inputs.get(criterion.id)?.score??0)<2);
-  const decision=criticalFailure?"Not competent":body.data.decision;
+   const { decision, criticalFailure }=enforceSafetyDecision(criteria.map(criterion=>({critical:criterion.critical,score:inputs.get(criterion.id)!.score})),body.data.decision);
   const gateCode=assessment.moduleId==="m03"?"G1":assessment.moduleId==="m07"?"G2":null;
   const attemptId=id("assessment-attempt");
   await db.transaction(async tx=>{
