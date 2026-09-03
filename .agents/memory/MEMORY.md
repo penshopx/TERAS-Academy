@@ -1,1 +1,2 @@
 - [Composite FK migrations](composite-fk-migrations.md) — create referenced unique constraints before composite foreign keys when evolving live PostgreSQL tables.
+- [Non-interactive post-merge migrations](post-merge-migrations.md) — preflight data-preserving backfills before Drizzle push because force mode may still prompt without a TTY.
