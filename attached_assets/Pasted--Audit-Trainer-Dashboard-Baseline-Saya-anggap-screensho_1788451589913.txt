@@ -1,0 +1,541 @@
+## Audit Trainer Dashboard — Baseline
+
+Saya anggap screenshot ini sebagai **baseline visual Trainer Dashboard setelah login**.
+
+Secara umum, dashboard sudah punya fondasi yang benar: **Trainer Command Center → summary queue → Action Queue → Review**. Bahkan dibanding dashboard learner, halaman ini sudah lebih dekat ke pola **“work queue”**.
+
+Namun ada satu masalah besar yang perlu diperhatikan:
+
+> **Trainer saat ini melihat “apa yang harus direview”, tetapi belum cukup melihat “mengapa learner itu perlu diperhatikan dan apa dampaknya terhadap readiness/safety”.**
+
+Ini penting karena prinsip lintas halaman sudah dikunci:
+
+**Readiness ↔ Safety ↔ Evidence ↔ Assessment ↔ Capability Passport harus menyampaikan kondisi learner yang sama.**
+
+---
+
+# 1. WAJIB
+
+### W1 — Action Queue harus menunjukkan dampak terhadap Readiness
+
+Saat ini hanya terlihat:
+
+> High → Demo Learner → EVIDENCE → Commissioning test record → REVIEW
+
+Trainer belum tahu bahwa evidence tersebut berkaitan dengan:
+
+* **Path A — Installation**
+* Inverter commissioning
+* Gate berikutnya
+* Readiness learner
+* apakah evidence tersebut merupakan blocker
+* apakah ada safety dependency
+
+Padahal pada halaman Learner/Readiness sebelumnya, kondisi learner menunjukkan:
+
+* Readiness **10/100**
+* Current Gate: **Technical Commissioning**
+* commissioning evidence masih dibutuhkan/review
+* ada blocker lain.
+
+**Minimal tambahkan konteks pada row/card:**
+
+> **Demo Learner**
+> Readiness 10/100 · Gate Saat Ini: Technical Commissioning
+> Evidence: Commissioning test record
+> Dampak: Menentukan kelanjutan menuju Gate G2
+
+Dengan begitu trainer tidak sekadar melakukan **review evidence**, tetapi memahami **mengapa review itu penting**.
+
+---
+
+### W2 — Status Safety harus terlihat pada Trainer Dashboard
+
+Ini yang paling penting dari sisi prinsip TERAS.
+
+Dashboard Trainer saat ini tidak memperlihatkan status safety learner sama sekali.
+
+Padahal TERAS sudah menetapkan:
+
+> **Safety failure cannot be hidden by an average score.**
+
+Trainer seharusnya dapat melihat minimal:
+
+**Safety**
+
+* 🟢 Cleared
+* 🟡 Not attempted
+* 🔴 Critical failure
+
+Tidak perlu mengubah logic backend.
+
+Ini hanya **surface/presentation dari state yang sudah ada**.
+
+Untuk learner yang sedang direview, misalnya:
+
+> Safety: **Cleared**
+> Readiness: **10/100**
+> Gate: **Technical Commissioning**
+
+atau jika critical:
+
+> 🔴 **Critical Safety Failure — Readiness Blocked**
+
+Status safety harus memiliki prioritas visual lebih tinggi daripada gap biasa.
+
+---
+
+### W3 — Trainer harus bisa membedakan “siapa yang harus bertindak”
+
+Saat ini tombol:
+
+> **REVIEW →**
+
+belum menjawab pertanyaan:
+
+**Setelah review ini, siapa yang harus melakukan tindakan berikutnya?**
+
+Trainer membutuhkan ownership yang jelas:
+
+| Item                  | Status             | Pemilik berikutnya |
+| --------------------- | ------------------ | ------------------ |
+| Evidence review       | Pending            | Trainer            |
+| Evidence rejected     | Needs resubmission | Learner            |
+| Practice feedback     | Pending            | Trainer            |
+| Assessment incomplete | Not attempted      | Learner            |
+| Remediation           | Active             | Learner + Trainer  |
+
+Ini sangat penting agar **queue tidak hanya menjadi daftar pekerjaan trainer**, tetapi menjadi **workflow yang memiliki handoff yang jelas**.
+
+---
+
+### W4 — Summary cards belum cukup menggambarkan kondisi learner
+
+Sekarang:
+
+* Assigned **1**
+* Feedback Queue **0**
+* Evidence **1**
+* Blocked **0**
+
+Masalah terbesar ada pada:
+
+> **BLOCKED 0**
+
+Padahal dari perspektif learner/readiness sebelumnya terdapat kondisi blocker pada learner tersebut.
+
+Jika memang `Blocked 0` memiliki definisi khusus, dashboard perlu membuat definisi tersebut jelas.
+
+Jika learner memang mempunyai readiness blocker tetapi **tidak termasuk dalam kategori “trainer blocked”**, maka UI perlu membedakan:
+
+* **Trainer Blocked**
+* **Learner Blocked**
+* **Safety Blocked**
+
+Jangan sampai trainer membaca:
+
+> BLOCKED 0
+
+dan menyimpulkan:
+
+> “Tidak ada masalah/blocker pada learner.”
+
+Ini berpotensi menghasilkan **misinterpretasi lintas halaman**.
+
+---
+
+### W5 — Prioritas High perlu menjelaskan alasan High
+
+Row menunjukkan:
+
+> **High**
+
+tetapi tidak ada penjelasan mengapa high.
+
+Untuk sistem evidence-based, priority sebaiknya dapat ditelusuri:
+
+> **HIGH**
+> Gate-critical evidence · Required for Technical Commissioning
+
+atau:
+
+> **HIGH**
+> Readiness impact · Gate G2
+
+Jadi trainer tahu bahwa prioritas bukan sekadar label visual.
+
+---
+
+### W6 — Evidence review harus memperlihatkan status evidence
+
+Saat ini hanya:
+
+> EVIDENCE — Commissioning test record
+
+Belum terlihat apakah:
+
+* Submitted
+* Under Review
+* Valid
+* Invalid
+* Needs Revision
+* Rejected
+
+Padahal halaman learner sebelumnya sudah menggunakan konsep:
+
+**Evidence submitted → Trainer validation → Assessment → Gate decision**
+
+Trainer Dashboard seharusnya menjadi tempat yang paling jelas untuk tahap:
+
+> **Evidence → Trainer Validation**
+
+Minimal:
+
+> **Menunggu Validasi**
+
+sehingga trainer langsung tahu pekerjaan yang harus dilakukan.
+
+---
+
+# 2. PENTING
+
+### P1 — Action Queue sebaiknya menjadi pusat dashboard
+
+Saat ini Action Queue sudah benar secara konsep, tetapi terlalu sederhana.
+
+Saya menyarankan struktur:
+
+**Prioritas → Learner → Readiness → Item → Dampak → Action**
+
+Contoh:
+
+> 🔴 High
+> **Demo Learner**
+> Readiness 10/100 · G2 Technical Commissioning
+> **Commissioning test record**
+> Menunggu validasi trainer
+> **REVIEW**
+
+Ini jauh lebih powerful daripada tabel saat ini.
+
+---
+
+### P2 — Tambahkan “Attention Needed”
+
+Trainer seharusnya bisa langsung melihat:
+
+### Perlu Perhatian
+
+Misalnya:
+
+* 1 Evidence menunggu validasi
+* 0 Practice feedback
+* 1 learner mendekati/terhambat gate
+* 0 safety-critical issue
+
+Tujuannya agar trainer tidak perlu menafsirkan empat angka summary card.
+
+---
+
+### P3 — Practice feedback belum benar-benar terlihat
+
+Card:
+
+> FEEDBACK QUEUE 0
+
+Bagus sebagai indikator.
+
+Tetapi trainer juga perlu memahami:
+
+> **0 karena memang tidak ada practice yang membutuhkan feedback**
+
+atau:
+
+> **0 karena practice belum disubmit**
+
+Dua kondisi itu berbeda.
+
+Jadi apabila queue kosong, sebaiknya ada empty state yang bermakna:
+
+> **Tidak ada practice yang menunggu feedback.**
+
+Bukan hanya angka `0`.
+
+---
+
+### P4 — Gap & Remediation belum muncul di command center
+
+Sidebar sudah memiliki:
+
+> Gaps & Remediation
+
+tetapi dashboard utama belum memberi indikasi apakah ada remediation aktif.
+
+Padahal trainer perlu mengetahui:
+
+> siapa yang sedang remediation → apa gap-nya → sudah sampai mana → apakah perlu intervensi trainer.
+
+Tambahkan summary kecil:
+
+**ACTIVE REMEDIATION: 1**
+
+atau jika nol:
+
+> Tidak ada remediation aktif.
+
+---
+
+### P5 — Readiness learner perlu menjadi konteks utama
+
+Dashboard trainer belum menunjukkan readiness sama sekali.
+
+Saya tidak menyarankan menampilkan seluruh Readiness Engine.
+
+Cukup:
+
+> **Readiness 10/100**
+> Current Gate: **Technical Commissioning**
+> Status: **In Progress / Blocked / Ready**
+
+Ini akan membuat Trainer Dashboard langsung terhubung dengan Learner Dashboard dan Readiness page.
+
+---
+
+### P6 — Bahasa UI perlu diseragamkan
+
+Saat ini sangat banyak istilah Inggris:
+
+* Trainer Command Center
+* Assigned
+* Feedback Queue
+* Evidence
+* Blocked
+* Action Queue
+* Priority
+* Learner
+* Type
+* Subject
+* Action
+* Review
+
+Karena baseline learner sebelumnya sudah kita identifikasi memiliki masalah serupa, sebaiknya operational UI konsisten Bahasa Indonesia.
+
+Contoh:
+
+**Pusat Kendali Trainer**
+
+| Saat ini       | Disarankan                 |
+| -------------- | -------------------------- |
+| Assigned       | Learner Ditugaskan         |
+| Feedback Queue | Antrian Feedback           |
+| Evidence       | Evidence Menunggu Validasi |
+| Blocked        | Terblokir                  |
+| Action Queue   | Antrian Tindakan           |
+| Priority       | Prioritas                  |
+| Subject        | Materi / Item              |
+| Action         | Tindakan                   |
+| Review         | Tinjau                     |
+
+Istilah teknis **Evidence, Assessment, Readiness, Safety, Gate** masih boleh dipertahankan sebagai vocabulary produk.
+
+---
+
+# 3. KOSMETIK
+
+### K1 — “Trainer Command Center” terlalu dominan
+
+Nama ini sebenarnya bagus, tetapi untuk produk Indonesia:
+
+> **Pusat Kendali Trainer**
+
+lebih mudah dipindai.
+
+Bisa tetap memakai:
+
+> **Trainer Command Center**
+
+sebagai product terminology jika memang ingin mempertahankan branding.
+
+---
+
+### K2 — Sidebar masih menggunakan nested scroll
+
+Sama seperti Learner Dashboard.
+
+Sidebar mempunyai scroll sendiri sementara halaman juga memiliki scroll.
+
+Untuk desktop masih usable, tetapi secara UX kurang bersih.
+
+Sebaiknya:
+
+* sidebar fixed;
+* menu dapat collapse;
+* content utama memiliki satu scroll.
+
+---
+
+### K3 — Action Queue terlalu kosong
+
+Karena hanya satu learner, ruang kosong sangat besar.
+
+Tidak perlu memaksakan elemen baru, tetapi bisa digunakan untuk:
+
+* **Trainer Attention**
+* **Readiness Overview**
+* **Active Remediation**
+* atau empty state yang informatif.
+
+---
+
+### K4 — `Demo Learner`
+
+Untuk production tentu harus menjadi identitas learner sebenarnya.
+
+Untuk environment demo/development ini **bukan masalah**.
+
+---
+
+### K5 — Development banner dan Windows watermark
+
+Keduanya tidak perlu masuk daftar pekerjaan TERAS.
+
+Itu artefak environment, bukan masalah product UI.
+
+---
+
+# 4. TEMUAN PALING PENTING: CROSS-PAGE CONSISTENCY
+
+Ini yang menurut saya harus menjadi **checkpoint utama sebelum halaman ini dikunci**.
+
+Dari screenshot:
+
+### Trainer melihat
+
+> Assigned: 1
+> Evidence: 1
+> Blocked: 0
+> Feedback: 0
+> High priority evidence review
+
+Sedangkan dari kondisi learner yang kita audit sebelumnya:
+
+> Readiness **10/100**
+> Technical Commissioning sebagai current gate
+> M07 assessment belum selesai
+> Commissioning evidence dibutuhkan
+> Evidence review pending
+> terdapat blocker readiness.
+
+Maka Trainer Dashboard **belum cukup menjelaskan hubungan kedua kondisi tersebut**.
+
+Bukan berarti datanya salah.
+
+Yang harus diperbaiki adalah **representasi konteksnya**.
+
+---
+
+# 5. Target Trainer Dashboard setelah hardening
+
+Saya akan arahkan desain akhirnya menjadi seperti ini:
+
+```text
+┌──────────────────────────────────────────────────────┐
+│ PUSAT KENDALI TRAINER                                │
+│ Aria Trainer                                         │
+├────────────┬────────────┬────────────┬──────────────┤
+│ LEARNER    │ FEEDBACK   │ EVIDENCE   │ PERLU        │
+│ 1          │ 0          │ 1          │ PERHATIAN 1  │
+└────────────┴────────────┴────────────┴──────────────┘
+
+PERLU PERHATIAN
+
+🔴 HIGH
+Demo Learner
+Readiness 10/100
+Gate Saat Ini: Technical Commissioning
+
+Evidence
+Commissioning test record
+
+Status:
+Menunggu Validasi Trainer
+
+Dampak:
+Diperlukan untuk proses menuju Gate G2
+
+Safety:
+✓ Cleared
+
+Pemilik Tindakan:
+Trainer
+
+                         [ TINJAU EVIDENCE ]
+```
+
+Kemudian di bawahnya:
+
+```text
+ACTIVE REMEDIATION
+Tidak ada remediation aktif
+```
+
+dan:
+
+```text
+PRACTICE FEEDBACK
+Tidak ada practice yang menunggu feedback
+```
+
+Dengan struktur seperti ini, trainer dalam **3–5 detik** bisa menjawab:
+
+> **Siapa yang perlu saya perhatikan?**
+
+> **Apa masalahnya?**
+
+> **Apa yang harus saya lakukan?**
+
+> **Apa dampaknya terhadap readiness?**
+
+> **Apakah ada safety issue?**
+
+> **Siapa yang bertindak setelah saya?**
+
+Itulah standar yang menurut saya cocok untuk **TERAS Capability Cockpit**.
+
+---
+
+# Kesimpulan Audit
+
+| Temuan                                                               | Kategori        |
+| -------------------------------------------------------------------- | --------------- |
+| Readiness learner tidak terlihat                                     | 🔴 **Wajib**    |
+| Safety status tidak terlihat                                         | 🔴 **Wajib**    |
+| Dampak evidence terhadap gate/readiness tidak terlihat               | 🔴 **Wajib**    |
+| Ownership tindakan tidak jelas                                       | 🔴 **Wajib**    |
+| Status `Blocked 0` berpotensi membingungkan dengan readiness blocker | 🔴 **Wajib**    |
+| Priority High tanpa alasan                                           | 🔴 **Wajib**    |
+| Status evidence belum jelas                                          | 🔴 **Wajib**    |
+| Action Queue perlu lebih kontekstual                                 | 🟠 **Penting**  |
+| Practice feedback perlu empty state bermakna                         | 🟠 **Penting**  |
+| Gap & remediation belum muncul di dashboard                          | 🟠 **Penting**  |
+| Bahasa UI belum konsisten                                            | 🟠 **Penting**  |
+| Sidebar nested scroll                                                | 🟠 **Penting**  |
+| Visual spacing / typography                                          | 🟢 **Kosmetik** |
+| Demo Learner                                                         | 🟢 **Kosmetik** |
+| Replit banner / Windows watermark                                    | 🟢 **Kosmetik** |
+
+### Verdict
+
+**Trainer Dashboard: ~62–65% readiness secara visual/operasional.**
+
+Fondasinya **sudah benar**, dan **tidak ada alasan dari screenshot ini untuk menyentuh backend atau business rules**.
+
+Yang diperlukan adalah **Product Presentation Hardening**, terutama membuat Trainer Dashboard menjadi:
+
+> **Action + Context + Impact + Ownership**
+
+bukan sekadar:
+
+> **Count + Queue + Review**.
+
+Dan yang paling penting: **jangan membuat Trainer Dashboard memiliki “kebenaran” sendiri.** Ia harus membaca dan mempresentasikan state yang sama dengan Learner Dashboard, Readiness, Evidence, Assessment, Safety, dan Capability Passport.
