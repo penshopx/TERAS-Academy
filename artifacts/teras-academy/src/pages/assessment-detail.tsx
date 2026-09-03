@@ -3,7 +3,7 @@ import { useParams, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Activity, ChevronRight, ShieldAlert, FileSignature } from "lucide-react";
+import { Activity, ChevronRight, ShieldAlert, FileSignature, LockKeyhole, History, FileCheck2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function AssessmentDetail() {
@@ -57,6 +57,30 @@ export default function AssessmentDetail() {
         </div>
       )}
 
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground"><LockKeyhole className="h-4 w-4 text-primary" /> READINESS IMPACT</div>
+            <p className="mt-2 font-semibold">{assessment.gateCode ? `Controls gate ${assessment.gateCode}` : "Assessment record"}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{assessment.criticalFailure ? "Gate remains blocked by a critical failure." : "Stored result contributes to readiness."}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground"><History className="h-4 w-4 text-primary" /> ATTEMPT CONTEXT</div>
+            <p className="mt-2 font-semibold">{assessment.attemptCount} official attempt{assessment.attemptCount === 1 ? "" : "s"}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Latest stored status: {assessment.status}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground"><FileCheck2 className="h-4 w-4 text-primary" /> EVIDENCE TRACE</div>
+            <p className="mt-2 font-semibold">{criteria.filter(item => item.evidenceId).length} of {criteria.length} criteria linked</p>
+            <p className="mt-1 text-xs text-muted-foreground">Evidence IDs are shown beside each criterion.</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 cockpit-panel border-primary/20">
           <CardHeader>
@@ -70,7 +94,8 @@ export default function AssessmentDetail() {
                   <TableRow>
                     <TableHead className="w-[100px]">Code</TableHead>
                     <TableHead>Criterion</TableHead>
-                    <TableHead className="text-center w-[100px]">Critical</TableHead>
+                    <TableHead>Layer / Evidence</TableHead>
+                    <TableHead className="text-center w-[100px]">Safety</TableHead>
                     <TableHead className="text-right w-[100px]">Score</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -88,6 +113,10 @@ export default function AssessmentDetail() {
                             "{criterion.observation}"
                           </div>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs">{criterion.layer}</div>
+                        <div className="mt-1 font-mono text-[11px] text-muted-foreground">{criterion.evidenceId ?? "No evidence linked"}</div>
                       </TableCell>
                       <TableCell className="text-center">
                         {criterion.critical && <ShieldAlert className="w-4 h-4 text-destructive mx-auto" />}
@@ -133,6 +162,10 @@ export default function AssessmentDetail() {
                     </div>
                   </div>
                   <div className="font-medium text-sm">{criterion.label}</div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span>Layer: {criterion.layer}</span>
+                    <span className="font-mono">Evidence: {criterion.evidenceId ?? "Not linked"}</span>
+                  </div>
                   {criterion.observation && (
                     <div className="text-xs text-muted-foreground italic border-l-2 border-primary/50 pl-2">
                       "{criterion.observation}"
@@ -146,7 +179,8 @@ export default function AssessmentDetail() {
 
         <Card className="bg-card h-fit">
           <CardHeader>
-            <CardTitle>Attempt History</CardTitle>
+            <CardTitle>Official Attempt History</CardTitle>
+            <CardDescription>Stored decisions only; newest official record appears last.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 relative before:absolute before:inset-0 before:left-4 before:-translate-x-px before:w-0.5 before:bg-border before:z-0">
@@ -161,7 +195,10 @@ export default function AssessmentDetail() {
                       <Badge variant="outline" className="text-[10px] uppercase font-mono">{attempt.status}</Badge>
                     </div>
                     {attempt.decision && (
-                      <div className="text-sm font-medium mt-1">{attempt.decision}</div>
+                      <div className="mt-1">
+                        <div className="text-[10px] font-mono text-muted-foreground">OFFICIAL STORED DECISION</div>
+                        <div className="text-sm font-semibold">{attempt.decision}</div>
+                      </div>
                     )}
                     {attempt.assessor && (
                       <div className="text-xs text-muted-foreground mt-2 border-t border-border pt-2">
