@@ -1,11 +1,35 @@
 import { useGetLearnerDashboard, useGetLearnerReadiness } from "@workspace/api-client-react";
 import { AlertTriangle, CheckCircle2, ClipboardCheck, FileCheck2, ShieldAlert, ShieldCheck, UserRound } from "lucide-react";
+import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
 type LearnerConditionProps = {
   owner: string;
+};
+
+type LearnerConditionViewProps = LearnerConditionProps & {
+  dashboard: {
+    learner: { name: string };
+    pathway: { name: string };
+    evidenceCounts: {
+      valid: number;
+      total: number;
+      underReview: number;
+      needsRevision: number;
+    };
+  };
+  readiness: {
+    status: string;
+    score: number;
+    blockers: string[];
+    currentGate: {
+      code: string;
+      name: string;
+      requirement: string;
+    };
+  };
 };
 
 export function LearnerCondition({ owner }: LearnerConditionProps) {
@@ -22,6 +46,10 @@ export function LearnerCondition({ owner }: LearnerConditionProps) {
     return <Card className="border-destructive/40 bg-destructive/5"><CardContent className="p-5 text-sm text-destructive">Learner condition is unavailable.</CardContent></Card>;
   }
 
+  return <LearnerConditionView owner={owner} dashboard={dashboard} readiness={readiness} />;
+}
+
+export function LearnerConditionView({ owner, dashboard, readiness }: LearnerConditionViewProps) {
   const safetyState = readiness.status === "Blocked"
     ? "BLOCKED"
     : readiness.score === 100 && readiness.blockers.length === 0
