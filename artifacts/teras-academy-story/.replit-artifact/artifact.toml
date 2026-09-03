@@ -1,0 +1,29 @@
+kind = "video"
+videoAspectRatio = "16:9"
+previewPath = "/teras-academy-story/"
+title = "TERAS Academy — Capability to Readiness"
+description = "Video motion-graphics sekitar 60 detik yang memperkenalkan alur evidence-based capability TERAS Academy, pathway Installation dan Design, safety gate, assessment, readiness, dan Capability Passport."
+version = "1.0.0"
+id = "artifacts/teras-academy-story"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/teras-academy-story/" ]
+localPort = 25086
+
+[services.development]
+run = "pnpm --filter @workspace/teras-academy-story run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/teras-academy-story", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/teras-academy-story/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25086"
+BASE_PATH = "/teras-academy-story/"

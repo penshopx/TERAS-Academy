@@ -1,0 +1,44 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "-Vcc2V1Gp_ry_W27sxfi1"
+uri = "file://artifacts/teras-academy-story/public/audio/vo_scene_4.mp3"
+type = "audio"
+title = "TERAS narration scene 4"
+description = "Text-to-speech audio: Assessment menghasilkan evidence, gap, dan rencana remediation yang dapat ditelusuri. Setelah perbaikan, learner dinilai kembali sampai kapabilitas benar-benar terbukti."
+
+[[outputs]]
+id = "2O6E9D00ajyXqGWeJv83Q"
+uri = "file://artifacts/teras-academy-story/public/audio/vo_scene_1.mp3"
+type = "audio"
+title = "TERAS narration scene 1"
+description = "Text-to-speech audio: TERAS Academy mengubah pembelajaran menjadi kapabilitas yang terlihat, terukur, dan siap dibuktikan."
+
+[[outputs]]
+id = "bETtbvi6vmMobPTb6zLKb"
+uri = "file://artifacts/teras-academy-story/public/audio/vo_scene_3.mp3"
+type = "audio"
+title = "TERAS narration scene 3"
+description = "Text-to-speech audio: Keselamatan bukan sekadar nilai rata-rata. Skor nol atau satu pada kriteria kritis tidak dapat dikompensasi. Keputusan tetap: belum kompeten."
+
+[[outputs]]
+id = "8NjaVpBfImmu5_g7Orep4"
+uri = "file://artifacts/teras-academy-story/public/audio/vo_scene_2.mp3"
+type = "audio"
+title = "TERAS narration scene 2"
+description = "Text-to-speech audio: Satu profesi, dua jalur yang benar-benar berbeda. Path A untuk instalasi. Path B untuk desain. Setiap jalur menyimpan progres dan evidencenya sendiri."
+
+[[outputs]]
+id = "FG-tmIyBoawhGrwC8FPjc"
+uri = "file://artifacts/teras-academy-story/public/audio/vo_scene_5.mp3"
+type = "audio"
+title = "TERAS narration scene 5"
+description = "Text-to-speech audio: Hasil akhirnya bukan sekadar sertifikat. Readiness yang dapat dipercaya, dengan Capability Passport sebagai rekam jejak kemampuan sepanjang perjalanan profesional."
+
+[[outputs]]
+id = "SNz3BOFeiAPEaQkKe5hm_"
+uri = "file://artifacts/teras-academy-story/public/audio/bg_music.mp3"
+type = "audio"
+title = "TERAS cinematic background music"
+description = "Generated music: Driving cinematic electronic instrumental background music scoring a future-facing evidence-based capability platform brand film. Warm analog synth pulse, restrained percussion, subt…"
