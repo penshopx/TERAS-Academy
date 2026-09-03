@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" role="img" aria-labelledby="title">
   <title>TERAS Academy</title>
   <rect width="360" height="96" rx="16" fill="#050505"/>
-  <path d="M25 21h62v12H63v42H49V33H25V21Zm72 0h50v12h-36v9h31v12h-31v9h36v12H97V21Zm63 0h16l16 24 16-24h16l-24 35v19h-14V56l-24-35Zm70 0h48v12h-34v9h29v12h-29v9h34v12h-48V21Zm63 0h14l25 32V21h14v54h-14l-25-32v32h-14V21Z" fill="#00c3ff"/>
-  <text x="26" y="89" fill="#c9d4d9" font-family="Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="3">CAPABILITY ACADEMY</text>
+  <text x="24" y="65" fill="#00c3ff" font-family="Arial, sans-serif" font-size="55" font-weight="900" letter-spacing="7">TERAS</text>
+  <text x="27" y="86" fill="#c9d4d9" font-family="Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="3">CAPABILITY ACADEMY</text>
 </svg>

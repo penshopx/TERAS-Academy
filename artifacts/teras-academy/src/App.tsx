@@ -164,8 +164,12 @@ function PublicHome() {
 
           <div className="relative mx-auto w-full max-w-[520px] lg:ml-auto animate-in fade-in zoom-in-95 duration-1000 delay-300 fill-mode-both">
             <div className="absolute -inset-10 rounded-full bg-[#00c3ff]/10 blur-[80px]" />
-            <div className="relative rounded-2xl border border-white/10 bg-[#0a0a0a]/80 p-1 shadow-2xl backdrop-blur-xl">
-              <div className="rounded-xl border border-white/5 bg-black/50 p-6">
+            <div className="relative rounded-2xl border border-white/10 bg-[#0a0a0a]/80 p-1 shadow-2xl backdrop-blur-xl group overflow-hidden">
+              <div className="absolute inset-0 z-0 opacity-40 mix-blend-luminosity transition-opacity duration-700 group-hover:opacity-60">
+                <img src={`${basePath}/images/teras-energy-control-room.jpg`} alt="TERAS Academy Readiness Control Center" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-[#0a0a0a]/20" />
+              </div>
+              <div className="relative z-10 rounded-xl border border-white/5 bg-black/40 p-6 backdrop-blur-md">
                 <div className="flex items-start justify-between border-b border-white/10 pb-5">
                   <div>
                     <div className="flex items-center gap-2">
@@ -223,6 +227,58 @@ function PublicHome() {
                 </div>
               </div>
             </div>
+            <p className="mt-5 text-center font-mono text-[10px] tracking-[0.2em] text-white/30 uppercase">
+              TERAS Academy Readiness Control Center
+            </p>
+          </div>
+        </section>
+
+        {/* TERAS Academy Story Video Section */}
+        <section className="py-20 lg:py-24 relative border-t border-white/5">
+          <div className="max-w-5xl mx-auto px-6 lg:px-10">
+            <div className="mb-12 text-center">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 mb-6">
+                <span className="flex h-2 w-2 rounded-full bg-[#00c3ff] animate-pulse"></span>
+                <span className="font-mono text-[10px] font-bold tracking-[0.2em] text-white uppercase">In Action</span>
+              </div>
+              <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
+                Menyiapkan Tenaga Transisi Energi Indonesia
+              </h2>
+              <p className="mt-5 text-lg text-white/60 max-w-2xl mx-auto leading-relaxed">
+                Lihat bagaimana TERAS Academy mentransformasi pelatihan teknis menjadi kesiapan lapangan yang nyata dan terukur.
+              </p>
+            </div>
+
+            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#050505] shadow-[0_0_40px_rgba(0,195,255,0.05)] group">
+              <div className="aspect-video w-full relative">
+                <iframe
+                  src="/teras-academy-story/"
+                  title="Video dokumenter TERAS Academy untuk kesiapan transisi energi"
+                  className="absolute inset-0 w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
+              </div>
+              <div className="bg-[#0a0a0a] border-t border-white/5 px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00c3ff]/10">
+                    <BadgeCheck className="h-4 w-4 text-[#00c3ff]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white">TERAS Academy 60-Second Overview</p>
+                    <p className="text-xs text-white/50">Capability to Readiness Story</p>
+                  </div>
+                </div>
+                <a
+                  href="/teras-academy-story/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold text-[#00c3ff] hover:text-[#70dcff] transition-colors flex items-center gap-2"
+                >
+                  Buka di tab baru <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -247,6 +303,25 @@ function PublicHome() {
                   Sumber: IEA WEE 2025
                   <span className="block h-px w-full bg-[#00c3ff]/30 absolute bottom-0 left-0 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
                 </a>
+              </div>
+
+              <div className="mt-14 relative rounded-xl overflow-hidden border border-white/10 group">
+                <div className="aspect-[16/9] w-full relative">
+                  <img
+                    src={`${basePath}/images/teras-transition-2046.jpg`}
+                    alt="Lanskap industri transisi energi dan energi terbarukan di Indonesia horizon 2046"
+                    className="object-cover w-full h-full transition-transform duration-1000 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/20 to-transparent" />
+                  <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between">
+                    <div>
+                      <p className="font-mono text-[10px] font-bold tracking-[0.2em] text-[#00c3ff] mb-1">TERAS ACADEMY</p>
+                      <p className="text-sm font-bold text-white tracking-wide">HORIZON 2046</p>
+                    </div>
+                    <span className="flex h-2 w-2 rounded-full bg-[#00c3ff] shadow-[0_0_8px_rgba(0,195,255,0.8)]"></span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -324,8 +399,25 @@ function PublicHome() {
 
         {/* Philosophy & Features */}
         <section className="py-24 grid lg:grid-cols-[1fr_1.1fr] gap-12 lg:gap-20 items-center">
-          <div className="space-y-8">
-            <div className="rounded-3xl border border-red-500/20 bg-gradient-to-br from-red-500/10 to-black p-8 md:p-10 relative overflow-hidden">
+          <div className="space-y-6">
+            <div className="relative rounded-3xl overflow-hidden border border-white/10 group h-[260px] md:h-[300px]">
+              <img
+                src={`${basePath}/images/teras-solar-technician.jpg`}
+                alt="Teknisi TERAS Academy melakukan inspeksi panel surya lapangan dengan standar keselamatan ketat"
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-transparent" />
+              <div className="absolute bottom-6 left-6 right-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <ShieldCheck className="h-4 w-4 text-[#00c3ff]" />
+                  <span className="font-mono text-[10px] font-bold tracking-[0.2em] text-[#00c3ff] uppercase">Field Verification</span>
+                </div>
+                <p className="text-sm text-white/80 font-medium leading-relaxed max-w-sm">Sertifikasi TERAS Academy menjamin readiness nyata di lapangan, bukan sekadar kelulusan teori di atas kertas.</p>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-red-500/20 bg-gradient-to-br from-red-500/10 to-[#0a0a0a] p-8 md:p-10 relative overflow-hidden">
               <div className="absolute -right-10 -top-10 w-40 h-40 bg-red-500/20 blur-3xl rounded-full"></div>
 
               <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 mb-8">
