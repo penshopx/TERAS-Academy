@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { GateProgress } from './gateProgress';
+import type { PathwaySummary } from './pathwaySummary';
 
 export interface ReadinessSummary {
+  pathway: PathwaySummary;
   status: string;
   /**
      * @minimum 0

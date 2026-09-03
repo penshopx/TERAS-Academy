@@ -22,7 +22,10 @@ export default function Dashboard() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Status Overview</h1>
-        <p className="text-muted-foreground mt-1 font-mono text-sm uppercase">Program: {dashboard.program.name}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <p className="text-muted-foreground font-mono text-sm uppercase">Program: {dashboard.program.name}</p>
+          <Badge variant="outline" className="font-mono">{dashboard.pathway.name}</Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

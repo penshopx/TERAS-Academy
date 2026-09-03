@@ -7,5 +7,6 @@
  */
 
 export interface PathwaySelectionInput {
+  /** @minLength 1 */
   pathwayId: string;
 }

@@ -13,7 +13,7 @@ const audit = {
 /** Stable catalogue records. Learner state is kept in the event tables below. */
 export const peopleTable = pgTable("teras_people", {
   id: text("id").primaryKey(), name: text("name").notNull(), initials: text("initials").notNull(),
-  role: text("role").notNull(), organization: text("organization"),
+  email: text("email").unique(), role: text("role").notNull(), organization: text("organization"),
   ...audit,
 });
 export const programsTable = pgTable("teras_programs", {
@@ -26,6 +26,7 @@ export const pathwaysTable = pgTable("teras_pathways", {
 }, table => [unique("teras_pathways_id_program_unique").on(table.id, table.programId)]);
 export const modulesTable = pgTable("teras_modules", {
   id: text("id").primaryKey(), programId: text("program_id").notNull().references(() => programsTable.id),
+  pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id),
   sequence: integer("sequence").notNull(), code: text("code").notNull(), name: text("name").notNull(),
   capability: text("capability").notNull(), evidence: text("evidence").notNull(),
   learningOutcomes: text("learning_outcomes").array().notNull(), theory: text("theory").array().notNull(), ...audit,
@@ -42,7 +43,7 @@ export const evidenceRequirementsTable = pgTable("teras_evidence_requirements", 
 });
 export const assessmentsTable = pgTable("teras_assessments", {
   id: text("id").primaryKey(), moduleId: text("module_id").notNull().references(() => modulesTable.id),
-  name: text("name").notNull(), ...audit,
+  name: text("name").notNull(), gateCode: text("gate_code"), ...audit,
 });
 export const assessmentCriteriaTable = pgTable("teras_assessment_criteria", {
   id: text("id").primaryKey(), assessmentId: text("assessment_id").notNull().references(() => assessmentsTable.id),
@@ -122,7 +123,10 @@ export const remediationEventsTable = pgTable("teras_remediation_events", {
 });
 export const readinessGatesTable = pgTable("teras_readiness_gates", {
   id: text("id").primaryKey(), programId: text("program_id").notNull().references(() => programsTable.id),
-  sequence: integer("sequence").notNull(), code: text("code").notNull(), name: text("name").notNull(), requirement: text("requirement").notNull(), ...audit,
+  pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id),
+  sequence: integer("sequence").notNull(), code: text("code").notNull(), name: text("name").notNull(),
+  requirement: text("requirement").notNull(), assessmentMode: text("assessment_mode").notNull().default("Mapped"),
+  evidenceMode: text("evidence_mode").notNull().default("None"), ...audit,
 });
 export const readinessEventsTable = pgTable("teras_readiness_events", {
   id: text("id").primaryKey(), enrollmentId: text("enrollment_id").notNull().references(() => enrollmentsTable.id),

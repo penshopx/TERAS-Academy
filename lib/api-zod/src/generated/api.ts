@@ -57,13 +57,23 @@ export const GetProgramResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "type": zod.string(),
-  "outcome": zod.string()
+  "outcome": zod.string(),
+  "moduleCount": zod.int(),
+  "gateCount": zod.int(),
+  "gates": zod.array(zod.object({
+  "id": zod.string(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "sequence": zod.int(),
+  "requirement": zod.string()
+}))
 })),
   "modules": zod.array(zod.object({
   "id": zod.string(),
   "code": zod.string(),
   "name": zod.string(),
   "capability": zod.string(),
+  "pathwayId": zod.string(),
   "evidence": zod.string(),
   "progress": zod.int().min(getProgramResponseTwoModulesItemProgressMin).max(getProgramResponseTwoModulesItemProgressMax),
   "status": zod.string()
@@ -106,10 +116,34 @@ export const GetLearnerDashboardResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "type": zod.string(),
-  "outcome": zod.string()
+  "outcome": zod.string(),
+  "moduleCount": zod.int(),
+  "gateCount": zod.int(),
+  "gates": zod.array(zod.object({
+  "id": zod.string(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "sequence": zod.int(),
+  "requirement": zod.string()
+}))
 }),
   "capabilityProgress": zod.int().min(getLearnerDashboardResponseCapabilityProgressMin).max(getLearnerDashboardResponseCapabilityProgressMax),
   "readiness": zod.object({
+  "pathway": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "outcome": zod.string(),
+  "moduleCount": zod.int(),
+  "gateCount": zod.int(),
+  "gates": zod.array(zod.object({
+  "id": zod.string(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "sequence": zod.int(),
+  "requirement": zod.string()
+}))
+}),
   "status": zod.string(),
   "score": zod.int().min(getLearnerDashboardResponseReadinessScoreMin).max(getLearnerDashboardResponseReadinessScoreMax),
   "currentGate": zod.object({
@@ -142,6 +176,7 @@ export const GetLearnerDashboardResponse = zod.object({
   "code": zod.string(),
   "name": zod.string(),
   "capability": zod.string(),
+  "pathwayId": zod.string(),
   "evidence": zod.string(),
   "progress": zod.int().min(getLearnerDashboardResponseCurrentLearningProgressMin).max(getLearnerDashboardResponseCurrentLearningProgressMax),
   "status": zod.string()
@@ -186,8 +221,11 @@ export const GetLearnerDashboardResponse = zod.object({
 /**
  * @summary Select a capability pathway
  */
+
+
+
 export const SelectLearnerPathwayBody = zod.object({
-  "pathwayId": zod.string()
+  "pathwayId": zod.string().min(1)
 })
 
 export const SelectLearnerPathwayResponse = zod.object({
@@ -195,7 +233,16 @@ export const SelectLearnerPathwayResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "type": zod.string(),
-  "outcome": zod.string()
+  "outcome": zod.string(),
+  "moduleCount": zod.int(),
+  "gateCount": zod.int(),
+  "gates": zod.array(zod.object({
+  "id": zod.string(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "sequence": zod.int(),
+  "requirement": zod.string()
+}))
 }),
   "programId": zod.string(),
   "selectedAt": zod.coerce.date()
@@ -231,6 +278,7 @@ export const GetLearnerLearningPlanResponseItem = zod.object({
   "code": zod.string(),
   "name": zod.string(),
   "capability": zod.string(),
+  "pathwayId": zod.string(),
   "evidence": zod.string(),
   "progress": zod.int().min(getLearnerLearningPlanResponseModuleProgressMin).max(getLearnerLearningPlanResponseModuleProgressMax),
   "status": zod.string()
@@ -264,6 +312,7 @@ export const GetModuleResponse = zod.object({
   "code": zod.string(),
   "name": zod.string(),
   "capability": zod.string(),
+  "pathwayId": zod.string(),
   "evidence": zod.string(),
   "progress": zod.int().min(getModuleResponseModuleProgressMin).max(getModuleResponseModuleProgressMax),
   "status": zod.string()
@@ -285,6 +334,7 @@ export const GetModuleResponse = zod.object({
   "id": zod.string(),
   "moduleId": zod.string(),
   "name": zod.string(),
+  "gateCode": zod.string().nullable(),
   "status": zod.string(),
   "score": zod.int().min(getModuleResponseAssessmentScoreMin).max(getModuleResponseAssessmentScoreMax),
   "attemptCount": zod.int(),
@@ -420,6 +470,7 @@ export const ListAssessmentsResponseItem = zod.object({
   "id": zod.string(),
   "moduleId": zod.string(),
   "name": zod.string(),
+  "gateCode": zod.string().nullable(),
   "status": zod.string(),
   "score": zod.int().min(listAssessmentsResponseScoreMin).max(listAssessmentsResponseScoreMax),
   "attemptCount": zod.int(),
@@ -448,6 +499,7 @@ export const GetAssessmentResponse = zod.object({
   "id": zod.string(),
   "moduleId": zod.string(),
   "name": zod.string(),
+  "gateCode": zod.string().nullable(),
   "status": zod.string(),
   "score": zod.int().min(getAssessmentResponseAssessmentScoreMin).max(getAssessmentResponseAssessmentScoreMax),
   "attemptCount": zod.int(),
@@ -545,6 +597,21 @@ export const getLearnerReadinessResponseScoreMax = 100;
 
 
 export const GetLearnerReadinessResponse = zod.object({
+  "pathway": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "outcome": zod.string(),
+  "moduleCount": zod.int(),
+  "gateCount": zod.int(),
+  "gates": zod.array(zod.object({
+  "id": zod.string(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "sequence": zod.int(),
+  "requirement": zod.string()
+}))
+}),
   "status": zod.string(),
   "score": zod.int().min(getLearnerReadinessResponseScoreMin).max(getLearnerReadinessResponseScoreMax),
   "currentGate": zod.object({
@@ -590,9 +657,39 @@ export const GetCapabilityPassportResponse = zod.object({
   "role": zod.string(),
   "organization": zod.string().nullable()
 }),
+  "pathway": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "outcome": zod.string(),
+  "moduleCount": zod.int(),
+  "gateCount": zod.int(),
+  "gates": zod.array(zod.object({
+  "id": zod.string(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "sequence": zod.int(),
+  "requirement": zod.string()
+}))
+}),
   "headline": zod.string(),
   "subtitle": zod.string(),
   "readiness": zod.object({
+  "pathway": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "outcome": zod.string(),
+  "moduleCount": zod.int(),
+  "gateCount": zod.int(),
+  "gates": zod.array(zod.object({
+  "id": zod.string(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "sequence": zod.int(),
+  "requirement": zod.string()
+}))
+}),
   "status": zod.string(),
   "score": zod.int().min(getCapabilityPassportResponseReadinessScoreMin).max(getCapabilityPassportResponseReadinessScoreMax),
   "currentGate": zod.object({
@@ -662,6 +759,8 @@ export const GetTrainerDashboardResponse = zod.object({
   "kind": zod.string(),
   "learnerName": zod.string(),
   "moduleName": zod.string(),
+  "pathwayId": zod.string(),
+  "pathwayName": zod.string(),
   "title": zod.string(),
   "status": zod.string(),
   "priority": zod.string(),
@@ -678,6 +777,8 @@ export const GetTrainerReviewQueueResponseItem = zod.object({
   "kind": zod.string(),
   "learnerName": zod.string(),
   "moduleName": zod.string(),
+  "pathwayId": zod.string(),
+  "pathwayName": zod.string(),
   "title": zod.string(),
   "status": zod.string(),
   "priority": zod.string(),
@@ -769,6 +870,8 @@ export const GetAssessorDashboardResponse = zod.object({
   "kind": zod.string(),
   "learnerName": zod.string(),
   "moduleName": zod.string(),
+  "pathwayId": zod.string(),
+  "pathwayName": zod.string(),
   "title": zod.string(),
   "status": zod.string(),
   "priority": zod.string(),
@@ -785,6 +888,8 @@ export const GetAssessorQueueResponseItem = zod.object({
   "kind": zod.string(),
   "learnerName": zod.string(),
   "moduleName": zod.string(),
+  "pathwayId": zod.string(),
+  "pathwayName": zod.string(),
   "title": zod.string(),
   "status": zod.string(),
   "priority": zod.string(),
@@ -830,6 +935,7 @@ export const SubmitAssessmentDecisionResponse = zod.object({
   "id": zod.string(),
   "moduleId": zod.string(),
   "name": zod.string(),
+  "gateCode": zod.string().nullable(),
   "status": zod.string(),
   "score": zod.int().min(submitAssessmentDecisionResponseAssessmentScoreMin).max(submitAssessmentDecisionResponseAssessmentScoreMax),
   "attemptCount": zod.int(),

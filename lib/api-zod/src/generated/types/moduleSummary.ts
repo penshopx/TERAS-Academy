@@ -11,6 +11,7 @@ export interface ModuleSummary {
   code: string;
   name: string;
   capability: string;
+  pathwayId: string;
   evidence: string;
   /**
      * @minimum 0

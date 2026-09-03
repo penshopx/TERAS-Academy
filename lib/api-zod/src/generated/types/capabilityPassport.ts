@@ -8,10 +8,12 @@
 import type { CapabilityAchievement } from './capabilityAchievement';
 import type { JourneyStep } from './journeyStep';
 import type { LearnerProfile } from './learnerProfile';
+import type { PathwaySummary } from './pathwaySummary';
 import type { ReadinessSummary } from './readinessSummary';
 
 export interface CapabilityPassport {
   learner: LearnerProfile;
+  pathway: PathwaySummary;
   headline: string;
   subtitle: string;
   readiness: ReadinessSummary;

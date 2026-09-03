@@ -34,6 +34,7 @@ export default function Passport() {
               <h1 className="text-4xl font-bold tracking-tight">{passport.learner.name}</h1>
               <p className="text-lg text-muted-foreground">{passport.headline}</p>
               <div className="flex gap-4 pt-2">
+                <Badge variant="outline" className="font-mono text-primary">{passport.pathway.name}</Badge>
                 <Badge variant="outline" className="font-mono">{passport.learner.role}</Badge>
                 {passport.learner.organization && (
                   <Badge variant="secondary" className="font-mono">{passport.learner.organization}</Badge>

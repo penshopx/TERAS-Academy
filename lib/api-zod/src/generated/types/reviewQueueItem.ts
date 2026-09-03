@@ -11,6 +11,8 @@ export interface ReviewQueueItem {
   kind: string;
   learnerName: string;
   moduleName: string;
+  pathwayId: string;
+  pathwayName: string;
   title: string;
   status: string;
   priority: string;

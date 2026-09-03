@@ -1,4 +1,4 @@
-import { getAuth } from "@clerk/express";
+import { clerkClient, getAuth } from "@clerk/express";
 import type { Request, Response } from "express";
 import { learnerContext } from "./teras";
 
@@ -26,14 +26,20 @@ export async function authorizeWorkspaceRole(req: Request, res: Response, role: 
 
 export async function authorizeLearner(req: Request, res: Response): Promise<string | null> {
   const { userId } = getAuth(req);
-  const configuredUserId = process.env.CLERK_LEARNER_USER_ID;
   if (process.env.NODE_ENV !== "production") {
     return (await learnerContext()).learner.id;
   }
-  if (userId && configuredUserId && userId === configuredUserId) {
-    return (await learnerContext()).learner.id;
+  if (userId) {
+    const context = await learnerContext();
+    const clerkUser = await clerkClient.users.getUser(userId);
+    const primaryEmail = clerkUser.emailAddresses.find(
+      (email) => email.id === clerkUser.primaryEmailAddressId,
+    )?.emailAddress;
+    if (context.learner.email && primaryEmail?.toLowerCase() === context.learner.email.toLowerCase()) {
+      return context.learner.id;
+    }
   }
   req.log.warn({ userId: userId ?? null }, "Unauthorized learner mutation");
-  res.status(userId ? 403 : 401).json({ error: "You are not authorized for this action" });
+  res.status(userId ? 403 : 401).json({ error: "You are not authorized for this learner" });
   return null;
 }

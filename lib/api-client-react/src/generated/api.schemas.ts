@@ -23,11 +23,22 @@ export interface ProgramSummary {
   status: string;
 }
 
+export interface ReadinessGateSummary {
+  id: string;
+  code: string;
+  name: string;
+  sequence: number;
+  requirement: string;
+}
+
 export interface PathwaySummary {
   id: string;
   name: string;
   type: string;
   outcome: string;
+  moduleCount: number;
+  gateCount: number;
+  gates: ReadinessGateSummary[];
 }
 
 export interface ModuleSummary {
@@ -35,6 +46,7 @@ export interface ModuleSummary {
   code: string;
   name: string;
   capability: string;
+  pathwayId: string;
   evidence: string;
   /**
      * @minimum 0
@@ -49,7 +61,13 @@ export type ProgramDetail = ProgramSummary & {
   modules: ModuleSummary[];
 };
 
+export interface EnrollmentInput {
+  /** @minLength 1 */
+  pathwayId: string;
+}
+
 export interface PathwaySelectionInput {
+  /** @minLength 1 */
   pathwayId: string;
 }
 
@@ -57,6 +75,14 @@ export interface PathwaySelectionResponse {
   pathway: PathwaySummary;
   programId: string;
   selectedAt: string;
+}
+
+export interface LearnerEnrollment {
+  id: string;
+  program: ProgramSummary;
+  pathway: PathwaySummary;
+  status: string;
+  enrolledAt: string;
 }
 
 export interface LearnerProfile {
@@ -77,6 +103,7 @@ export interface GateProgress {
 }
 
 export interface ReadinessSummary {
+  pathway: PathwaySummary;
   status: string;
   /**
      * @minimum 0
@@ -171,6 +198,8 @@ export interface AssessmentSummary {
   id: string;
   moduleId: string;
   name: string;
+  /** @nullable */
+  gateCode: string | null;
   status: string;
   /**
      * @minimum 0
@@ -377,6 +406,7 @@ export interface CapabilityAchievement {
 
 export interface CapabilityPassport {
   learner: LearnerProfile;
+  pathway: PathwaySummary;
   headline: string;
   subtitle: string;
   readiness: ReadinessSummary;
@@ -389,6 +419,8 @@ export interface ReviewQueueItem {
   kind: string;
   learnerName: string;
   moduleName: string;
+  pathwayId: string;
+  pathwayName: string;
   title: string;
   status: string;
   priority: string;

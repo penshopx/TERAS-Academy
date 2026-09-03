@@ -10,6 +10,8 @@ export interface AssessmentSummary {
   id: string;
   moduleId: string;
   name: string;
+  /** @nullable */
+  gateCode: string | null;
   status: string;
   /**
      * @minimum 0
