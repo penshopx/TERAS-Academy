@@ -244,6 +244,33 @@ export interface EvidenceRecord {
   quality: EvidenceQuality;
 }
 
+export type TrainerEvidenceReviewInputStatus = typeof TrainerEvidenceReviewInputStatus[keyof typeof TrainerEvidenceReviewInputStatus];
+
+
+export const TrainerEvidenceReviewInputStatus = {
+  Valid: 'Valid',
+  Needs_revision: 'Needs revision',
+} as const;
+
+export interface TrainerEvidenceReviewInput {
+  status: TrainerEvidenceReviewInputStatus;
+  comment: string;
+  quality: EvidenceQuality;
+}
+
+export type TrainerPracticeReviewInputStatus = typeof TrainerPracticeReviewInputStatus[keyof typeof TrainerPracticeReviewInputStatus];
+
+
+export const TrainerPracticeReviewInputStatus = {
+  Reviewed: 'Reviewed',
+  Needs_revision: 'Needs revision',
+} as const;
+
+export interface TrainerPracticeReviewInput {
+  status: TrainerPracticeReviewInputStatus;
+  feedback: string;
+}
+
 export interface AssessmentCriterionResult {
   id: string;
   code: string;
@@ -277,6 +304,34 @@ export interface AssessmentDetail {
   assessment: AssessmentSummary;
   criteria: AssessmentCriterionResult[];
   attempts: AssessmentAttempt[];
+}
+
+export interface AssessorCriterionInput {
+  criterionId: string;
+  /**
+     * @minimum 0
+     * @maximum 3
+     */
+  score: number;
+  /** @nullable */
+  observation: string | null;
+  /** @nullable */
+  evidenceId: string | null;
+}
+
+export type AssessorAssessmentDecisionInputDecision = typeof AssessorAssessmentDecisionInputDecision[keyof typeof AssessorAssessmentDecisionInputDecision];
+
+
+export const AssessorAssessmentDecisionInputDecision = {
+  Competent: 'Competent',
+  Not_competent: 'Not competent',
+} as const;
+
+export interface AssessorAssessmentDecisionInput {
+  decision: AssessorAssessmentDecisionInputDecision;
+  observation: string;
+  /** @minItems 1 */
+  criteria: AssessorCriterionInput[];
 }
 
 export interface RemediationActivity {
@@ -348,6 +403,21 @@ export interface AssessorDashboard {
   blockedGateCount: number;
   recentActivity: ReviewQueueItem[];
 }
+
+/**
+ * Invalid request
+ */
+export type BadRequestResponse = ErrorResponse;
+
+/**
+ * Authentication required
+ */
+export type UnauthorizedResponse = ErrorResponse;
+
+/**
+ * The authenticated user cannot perform this action
+ */
+export type ForbiddenResponse = ErrorResponse;
 
 /**
  * Resource not found

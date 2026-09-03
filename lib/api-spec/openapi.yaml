@@ -305,6 +305,62 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ReviewQueueItem"
+  /trainer/evidence/{evidenceId}/review:
+    post:
+      operationId: reviewEvidenceByTrainer
+      tags: [trainer]
+      summary: Record a trainer evidence review
+      parameters:
+        - $ref: "#/components/parameters/EvidenceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainerEvidenceReviewInput"
+      responses:
+        "200":
+          description: Updated evidence record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvidenceRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /trainer/practice/{attemptId}/review:
+    post:
+      operationId: reviewPracticeAttempt
+      tags: [trainer]
+      summary: Record trainer feedback on a practice attempt
+      parameters:
+        - $ref: "#/components/parameters/PracticeAttemptId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainerPracticeReviewInput"
+      responses:
+        "200":
+          description: Updated practice attempt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeAttempt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /assessor/dashboard:
     get:
       operationId: getAssessorDashboard
@@ -331,6 +387,34 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ReviewQueueItem"
+  /assessor/assessments/{assessmentId}/decision:
+    post:
+      operationId: submitAssessmentDecision
+      tags: [assessor]
+      summary: Record an assessor rubric decision
+      parameters:
+        - $ref: "#/components/parameters/AssessmentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssessorAssessmentDecisionInput"
+      responses:
+        "201":
+          description: Assessment decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   parameters:
     ProgramId:
@@ -363,7 +447,37 @@ components:
       required: true
       schema:
         type: string
+    EvidenceId:
+      name: evidenceId
+      in: path
+      required: true
+      schema:
+        type: string
+    PracticeAttemptId:
+      name: attemptId
+      in: path
+      required: true
+      schema:
+        type: string
   responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: The authenticated user cannot perform this action
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
     NotFound:
       description: Resource not found
       content:
@@ -586,6 +700,26 @@ components:
         sufficient: { type: boolean }
         traceable: { type: boolean }
       required: [valid, relevant, sufficient, traceable]
+    TrainerEvidenceReviewInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Valid, Needs revision]
+        comment:
+          type: string
+        quality:
+          $ref: "#/components/schemas/EvidenceQuality"
+      required: [status, comment, quality]
+    TrainerPracticeReviewInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Reviewed, Needs revision]
+        feedback:
+          type: string
+      required: [status, feedback]
     EvidenceRequirement:
       type: object
       properties:
@@ -634,6 +768,28 @@ components:
         observation: { type: ["string", "null"] }
         evidenceId: { type: ["string", "null"] }
       required: [id, code, label, layer, critical, score, observation, evidenceId]
+    AssessorCriterionInput:
+      type: object
+      properties:
+        criterionId: { type: string }
+        score: { type: integer, minimum: 0, maximum: 3 }
+        observation: { type: ["string", "null"] }
+        evidenceId: { type: ["string", "null"] }
+      required: [criterionId, score, observation, evidenceId]
+    AssessorAssessmentDecisionInput:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum: [Competent, Not competent]
+        observation:
+          type: string
+        criteria:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/AssessorCriterionInput"
+      required: [decision, observation, criteria]
     AssessmentAttempt:
       type: object
       properties:

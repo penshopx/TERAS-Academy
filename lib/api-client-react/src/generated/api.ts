@@ -22,10 +22,13 @@ import type {
 import type {
   AssessmentDetail,
   AssessmentSummary,
+  AssessorAssessmentDecisionInput,
   AssessorDashboard,
+  BadRequestResponse,
   CapabilityPassport,
   EvidenceInput,
   EvidenceRecord,
+  ForbiddenResponse,
   Gap,
   HealthStatus,
   JourneyStep,
@@ -41,7 +44,10 @@ import type {
   ReadinessSummary,
   RemediationPlan,
   ReviewQueueItem,
-  TrainerDashboard
+  TrainerDashboard,
+  TrainerEvidenceReviewInput,
+  TrainerPracticeReviewInput,
+  UnauthorizedResponse
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1595,6 +1601,150 @@ export function useGetTrainerReviewQueue<TData = Awaited<ReturnType<typeof getTr
 
 
 
+export const getReviewEvidenceByTrainerUrl = (evidenceId: string,) => {
+
+
+
+
+  return `/api/trainer/evidence/${evidenceId}/review`
+}
+
+/**
+ * @summary Record a trainer evidence review
+ */
+export const reviewEvidenceByTrainer = async (evidenceId: string,
+    trainerEvidenceReviewInput: TrainerEvidenceReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<EvidenceRecord> => {
+
+  return customFetch<EvidenceRecord>(getReviewEvidenceByTrainerUrl(evidenceId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(trainerEvidenceReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewEvidenceByTrainerMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewEvidenceByTrainer>>, TError,{evidenceId: string;data: BodyType<TrainerEvidenceReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewEvidenceByTrainer>>, TError,{evidenceId: string;data: BodyType<TrainerEvidenceReviewInput>}, TContext> => {
+
+const mutationKey = ['reviewEvidenceByTrainer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewEvidenceByTrainer>>, {evidenceId: string;data: BodyType<TrainerEvidenceReviewInput>}> = (props) => {
+          const {evidenceId,data} = props ?? {};
+
+          return  reviewEvidenceByTrainer(evidenceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewEvidenceByTrainerMutationResult = NonNullable<Awaited<ReturnType<typeof reviewEvidenceByTrainer>>>
+    export type ReviewEvidenceByTrainerMutationBody = BodyType<TrainerEvidenceReviewInput>
+    export type ReviewEvidenceByTrainerMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Record a trainer evidence review
+ */
+export const useReviewEvidenceByTrainer = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewEvidenceByTrainer>>, TError,{evidenceId: string;data: BodyType<TrainerEvidenceReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewEvidenceByTrainer>>,
+        TError,
+        {evidenceId: string;data: BodyType<TrainerEvidenceReviewInput>},
+        TContext
+      > => {
+      return useMutation(getReviewEvidenceByTrainerMutationOptions(options));
+    }
+
+export const getReviewPracticeAttemptUrl = (attemptId: string,) => {
+
+
+
+
+  return `/api/trainer/practice/${attemptId}/review`
+}
+
+/**
+ * @summary Record trainer feedback on a practice attempt
+ */
+export const reviewPracticeAttempt = async (attemptId: string,
+    trainerPracticeReviewInput: TrainerPracticeReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<PracticeAttempt> => {
+
+  return customFetch<PracticeAttempt>(getReviewPracticeAttemptUrl(attemptId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(trainerPracticeReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewPracticeAttemptMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewPracticeAttempt>>, TError,{attemptId: string;data: BodyType<TrainerPracticeReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewPracticeAttempt>>, TError,{attemptId: string;data: BodyType<TrainerPracticeReviewInput>}, TContext> => {
+
+const mutationKey = ['reviewPracticeAttempt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewPracticeAttempt>>, {attemptId: string;data: BodyType<TrainerPracticeReviewInput>}> = (props) => {
+          const {attemptId,data} = props ?? {};
+
+          return  reviewPracticeAttempt(attemptId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewPracticeAttemptMutationResult = NonNullable<Awaited<ReturnType<typeof reviewPracticeAttempt>>>
+    export type ReviewPracticeAttemptMutationBody = BodyType<TrainerPracticeReviewInput>
+    export type ReviewPracticeAttemptMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Record trainer feedback on a practice attempt
+ */
+export const useReviewPracticeAttempt = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewPracticeAttempt>>, TError,{attemptId: string;data: BodyType<TrainerPracticeReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewPracticeAttempt>>,
+        TError,
+        {attemptId: string;data: BodyType<TrainerPracticeReviewInput>},
+        TContext
+      > => {
+      return useMutation(getReviewPracticeAttemptMutationOptions(options));
+    }
+
 export const getGetAssessorDashboardUrl = () => {
 
 
@@ -1748,4 +1898,76 @@ export function useGetAssessorQueue<TData = Awaited<ReturnType<typeof getAssesso
 
 
 
+
+export const getSubmitAssessmentDecisionUrl = (assessmentId: string,) => {
+
+
+
+
+  return `/api/assessor/assessments/${assessmentId}/decision`
+}
+
+/**
+ * @summary Record an assessor rubric decision
+ */
+export const submitAssessmentDecision = async (assessmentId: string,
+    assessorAssessmentDecisionInput: AssessorAssessmentDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<AssessmentDetail> => {
+
+  return customFetch<AssessmentDetail>(getSubmitAssessmentDecisionUrl(assessmentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(assessorAssessmentDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitAssessmentDecisionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitAssessmentDecision>>, TError,{assessmentId: string;data: BodyType<AssessorAssessmentDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitAssessmentDecision>>, TError,{assessmentId: string;data: BodyType<AssessorAssessmentDecisionInput>}, TContext> => {
+
+const mutationKey = ['submitAssessmentDecision'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitAssessmentDecision>>, {assessmentId: string;data: BodyType<AssessorAssessmentDecisionInput>}> = (props) => {
+          const {assessmentId,data} = props ?? {};
+
+          return  submitAssessmentDecision(assessmentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitAssessmentDecisionMutationResult = NonNullable<Awaited<ReturnType<typeof submitAssessmentDecision>>>
+    export type SubmitAssessmentDecisionMutationBody = BodyType<AssessorAssessmentDecisionInput>
+    export type SubmitAssessmentDecisionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Record an assessor rubric decision
+ */
+export const useSubmitAssessmentDecision = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitAssessmentDecision>>, TError,{assessmentId: string;data: BodyType<AssessorAssessmentDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitAssessmentDecision>>,
+        TError,
+        {assessmentId: string;data: BodyType<AssessorAssessmentDecisionInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitAssessmentDecisionMutationOptions(options));
+    }
 

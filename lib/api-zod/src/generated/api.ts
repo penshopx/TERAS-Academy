@@ -668,6 +668,69 @@ export const GetTrainerReviewQueueResponse = zod.array(GetTrainerReviewQueueResp
 
 
 /**
+ * @summary Record a trainer evidence review
+ */
+export const ReviewEvidenceByTrainerParams = zod.object({
+  "evidenceId": zod.coerce.string()
+})
+
+export const ReviewEvidenceByTrainerBody = zod.object({
+  "status": zod.enum(['Valid', 'Needs revision']),
+  "comment": zod.string(),
+  "quality": zod.object({
+  "valid": zod.boolean(),
+  "relevant": zod.boolean(),
+  "sufficient": zod.boolean(),
+  "traceable": zod.boolean()
+})
+})
+
+export const ReviewEvidenceByTrainerResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "type": zod.string(),
+  "moduleId": zod.string(),
+  "moduleName": zod.string(),
+  "taskId": zod.string(),
+  "description": zod.string(),
+  "status": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "reviewer": zod.string().nullable(),
+  "reviewerComment": zod.string().nullable(),
+  "fileName": zod.string().nullable(),
+  "quality": zod.object({
+  "valid": zod.boolean(),
+  "relevant": zod.boolean(),
+  "sufficient": zod.boolean(),
+  "traceable": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Record trainer feedback on a practice attempt
+ */
+export const ReviewPracticeAttemptParams = zod.object({
+  "attemptId": zod.coerce.string()
+})
+
+export const ReviewPracticeAttemptBody = zod.object({
+  "status": zod.enum(['Reviewed', 'Needs revision']),
+  "feedback": zod.string()
+})
+
+export const ReviewPracticeAttemptResponse = zod.object({
+  "id": zod.string(),
+  "taskId": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "status": zod.string(),
+  "reflection": zod.string(),
+  "outputSummary": zod.string(),
+  "feedback": zod.string().nullable()
+})
+
+
+/**
  * @summary Get assessor workspace summary
  */
 export const GetAssessorDashboardResponse = zod.object({
@@ -709,5 +772,68 @@ export const GetAssessorQueueResponseItem = zod.object({
   "updatedAt": zod.coerce.date()
 })
 export const GetAssessorQueueResponse = zod.array(GetAssessorQueueResponseItem)
+
+
+/**
+ * @summary Record an assessor rubric decision
+ */
+export const SubmitAssessmentDecisionParams = zod.object({
+  "assessmentId": zod.coerce.string()
+})
+
+export const submitAssessmentDecisionBodyCriteriaItemScoreMin = 0;
+export const submitAssessmentDecisionBodyCriteriaItemScoreMax = 3;
+
+
+
+
+export const SubmitAssessmentDecisionBody = zod.object({
+  "decision": zod.enum(['Competent', 'Not competent']),
+  "observation": zod.string(),
+  "criteria": zod.array(zod.object({
+  "criterionId": zod.string(),
+  "score": zod.int().min(submitAssessmentDecisionBodyCriteriaItemScoreMin).max(submitAssessmentDecisionBodyCriteriaItemScoreMax),
+  "observation": zod.string().nullable(),
+  "evidenceId": zod.string().nullable()
+})).min(1)
+})
+
+export const submitAssessmentDecisionResponseAssessmentScoreMin = 0;
+export const submitAssessmentDecisionResponseAssessmentScoreMax = 100;
+
+export const submitAssessmentDecisionResponseCriteriaItemScoreMin = 0;
+export const submitAssessmentDecisionResponseCriteriaItemScoreMax = 3;
+
+
+
+export const SubmitAssessmentDecisionResponse = zod.object({
+  "assessment": zod.object({
+  "id": zod.string(),
+  "moduleId": zod.string(),
+  "name": zod.string(),
+  "status": zod.string(),
+  "score": zod.int().min(submitAssessmentDecisionResponseAssessmentScoreMin).max(submitAssessmentDecisionResponseAssessmentScoreMax),
+  "attemptCount": zod.int(),
+  "criticalFailure": zod.boolean()
+}),
+  "criteria": zod.array(zod.object({
+  "id": zod.string(),
+  "code": zod.string(),
+  "label": zod.string(),
+  "layer": zod.string(),
+  "critical": zod.boolean(),
+  "score": zod.int().min(submitAssessmentDecisionResponseCriteriaItemScoreMin).max(submitAssessmentDecisionResponseCriteriaItemScoreMax).nullable(),
+  "observation": zod.string().nullable(),
+  "evidenceId": zod.string().nullable()
+})),
+  "attempts": zod.array(zod.object({
+  "id": zod.string(),
+  "number": zod.int(),
+  "submittedAt": zod.coerce.date(),
+  "assessor": zod.string().nullable(),
+  "status": zod.string(),
+  "decision": zod.string().nullable()
+}))
+})
 
 

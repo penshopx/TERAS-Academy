@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db, assessmentAttemptsTable, assessmentCriteriaTable, assessmentsTable, criterionObservationsTable, enrollmentsTable, evidenceRequirementsTable, evidenceReviewsTable, evidenceTable, gapEventsTable, gapsTable, modulesTable, pathwaysTable, peopleTable, practiceAttemptsTable, practiceTasksTable, programsTable, readinessEventsTable, readinessGatesTable, remediationActivitiesTable, remediationEventsTable, remediationPlansTable } from "@workspace/db";
 
 export const DEMO_LEARNER = "learner-demo";
@@ -59,14 +59,14 @@ export async function readiness() {
   // A critical rubric criterion is only passing at 2 (meets standard) or 3
   // (exceeds standard); a 0/1 safety result can never be hidden by an average.
   const blockers=[...assessmentStates.filter(a=>a.criticalFailure).map(a=>`Critical safety failure in ${a.name}`),...gaps.filter(g=>g.status!=="Resolved" && g.severity==="Critical").map(g=>g.diagnosis),...gateViews.filter(g=>g.status==="In progress").flatMap(g=>states.get(g.id)?.blockers ?? [])];
-  const current=gateViews.find(g=>g.status==="In progress") ?? gateViews.find(g=>g.status==="Passed") ?? gateViews[0];
+  const current=gateViews.find(g=>g.status==="In progress") ?? [...gateViews].reverse().find(g=>g.status==="Passed") ?? gateViews[0];
   const index=gateViews.findIndex(g=>g.id===current.id), next=gateViews[index+1] ?? null;
   const score=Math.max(0,Math.min(100,states.get(current.id)?.score ?? 0));
   return {status:blockers.length?"Blocked":current.status,score,currentGate:current,nextGate:next,gates:gateViews,blockers,outstandingGapCount:gaps.filter(g=>g.status!=="Resolved").length,missingEvidenceCount:Math.max(0,10-evidences.filter(e=>e.status==="Valid").length)};
 }
 export async function assessmentSummary(assessment: {id:string;moduleId:string;name:string}) {
-  const [attempts, criteria, observations] = await Promise.all([db.select().from(assessmentAttemptsTable).where(eq(assessmentAttemptsTable.assessmentId,assessment.id)),db.select().from(assessmentCriteriaTable).where(eq(assessmentCriteriaTable.assessmentId,assessment.id)),db.select().from(criterionObservationsTable)]);
-  const latestAttempt=attempts.sort((a,b)=>b.number-a.number)[0];
+  const [attempts, criteria, observations] = await Promise.all([db.select().from(assessmentAttemptsTable).where(and(eq(assessmentAttemptsTable.assessmentId,assessment.id),eq(assessmentAttemptsTable.learnerId,DEMO_LEARNER))),db.select().from(assessmentCriteriaTable).where(eq(assessmentCriteriaTable.assessmentId,assessment.id)),db.select().from(criterionObservationsTable)]);
+  const latestAttempt=attempts.sort((a,b)=>b.number-a.number||b.createdAt.getTime()-a.createdAt.getTime())[0];
   const obs=latestAttempt ? new Map(observations.filter(o=>o.attemptId===latestAttempt.id).map(o=>[o.criterionId,o])) : new Map();
   const scores=criteria.map(c=>obs.get(c.id)?.score).filter((s):s is number=>s!==undefined);
   const criticalFailure=criteria.some(c=>c.critical && (obs.get(c.id)?.score ?? 0) < 2);
