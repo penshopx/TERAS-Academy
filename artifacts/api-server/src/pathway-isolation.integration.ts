@@ -194,9 +194,25 @@ async function run() {
     201,
   );
   await post(`/trainer/practice/${practice.id}/review`, {
-    status: "Reviewed",
-    feedback: "Path B practice verified",
+    status: "Needs revision",
+    feedback: "Path B practice requires one traceability correction",
   });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  await post(`/trainer/practice/${practice.id}/review`, {
+    status: "Reviewed",
+    feedback: "Path B practice verified after correction",
+  });
+  const practiceHistory = await db
+    .select()
+    .from(practiceReviewsTable)
+    .where(eq(practiceReviewsTable.attemptId, practice.id));
+  if (
+    practiceHistory.length !== 2 ||
+    !practiceHistory.some((review) => review.status === "Needs revision") ||
+    !practiceHistory.some((review) => review.status === "Reviewed")
+  ) {
+    throw new Error("Practice review history was overwritten rather than appended");
+  }
   await post(`/trainer/evidence/${evidence.id}/review`, {
     status: "Valid",
     comment: "Path B evidence verified",

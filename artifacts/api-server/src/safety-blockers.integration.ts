@@ -26,6 +26,12 @@ type Readiness = {
 };
 type Evidence = Array<{ id: string; status: string }>;
 type Remediation = Array<{ id: string; status: string }>;
+type Passport = {
+  readiness: { status: string };
+  achievements: Array<{ capability: string; status: string }>;
+  timeline: Array<{ id: string; label: string }>;
+};
+type Journey = Array<{ id: string; status: string }>;
 
 const marker = "Safety blocker integration verification";
 
@@ -214,6 +220,27 @@ async function run() {
         cleared.gates.find((gate) => gate.code === "G1")?.status === "Passed" &&
         cleared.gates.find((gate) => gate.code === "G2")?.status === "Passed",
       "Passing M03 reassessment did not clear the critical blocker or preserve M07 technical readiness",
+    );
+    const [dashboard, learningPlan, evidenceHistory, gaps, remediationHistoryView, journey, passport] = await Promise.all([
+      request<unknown>("/learner/dashboard", "learner"),
+      request<unknown[]>("/learner/learning-plan", "learner"),
+      request<Evidence>("/evidence", "learner"),
+      request<unknown[]>("/gaps", "learner"),
+      request<Remediation>("/remediation", "learner"),
+      request<Journey>("/learner/journey", "learner"),
+      request<Passport>("/passport", "learner"),
+    ]);
+    assert(Boolean(dashboard) && Array.isArray(learningPlan), "Learner dashboard or learning plan failed after reassessment");
+    assert(
+      evidenceHistory.length > 0 && gaps.length > 0 && remediationHistoryView.length > 0,
+      "Learner evidence, gap, or remediation history disappeared",
+    );
+    assert(journey.some((step) => step.id === "journey-current"), "Learner journey did not expose its current readiness gate");
+    assert(
+      passport.readiness.status === cleared.status &&
+        passport.achievements.some((item) => item.capability === "Electrical safety" && item.status === "Achieved") &&
+        passport.timeline.some((step) => step.id === "pathway-enrol"),
+      "Capability Passport did not preserve the longitudinal achievement, pathway, and readiness record",
     );
     process.stdout.write("Safety blocker integration check passed\n");
   } finally {
