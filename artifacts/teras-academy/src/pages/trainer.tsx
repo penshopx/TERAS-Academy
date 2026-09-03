@@ -66,9 +66,72 @@ export default function TrainerDesk() {
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {metrics.map(({ label, value, Icon, color }) => <Card key={label} className={label === "Blocked" ? "border-destructive/50 bg-destructive/5" : "border-border bg-card"}><CardContent className="p-6"><div className="flex items-center justify-between pb-2"><p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">{label}</p><Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} /></div><div className={`text-3xl font-bold font-mono ${color}`}>{value}</div></CardContent></Card>)}
     </div>
-    <Card className="cockpit-panel mt-6"><CardHeader><CardTitle>Action Queue</CardTitle></CardHeader><CardContent className="p-0"><Table><TableHeader className="bg-background/50"><TableRow><TableHead>Priority</TableHead><TableHead>Learner</TableHead><TableHead>Type</TableHead><TableHead>Subject</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader><TableBody>
-      {dashboard.recentActivity.map(item => <TableRow key={item.id}><TableCell><Badge variant={item.priority === "High" || item.priority === "Critical" ? "destructive" : "secondary"} className="font-mono text-[10px]">{item.priority}</Badge></TableCell><TableCell className="font-medium">{item.learnerName}</TableCell><TableCell><Badge variant="outline" className="font-mono text-[10px] uppercase bg-background">{item.kind}</Badge></TableCell><TableCell><div className="text-sm">{item.title}</div><div className="text-xs text-muted-foreground font-mono">{item.pathwayName} · {item.moduleName}</div></TableCell><TableCell className="text-right"><Button size="sm" variant="ghost" className="font-mono text-xs text-primary" onClick={() => openReview(item)}>REVIEW <ArrowRight className="w-3 h-3 ml-1" /></Button></TableCell></TableRow>)}
-    </TableBody></Table></CardContent></Card>
+    <Card className="cockpit-panel mt-6">
+      <CardHeader><CardTitle>Action Queue</CardTitle></CardHeader>
+      <CardContent className="p-0">
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader className="bg-background/50">
+              <TableRow>
+                <TableHead>Priority</TableHead>
+                <TableHead>Learner</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Subject</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {dashboard.recentActivity.map(item => (
+                <TableRow key={item.id}>
+                  <TableCell><Badge variant={item.priority === "High" || item.priority === "Critical" ? "destructive" : "secondary"} className="font-mono text-[10px]">{item.priority}</Badge></TableCell>
+                  <TableCell className="font-medium">{item.learnerName}</TableCell>
+                  <TableCell><Badge variant="outline" className="font-mono text-[10px] uppercase bg-background">{item.kind}</Badge></TableCell>
+                  <TableCell>
+                    <div className="text-sm">{item.title}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{item.pathwayName} · {item.moduleName}</div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="ghost" className="font-mono text-xs text-primary" onClick={() => openReview(item)}>
+                      REVIEW <ArrowRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="md:hidden flex flex-col divide-y divide-border">
+          {dashboard.recentActivity.map(item => (
+            <div key={item.id} className="p-4 space-y-3">
+              <div className="flex justify-between items-start gap-2">
+                <div>
+                  <div className="font-medium">{item.learnerName}</div>
+                  <div className="text-sm font-semibold mt-1 leading-snug">{item.title}</div>
+                  <div className="text-xs text-muted-foreground font-mono mt-1">{item.pathwayName} · {item.moduleName}</div>
+                </div>
+                <Badge variant={item.priority === "High" || item.priority === "Critical" ? "destructive" : "secondary"} className="font-mono text-[10px] shrink-0">
+                  {item.priority}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                <Badge variant="outline" className="font-mono text-[10px] uppercase bg-background">
+                  {item.kind}
+                </Badge>
+                <Button size="sm" variant="ghost" className="font-mono text-xs text-primary -mr-2" onClick={() => openReview(item)}>
+                  REVIEW <ArrowRight className="w-3 h-3 ml-1" />
+                </Button>
+              </div>
+            </div>
+          ))}
+          {dashboard.recentActivity.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground font-mono text-sm">
+              NO PENDING REVIEWS
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
     <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}><DialogContent><DialogHeader><DialogTitle>Review {selected?.kind}</DialogTitle><DialogDescription>{selected?.title} · {selected?.moduleName}</DialogDescription></DialogHeader>
       <div className="space-y-4"><div><label className="text-xs font-mono">OUTCOME</label><Select value={status} onValueChange={setStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{selected?.kind === "Practice" ? <><SelectItem value="Reviewed">Reviewed</SelectItem><SelectItem value="Needs revision">Needs revision</SelectItem></> : <><SelectItem value="Valid">Valid</SelectItem><SelectItem value="Needs revision">Needs revision</SelectItem></>}</SelectContent></Select></div>
       {selected?.kind !== "Practice" && <div className="grid grid-cols-2 gap-2 text-sm">{Object.entries(quality).map(([key, checked]) => <label key={key} className="flex items-center gap-2 capitalize"><input type="checkbox" checked={checked} onChange={e => setQuality(current => ({ ...current, [key]: e.target.checked }))} />{key}</label>)}</div>}

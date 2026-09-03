@@ -47,17 +47,17 @@ export default function Journey() {
                     "transition-all duration-300",
                     isActive ? "opacity-100 scale-100" : "opacity-70 scale-[0.98]"
                   )}>
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex flex-wrap items-center gap-3 mb-2">
                       <h3 className={cn(
                         "font-semibold text-lg",
                         isActive && "text-primary",
                         isPending && "text-muted-foreground"
                       )}>{step.label}</h3>
-                      <Badge variant={isCompleted ? "success" : isActive ? "default" : "outline"} className="font-mono text-[10px] uppercase">
+                      <Badge variant={isCompleted ? "success" : isActive ? "default" : "outline"} className="font-mono text-[10px] uppercase shrink-0">
                         {step.status}
                       </Badge>
                       {step.date && (
-                        <div className="text-xs text-muted-foreground flex items-center gap-1 font-mono">
+                        <div className="text-xs text-muted-foreground flex items-center gap-1 font-mono shrink-0">
                           <Clock className="w-3 h-3" /> {step.date}
                         </div>
                       )}

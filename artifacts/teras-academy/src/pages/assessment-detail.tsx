@@ -35,7 +35,7 @@ export default function AssessmentDetail() {
           <h1 className="text-3xl font-bold tracking-tight">{assessment.name}</h1>
           <p className="text-muted-foreground font-mono text-sm uppercase tracking-wider mt-1">Rubric Evaluation Record</p>
         </div>
-        
+
         <div className="flex items-center gap-4 bg-card/50 p-4 rounded-lg border border-border">
           <div className="text-right">
             <div className="text-xs text-muted-foreground font-mono">FINAL SCORE</div>
@@ -64,37 +64,65 @@ export default function AssessmentDetail() {
             <CardDescription>Line-item scoring against standard capability criteria</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader className="bg-background/80">
-                <TableRow>
-                  <TableHead className="w-[100px]">Code</TableHead>
-                  <TableHead>Criterion</TableHead>
-                  <TableHead className="text-center w-[100px]">Critical</TableHead>
-                  <TableHead className="text-right w-[100px]">Score</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {criteria.map((criterion) => (
-                  <TableRow key={criterion.id} className={cn(
-                    "hover:bg-muted/30",
-                    criterion.critical && criterion.score === 0 ? "bg-destructive/5 hover:bg-destructive/10" : ""
-                  )}>
-                    <TableCell className="font-mono text-xs">{criterion.code}</TableCell>
-                    <TableCell>
-                      <div className="font-medium text-sm">{criterion.label}</div>
-                      {criterion.observation && (
-                        <div className="text-xs text-muted-foreground mt-1 italic border-l-2 border-primary/50 pl-2">
-                          "{criterion.observation}"
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {criterion.critical && <ShieldAlert className="w-4 h-4 text-destructive mx-auto" />}
-                    </TableCell>
-                    <TableCell className="text-right">
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader className="bg-background/80">
+                  <TableRow>
+                    <TableHead className="w-[100px]">Code</TableHead>
+                    <TableHead>Criterion</TableHead>
+                    <TableHead className="text-center w-[100px]">Critical</TableHead>
+                    <TableHead className="text-right w-[100px]">Score</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {criteria.map((criterion) => (
+                    <TableRow key={criterion.id} className={cn(
+                      "hover:bg-muted/30",
+                      criterion.critical && criterion.score === 0 ? "bg-destructive/5 hover:bg-destructive/10" : ""
+                    )}>
+                      <TableCell className="font-mono text-xs">{criterion.code}</TableCell>
+                      <TableCell>
+                        <div className="font-medium text-sm">{criterion.label}</div>
+                        {criterion.observation && (
+                          <div className="text-xs text-muted-foreground mt-1 italic border-l-2 border-primary/50 pl-2">
+                            "{criterion.observation}"
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {criterion.critical && <ShieldAlert className="w-4 h-4 text-destructive mx-auto" />}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {criterion.score !== null ? (
+                          <span className={cn(
+                            "font-mono font-bold",
+                            criterion.score === 3 ? "text-green-500" :
+                            criterion.score === 0 ? "text-destructive" :
+                            "text-foreground"
+                          )}>{criterion.score}/3</span>
+                        ) : (
+                          <span className="text-muted-foreground font-mono">-</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="md:hidden flex flex-col divide-y divide-border">
+              {criteria.map((criterion) => (
+                <div key={criterion.id} className={cn(
+                  "p-4 space-y-2",
+                  criterion.critical && criterion.score === 0 ? "bg-destructive/5" : ""
+                )}>
+                  <div className="flex justify-between items-start gap-2">
+                    <span className="font-mono text-xs text-muted-foreground">{criterion.code}</span>
+                    <div className="flex items-center gap-2">
+                      {criterion.critical && <Badge variant="destructive" className="text-[10px] h-5 px-1.5 shrink-0">CRITICAL</Badge>}
                       {criterion.score !== null ? (
                         <span className={cn(
-                          "font-mono font-bold",
+                          "font-mono font-bold shrink-0 text-sm",
                           criterion.score === 3 ? "text-green-500" :
                           criterion.score === 0 ? "text-destructive" :
                           "text-foreground"
@@ -102,11 +130,17 @@ export default function AssessmentDetail() {
                       ) : (
                         <span className="text-muted-foreground font-mono">-</span>
                       )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  </div>
+                  <div className="font-medium text-sm">{criterion.label}</div>
+                  {criterion.observation && (
+                    <div className="text-xs text-muted-foreground italic border-l-2 border-primary/50 pl-2">
+                      "{criterion.observation}"
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 

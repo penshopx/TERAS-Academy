@@ -46,58 +46,96 @@ export default function Evidence() {
         </Button>
       </div>
 
-      <Card className="cockpit-panel border-border/50">
+      <Card className="cockpit-panel border-border/50 overflow-hidden">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-background/80">
-              <TableRow>
-                <TableHead className="w-[300px]">Title & Module</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Quality Checks</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {evidenceList.map((record) => (
-                <TableRow key={record.id} className="hover:bg-muted/30">
-                  <TableCell>
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader className="bg-background/80">
+                <TableRow>
+                  <TableHead className="w-[300px]">Title & Module</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Quality Checks</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {evidenceList.map((record) => (
+                  <TableRow key={record.id} className="hover:bg-muted/30">
+                    <TableCell>
+                      <div className="font-medium text-sm">{record.title}</div>
+                      <div className="text-xs text-muted-foreground font-mono mt-1">{record.moduleName}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="font-mono text-[10px]">{record.type}</Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {new Date(record.submittedAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(record.status)}
+                        <Badge variant={getStatusVariant(record.status) as any} className="font-mono text-[10px] uppercase">
+                          {record.status}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <div title="Valid" className={`w-2 h-2 rounded-full ${record.quality.valid ? 'bg-green-500' : 'bg-muted'}`} />
+                        <div title="Relevant" className={`w-2 h-2 rounded-full ${record.quality.relevant ? 'bg-green-500' : 'bg-muted'}`} />
+                        <div title="Sufficient" className={`w-2 h-2 rounded-full ${record.quality.sufficient ? 'bg-green-500' : 'bg-muted'}`} />
+                        <div title="Traceable" className={`w-2 h-2 rounded-full ${record.quality.traceable ? 'bg-green-500' : 'bg-muted'}`} />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {evidenceList.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground font-mono text-sm">
+                      NO EVIDENCE RECORDS FOUND
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="md:hidden flex flex-col divide-y divide-border">
+            {evidenceList.map((record) => (
+              <div key={record.id} className="p-4 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
                     <div className="font-medium text-sm">{record.title}</div>
                     <div className="text-xs text-muted-foreground font-mono mt-1">{record.moduleName}</div>
-                  </TableCell>
-                  <TableCell>
+                  </div>
+                  <Badge variant={getStatusVariant(record.status) as any} className="font-mono text-[10px] uppercase shrink-0 flex items-center gap-1">
+                    {getStatusIcon(record.status)}
+                    <span>{record.status}</span>
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <div className="flex gap-2">
                     <Badge variant="secondary" className="font-mono text-[10px]">{record.type}</Badge>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {new Date(record.submittedAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(record.status)}
-                      <Badge variant={getStatusVariant(record.status) as any} className="font-mono text-[10px] uppercase">
-                        {record.status}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <div title="Valid" className={`w-2 h-2 rounded-full ${record.quality.valid ? 'bg-green-500' : 'bg-muted'}`} />
-                      <div title="Relevant" className={`w-2 h-2 rounded-full ${record.quality.relevant ? 'bg-green-500' : 'bg-muted'}`} />
-                      <div title="Sufficient" className={`w-2 h-2 rounded-full ${record.quality.sufficient ? 'bg-green-500' : 'bg-muted'}`} />
-                      <div title="Traceable" className={`w-2 h-2 rounded-full ${record.quality.traceable ? 'bg-green-500' : 'bg-muted'}`} />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {evidenceList.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground font-mono text-sm">
-                    NO EVIDENCE RECORDS FOUND
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                    <span className="font-mono text-xs text-muted-foreground flex items-center">
+                      {new Date(record.submittedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex gap-1 border border-border/50 bg-background/50 rounded-full px-2 py-1">
+                    <div title="Valid" className={`w-2 h-2 rounded-full ${record.quality.valid ? 'bg-green-500' : 'bg-muted'}`} />
+                    <div title="Relevant" className={`w-2 h-2 rounded-full ${record.quality.relevant ? 'bg-green-500' : 'bg-muted'}`} />
+                    <div title="Sufficient" className={`w-2 h-2 rounded-full ${record.quality.sufficient ? 'bg-green-500' : 'bg-muted'}`} />
+                    <div title="Traceable" className={`w-2 h-2 rounded-full ${record.quality.traceable ? 'bg-green-500' : 'bg-muted'}`} />
+                  </div>
+                </div>
+              </div>
+            ))}
+            {evidenceList.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground font-mono text-sm">
+                NO EVIDENCE RECORDS FOUND
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

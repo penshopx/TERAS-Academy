@@ -26,8 +26,8 @@ export default function Readiness() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="col-span-2 cockpit-panel border-primary/30">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 cockpit-panel border-primary/30">
           <CardContent className="p-8">
             <div className="flex flex-col md:flex-row gap-8 items-center">
               <div className="w-48 h-48 rounded-full border-4 border-muted flex items-center justify-center relative bg-background/50">
@@ -94,7 +94,7 @@ export default function Readiness() {
       </div>
 
       <h2 className="text-xl font-bold mt-8 mb-4">Gate Sequence</h2>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {readiness.gates.map((gate, idx) => {
           const isPassed = gate.status === "PASSED";
           const isCurrent = gate.status === "ACTIVE";

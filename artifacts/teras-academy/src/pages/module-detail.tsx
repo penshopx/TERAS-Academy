@@ -50,17 +50,17 @@ export default function ModuleDetail() {
       </div>
 
       <Tabs defaultValue="theory" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-12 bg-background border border-border rounded-lg p-1">
-          <TabsTrigger value="theory" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-md">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1 h-auto bg-background border border-border rounded-lg p-1">
+          <TabsTrigger value="theory" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-md py-2.5">
             <BookOpen className="w-4 h-4 mr-2" /> Theory
           </TabsTrigger>
-          <TabsTrigger value="practice" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-md">
+          <TabsTrigger value="practice" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-md py-2.5">
             <Target className="w-4 h-4 mr-2" /> Practice
           </TabsTrigger>
-          <TabsTrigger value="evidence" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-md">
+          <TabsTrigger value="evidence" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-md py-2.5">
             <FileSignature className="w-4 h-4 mr-2" /> Evidence
           </TabsTrigger>
-          <TabsTrigger value="assessment" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-md">
+          <TabsTrigger value="assessment" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-md py-2.5">
             <CheckCircle2 className="w-4 h-4 mr-2" /> Assessment
           </TabsTrigger>
         </TabsList>

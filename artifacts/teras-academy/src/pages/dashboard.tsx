@@ -28,8 +28,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="cockpit-panel border-primary/20 col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="cockpit-panel border-primary/20 lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex justify-between items-center">
               <span>Capability Readiness</span>

@@ -56,7 +56,7 @@ export default function Practice() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 pb-10">
+        <div className="space-y-4 lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto pr-0 lg:pr-2 pb-10">
           <h2 className="text-lg font-semibold border-b border-border pb-2">Available Tasks</h2>
           {tasks.map((task) => (
             <Card 

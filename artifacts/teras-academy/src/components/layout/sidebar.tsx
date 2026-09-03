@@ -24,7 +24,7 @@ const STAFF_ITEMS = [
   { href: "/assessor", label: "Assessor Desk", icon: BookOpen },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
   const { signOut } = useClerk();
   const { user } = useUser();
@@ -37,7 +37,7 @@ export function Sidebar() {
     .toUpperCase();
 
   return (
-    <div className="w-64 border-r border-sidebar-border bg-sidebar h-full flex flex-col">
+    <div className="w-full lg:w-64 border-r border-sidebar-border bg-sidebar h-full flex flex-col">
       <div className="p-6">
         <h1 className="text-xl font-bold tracking-tight text-primary flex items-center gap-2">
           <Activity className="w-6 h-6 text-primary drop-shadow-[0_0_8px_rgba(0,195,255,0.8)]" />
@@ -58,6 +58,7 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={onNavigate}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                     isActive 
@@ -84,6 +85,7 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={onNavigate}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                     isActive 
@@ -100,7 +102,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="p-4 border-t border-sidebar-border mt-auto">
+      <div className="p-4 border-t border-sidebar-border mt-auto shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs border border-primary/30">
             {initials}

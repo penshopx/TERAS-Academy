@@ -1,0 +1,267 @@
+Diterima. Saya **mengunci hasil Authenticated Visual Review 5 — Assessor Dashboard pada baseline 54%**.
+
+Dengan ini, **tahap observasi authenticated experience selesai**. Kita tidak perlu mengulang audit per halaman kecuali nanti ada perubahan UI yang menghasilkan regresi.
+
+## 🔒 AUTHENTICATED BASELINE — TERKUNCI
+
+| Role / Halaman               | Baseline | Fokus Hardening                       |
+| ---------------------------- | -------: | ------------------------------------- |
+| Learner Dashboard            |  **72%** | Responsive + action hierarchy         |
+| Readiness                    |  **68%** | Score + blocker + safety context      |
+| Capability Passport          |  **58%** | Credential + longitudinal record      |
+| Trainer Dashboard            |  **64%** | Action + Context + Impact + Ownership |
+| Assessor Dashboard           |  **54%** | Decision support + auditability       |
+| **Authenticated Experience** |  **63%** | **Cross-role consistency**            |
+
+---
+
+# Prinsip arsitektur UI yang sekarang menjadi acuan
+
+### 1. Satu kondisi learner, banyak perspektif role
+
+Bukan:
+
+> Learner state
+> Trainer state
+> Assessor state
+
+seolah-olah tiga state berbeda.
+
+Tetapi:
+
+> **Satu canonical learner state → dipresentasikan berbeda sesuai kewenangan role.**
+
+Sehingga alurnya harus konsisten:
+
+**Learning → Practice → Evidence → Trainer Review → Assessment → Safety Enforcement → Gap/Remediation → Readiness → Capability Passport**
+
+---
+
+# 2. Hierarki informasi baru
+
+Setiap halaman authenticated idealnya menjawab pertanyaan sesuai role.
+
+### Learner
+
+> **Apa yang harus saya lakukan sekarang?**
+
+### Trainer
+
+> **Siapa yang perlu saya bantu, apa masalahnya, dan apa tindakan saya?**
+
+### Assessor
+
+> **Assessment mana yang membutuhkan keputusan, berdasarkan evidence dan criteria apa, dan apa dampaknya?**
+
+### Readiness
+
+> **Mengapa learner belum/ sudah ready?**
+
+### Passport
+
+> **Apa yang benar-benar sudah terbukti dari perjalanan capability learner?**
+
+Ini membuat lima halaman tersebut menjadi **satu sistem**, bukan lima dashboard terpisah.
+
+---
+
+# 3. Safety menjadi state transversal
+
+Safety tidak boleh hanya hidup di Assessment atau Readiness.
+
+State safety harus dapat dikenali ketika relevan pada:
+
+**Learner → Trainer → Assessor → Readiness → Passport**
+
+Dengan prioritas:
+
+> 🟢 **Safety Cleared**
+> 🟡 **Safety Not Attempted**
+> 🔴 **Critical Safety Failure**
+
+Dan prinsip yang sudah dikunci:
+
+> **Safety failure cannot be hidden by an average score.**
+
+---
+
+# 4. Evidence harus memiliki traceability
+
+Evidence bukan sekadar angka:
+
+> `1 evidence`
+
+Tetapi harus dapat ditelusuri:
+
+**Criteria → Evidence → Validation → Assessment → Decision → Gate → Readiness**
+
+Ini juga menjadi penghubung utama antara Trainer dan Assessor.
+
+---
+
+# 5. Assessment harus menjadi decision-support cockpit
+
+Assessor tidak boleh hanya melihat:
+
+> `M07 Practical Assessment — DECISION`
+
+Tetapi harus dapat memahami:
+
+> **Candidate → Criteria → Evidence → Rubric → Safety → Requested Decision → Stored Decision → Impact → History**
+
+Dan bila ada perbedaan:
+
+> **Requested Decision:** Competent
+> **Stored Decision:** Not Competent
+> **Reason:** Critical safety criterion not met
+
+**Stored decision adalah official state.**
+
+---
+
+# 6. Ownership harus eksplisit
+
+Setiap actionable state idealnya mempunyai:
+
+> **Current status → Owner → Next action**
+
+Contoh:
+
+**Evidence pending validation**
+
+> Status: Menunggu Validasi
+> Owner: Trainer
+> Action: Tinjau Evidence
+
+Setelah ditolak:
+
+> Status: Perlu Perbaikan
+> Owner: Learner
+> Action: Kirim ulang Evidence
+
+Setelah assessment:
+
+> Status: Menunggu Remediation
+> Owner: Learner + Trainer
+
+Dengan ini queue berubah dari sekadar daftar menjadi **operational workflow**.
+
+---
+
+# 7. Responsive shell menjadi pekerjaan pertama
+
+Ini sebaiknya menjadi **Hardening Sprint #1**.
+
+Bukan memperbaiki lima halaman satu per satu secara terpisah, tetapi membuat satu pola:
+
+### Desktop
+
+```text
+Sidebar │ Main Content
+```
+
+### Tablet
+
+```text
+[☰] │ Main Content
+```
+
+### Mobile
+
+```text
+[☰] TERAS
+────────────
+Main Content
+```
+
+Dengan aturan:
+
+* tidak ada horizontal clipping;
+* CTA selalu utuh;
+* table berubah menjadi card bila diperlukan;
+* sidebar menjadi drawer;
+* satu pola scroll;
+* content menggunakan full available width.
+
+Setelah shell selesai, lima halaman bisa mengikuti pola yang sama.
+
+---
+
+# 8. Urutan hardening yang saya rekomendasikan
+
+### PHASE 1 — Responsive Foundation
+
+**Prioritas tertinggi**
+
+Satu responsive shell untuk seluruh authenticated pages.
+
+↓
+
+### PHASE 2 — Cross-Role State Context
+
+Tambahkan konsistensi:
+
+**Readiness + Safety + Gate + Evidence + Assessment status**
+
+↓
+
+### PHASE 3 — Action Hierarchy & Ownership
+
+Setiap role mendapatkan **single most important next action**.
+
+↓
+
+### PHASE 4 — Assessor Decision Support
+
+Ini memiliki gap terbesar (**54%**) sehingga menjadi kandidat prioritas berikutnya:
+
+**Queue → Candidate Context → Criteria → Evidence → Safety → Decision → Impact → History**
+
+↓
+
+### PHASE 5 — Capability Passport
+
+Naikkan dari **58%** menjadi:
+
+> **Authenticated Longitudinal Capability Record**
+
+↓
+
+### PHASE 6 — Final Regression Review
+
+Kelima halaman diperiksa kembali terhadap baseline:
+
+* visual;
+* responsive;
+* role context;
+* safety;
+* readiness;
+* evidence;
+* assessment;
+* passport;
+* ownership;
+* auditability.
+
+---
+
+## 🔐 Constraint tetap dikunci
+
+Seluruh hardening di atas **tidak boleh mengubah**:
+
+* database schema;
+* authorization;
+* business rules;
+* assessment engine;
+* safety engine;
+* readiness formula;
+* Path A / Path B;
+* audit trail;
+* stored decision logic.
+
+Target kita adalah:
+
+> **Present the existing truth better — not change the truth.**
+
+Jadi setelah tahap observasi ini, kita sudah memiliki **baseline yang cukup kuat untuk masuk ke tahap Product Presentation Hardening**.
+
+**Baseline final authenticated experience: 63%.**
