@@ -3,7 +3,7 @@ import { ClerkProvider, Show, SignIn, SignUp, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, BadgeCheck, Route as RouteIcon, ShieldCheck } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Route as RouteIcon, ShieldCheck, ExternalLink, Globe, Target, Activity, Zap, ChevronRight } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -100,143 +100,330 @@ const clerkAppearance = {
 
 function PublicHome() {
   return (
-    <main className="relative min-h-[100dvh] overflow-hidden bg-[#050505] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(0,195,255,0.18),transparent_30%),linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:auto,64px_64px,64px_64px]" />
+    <main className="relative min-h-[100dvh] overflow-hidden bg-[#050505] text-white selection:bg-[#00c3ff]/30">
+      {/* Background elements */}
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(0,195,255,0.12),transparent_40%),linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:auto,64px_64px,64px_64px]" />
+      <div className="pointer-events-none fixed inset-0 bg-gradient-to-b from-transparent via-[#050505]/50 to-[#050505]" />
+
       <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-6 py-7 lg:px-10">
-        <header className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3" aria-label="TERAS Academy">
-            <span className="text-2xl font-extrabold tracking-[0.18em] text-[#00c3ff]">TERAS</span>
+
+        {/* Navigation */}
+        <header className="flex items-center justify-between z-10 animate-in fade-in slide-in-from-top-4 duration-700">
+          <Link href="/" className="flex items-center gap-3 group" aria-label="TERAS Academy">
+            <span className="text-2xl font-extrabold tracking-[0.18em] text-[#00c3ff] group-hover:text-white transition-colors duration-500">TERAS</span>
             <span className="hidden border-l border-white/20 pl-3 text-[10px] font-bold uppercase leading-tight tracking-[0.2em] text-white/60 sm:inline">Capability<br />Academy</span>
           </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/sign-in" className="text-sm font-semibold text-white/75 transition hover:text-white">Masuk</Link>
-            <Link href="/sign-up" className="rounded-lg bg-[#00c3ff] px-4 py-2.5 text-sm font-bold text-black transition hover:bg-[#70dcff]">Mulai TERAS</Link>
+          <div className="flex items-center gap-4">
+            <Link href="/sign-in" className="text-sm font-semibold text-white/70 transition hover:text-white">Masuk</Link>
+            <Link href="/sign-up" className="rounded-md bg-[#00c3ff] px-5 py-2 text-sm font-bold text-black transition-all hover:bg-[#70dcff] hover:shadow-[0_0_20px_rgba(0,195,255,0.4)]">
+              Mulai TERAS
+            </Link>
           </div>
         </header>
-        <section className="grid min-h-[760px] items-center gap-14 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
-          <div className="max-w-3xl">
-            <p className="font-mono text-xs font-bold tracking-[0.24em] text-[#00c3ff]">EVIDENCE-BASED CAPABILITY DEVELOPMENT</p>
-            <h1 className="mt-6 text-5xl font-extrabold leading-[0.98] tracking-[-0.045em] sm:text-7xl">
-              Build Proof.
-              <span className="mt-2 block text-[#00c3ff]">Show Readiness.</span>
+
+        {/* Hero Section */}
+        <section className="grid min-h-[760px] items-center gap-16 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-0">
+          <div className="max-w-3xl z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-150 fill-mode-both">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#00c3ff]/30 bg-[#00c3ff]/10 px-3 py-1 mb-8">
+              <span className="flex h-2 w-2 rounded-full bg-[#00c3ff] animate-pulse"></span>
+              <span className="font-mono text-[10px] font-bold tracking-[0.2em] text-[#00c3ff]">EVIDENCE-BASED PLATFORM</span>
+            </div>
+
+            <h1 className="text-6xl font-extrabold leading-[0.95] tracking-[-0.04em] sm:text-7xl lg:text-[5.5rem]">
+              Build Proof.<br />
+              <span className="mt-2 block text-transparent bg-clip-text bg-gradient-to-r from-[#00c3ff] to-[#0077ff]">
+                Show Readiness.
+              </span>
             </h1>
-            <p className="mt-7 max-w-2xl text-lg leading-8 text-white/65">
-              Platform pengembangan kompetensi berbasis evidence untuk membangun kemampuan, menghasilkan bukti, mengikuti assessment, dan mengetahui tingkat readiness.
+
+            <p className="mt-8 max-w-2xl text-lg leading-relaxed text-white/60 font-medium">
+              Platform kapabilitas teknis terpadu untuk tenaga kerja transisi energi. Mengukur kemampuan, merekam bukti praktik, dan memastikan <strong className="text-white font-semibold">safety readiness</strong> sebelum turun ke lapangan.
             </p>
-            <div className="mt-9 flex flex-wrap gap-3">
-              <Link href="/sign-up" className="inline-flex items-center gap-2 rounded-lg bg-[#00c3ff] px-6 py-3.5 font-bold text-black transition hover:bg-[#70dcff]">
-                Mulai TERAS <ArrowRight className="h-4 w-4" />
+
+            <div className="mt-10 flex flex-wrap gap-4">
+              <Link href="/sign-up" className="group relative inline-flex items-center gap-3 overflow-hidden rounded-lg bg-[#00c3ff] px-8 py-4 font-bold text-black transition-all hover:scale-[1.02] hover:bg-[#70dcff] hover:shadow-[0_0_30px_rgba(0,195,255,0.3)]">
+                Mulai TERAS
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
-              <Link href="/sign-in" className="rounded-lg border border-white/20 bg-white/5 px-6 py-3.5 font-bold text-white transition hover:border-[#00c3ff]/70 hover:bg-white/10">Masuk</Link>
+              <Link href="/sign-in" className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-8 py-4 font-bold text-white transition-all hover:border-white/30 hover:bg-white/10">
+                Masuk
+              </Link>
             </div>
-            <div className="mt-10 flex flex-wrap gap-x-7 gap-y-3 text-sm text-white/55">
-              <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#00c3ff]" /> Safety gate tidak dapat dilewati</span>
-              <span className="flex items-center gap-2"><BadgeCheck className="h-4 w-4 text-[#00c3ff]" /> Histori evidence terjaga</span>
+
+            <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-4 text-sm font-medium text-white/40">
+              <span className="flex items-center gap-2.5">
+                <ShieldCheck className="h-4 w-4 text-[#00c3ff]/80" />
+                Safety gate tak bisa dilewati
+              </span>
+              <span className="flex items-center gap-2.5">
+                <RouteIcon className="h-4 w-4 text-[#00c3ff]/80" />
+                Histori kemampuan terpusat
+              </span>
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-xl">
-            <div className="absolute -inset-8 rounded-full bg-[#00c3ff]/10 blur-3xl" />
-            <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-[#0b0d0e]/95 p-5 shadow-2xl shadow-black">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                <div>
-                  <p className="font-mono text-[10px] tracking-[0.2em] text-[#00c3ff]">READINESS COCKPIT</p>
-                  <p className="mt-1 font-bold">Solar PV Technician</p>
-                </div>
-                <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-bold text-amber-300">Needs reassessment</span>
-              </div>
-              <div className="grid gap-3 py-5 sm:grid-cols-3">
-                {[['82%', 'Learning'], ['7', 'Evidence'], ['1', 'Critical gap']].map(([value, label]) => (
-                  <div key={label} className="rounded-xl border border-white/10 bg-white/[0.035] p-4">
-                    <p className="text-2xl font-extrabold text-white">{value}</p>
-                    <p className="mt-1 text-xs text-white/45">{label}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="rounded-xl border border-red-400/20 bg-red-400/[0.06] p-4">
-                <div className="flex items-center gap-3">
-                  <ShieldCheck className="h-5 w-5 text-red-300" />
-                  <div className="flex-1">
-                    <p className="text-sm font-bold">Critical safety gate</p>
-                    <p className="mt-1 text-xs text-white/45">M03 · Electrical isolation</p>
-                  </div>
-                  <span className="font-mono text-xs font-bold text-red-300">BLOCKED</span>
-                </div>
-              </div>
-              <div className="mt-4 flex items-center justify-between rounded-xl border border-[#00c3ff]/20 bg-[#00c3ff]/[0.06] p-4">
-                <div className="flex items-center gap-3">
-                  <RouteIcon className="h-5 w-5 text-[#00c3ff]" />
+          <div className="relative mx-auto w-full max-w-[520px] lg:ml-auto animate-in fade-in zoom-in-95 duration-1000 delay-300 fill-mode-both">
+            <div className="absolute -inset-10 rounded-full bg-[#00c3ff]/10 blur-[80px]" />
+            <div className="relative rounded-2xl border border-white/10 bg-[#0a0a0a]/80 p-1 shadow-2xl backdrop-blur-xl">
+              <div className="rounded-xl border border-white/5 bg-black/50 p-6">
+                <div className="flex items-start justify-between border-b border-white/10 pb-5">
                   <div>
-                    <p className="text-sm font-bold">Capability Passport</p>
-                    <p className="text-xs text-white/45">Riwayat kemampuan longitudinal</p>
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-3.5 w-3.5 text-[#00c3ff]" />
+                      <p className="font-mono text-[10px] tracking-[0.2em] text-[#00c3ff]">READINESS COCKPIT</p>
+                    </div>
+                    <p className="mt-2 font-bold text-lg">Solar PV Technician</p>
+                    <p className="text-sm text-white/40">ID: T-8829-PV</p>
+                  </div>
+                  <span className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-400 uppercase tracking-wider">
+                    Needs reassessment
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 py-6">
+                  <div className="rounded-lg border border-white/5 bg-white/5 p-4 transition-colors hover:bg-white/10">
+                    <p className="font-mono text-2xl font-bold text-white">82<span className="text-sm text-white/50">%</span></p>
+                    <p className="mt-1 text-[11px] uppercase tracking-wider text-white/40">Learning</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-white/5 p-4 transition-colors hover:bg-white/10">
+                    <p className="font-mono text-2xl font-bold text-white">7</p>
+                    <p className="mt-1 text-[11px] uppercase tracking-wider text-white/40">Evidence</p>
+                  </div>
+                  <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+                    <p className="font-mono text-2xl font-bold text-red-400">1</p>
+                    <p className="mt-1 text-[11px] uppercase tracking-wider text-red-400/70">Critical Gap</p>
                   </div>
                 </div>
-                <ArrowRight className="h-4 w-4 text-[#00c3ff]" />
+
+                <div className="rounded-lg border border-red-500/20 bg-gradient-to-r from-red-500/10 to-transparent p-4 relative overflow-hidden group cursor-default">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-red-500/20 p-2">
+                      <ShieldCheck className="h-4 w-4 text-red-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-white">Critical safety gate</p>
+                      <p className="text-xs text-white/50 mt-0.5">M03 · Electrical isolation</p>
+                    </div>
+                    <span className="font-mono text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded">BLOCKED</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between rounded-lg border border-[#00c3ff]/20 bg-gradient-to-r from-[#00c3ff]/10 to-transparent p-4 transition-colors hover:border-[#00c3ff]/40 cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-[#00c3ff]/20 p-2">
+                      <RouteIcon className="h-4 w-4 text-[#00c3ff]" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">Capability Passport</p>
+                      <p className="text-[11px] text-white/50 mt-0.5">Riwayat kemampuan longitudinal</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-[#00c3ff]" />
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="border-y border-white/10 py-8">
-          <p className="text-center font-mono text-[10px] tracking-[0.22em] text-white/35">CARA KERJA TERAS</p>
-          <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-6">
-            {['Diagnostic', 'Learning', 'Practice', 'Evidence', 'Assessment', 'Readiness'].map((step, index) => (
-              <div key={step} className="relative rounded-lg border border-white/10 bg-white/[0.025] px-3 py-4 text-center">
-                <p className="font-mono text-[10px] text-[#00c3ff]">0{index + 1}</p>
-                <p className="mt-1 text-sm font-bold">{step}</p>
-                {index < 5 && <ArrowRight className="absolute -right-2 top-1/2 z-10 hidden h-3 w-3 -translate-y-1/2 text-white/25 md:block" />}
+        {/* Narrative Section: The Why */}
+        <section className="py-24 lg:py-32 relative border-t border-white/5">
+          <div className="grid gap-16 lg:grid-cols-2 items-start">
+            <div className="max-w-xl">
+              <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
+                The Scale of the Transition
+              </h2>
+              <div className="mt-6 space-y-6 text-lg text-white/60 leading-relaxed">
+                <p>
+                  Transisi energi global bukan sekadar tantangan alokasi modal—ia adalah hambatan kapabilitas manusia. Menurut temuan otoritatif <strong className="text-white font-medium">IEA World Energy Employment 2025</strong>, skenario yang selaras dengan net-zero membutuhkan penambahan hampir <strong className="text-white font-medium">15 juta pekerja energi secara global pada tahun 2035</strong>.
+                </p>
+                <p>
+                  Lebih dari separuh perusahaan yang disurvei melaporkan hambatan rekrutmen yang kritis, terutama pada peran teknis terapan. Di saat yang sama, Indonesia sedang bergerak menuju target emisi net-zero pada <strong className="text-white font-medium">2060 atau lebih cepat</strong>.
+                </p>
               </div>
-            ))}
+              <div className="mt-8">
+                <a href="https://www.iea.org/reports/world-energy-employment-2025" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-bold text-[#00c3ff] hover:text-[#70dcff] transition-colors group">
+                  <ExternalLink className="h-4 w-4" />
+                  Sumber: IEA WEE 2025
+                  <span className="block h-px w-full bg-[#00c3ff]/30 absolute bottom-0 left-0 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
+                </a>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute left-[27px] top-4 bottom-4 w-px bg-gradient-to-b from-[#00c3ff]/50 via-white/10 to-transparent"></div>
+              <div className="space-y-12">
+
+                <div className="relative pl-16">
+                  <div className="absolute left-4 top-1.5 h-3 w-3 rounded-full border-2 border-[#00c3ff] bg-black shadow-[0_0_10px_rgba(0,195,255,0.5)]"></div>
+                  <h3 className="font-mono text-2xl font-bold text-white">2031 <span className="text-sm font-sans font-medium text-white/40 ml-2 tracking-wide">5-YEAR HORIZON</span></h3>
+                  <p className="mt-3 text-white/60 leading-relaxed">
+                    Fase akselerasi. Hambatan kapabilitas mulai menahan eksekusi modal secara sistemik. Kesiapan operasional (operational readiness) menjadi konstrain utama industri.
+                  </p>
+                </div>
+
+                <div className="relative pl-16">
+                  <div className="absolute left-4 top-1.5 h-3 w-3 rounded-full border-2 border-white/30 bg-black"></div>
+                  <h3 className="font-mono text-2xl font-bold text-white">2036 <span className="text-sm font-sans font-medium text-white/40 ml-2 tracking-wide">10-YEAR HORIZON</span></h3>
+                  <p className="mt-3 text-white/60 leading-relaxed">
+                    Kebutuhan struktural mencapai puncak. Integrasi sistem dan kelangkaan peran teknis terapan mendikte laju nyata transisi energi di lapangan.
+                  </p>
+                </div>
+
+                <div className="relative pl-16">
+                  <div className="absolute left-4 top-1.5 h-3 w-3 rounded-full border-2 border-white/30 bg-black"></div>
+                  <h3 className="font-mono text-2xl font-bold text-white">2046 <span className="text-sm font-sans font-medium text-white/40 ml-2 tracking-wide">20-YEAR HORIZON</span></h3>
+                  <p className="mt-3 text-white/60 leading-relaxed">
+                    Mendekati target net-zero 2060. Kematangan struktural terbentuk. Kemampuan adaptasi dan pemeliharaan oleh tenaga kerja menentukan ketahanan energi berdaulat.
+                  </p>
+                </div>
+
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="py-24">
-          <div className="max-w-3xl">
-            <p className="font-mono text-xs font-bold tracking-[0.22em] text-[#00c3ff]">WHY TERAS</p>
-            <h2 className="mt-5 text-4xl font-extrabold tracking-tight sm:text-5xl">Kemampuan tidak cukup hanya dinilai. <span className="text-[#00c3ff]">Kemampuan harus dibuktikan.</span></h2>
+        {/* Process Section */}
+        <section className="py-24 border-y border-white/5 relative overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl h-[300px] bg-[#00c3ff]/5 blur-[120px] rounded-full pointer-events-none"></div>
+
+          <div className="max-w-4xl mx-auto text-center relative z-10">
+            <p className="font-mono text-xs font-bold tracking-[0.22em] text-[#00c3ff] mb-6">WHY TERAS</p>
+            <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl text-white">
+              Kemampuan tidak cukup hanya dinilai. <br className="hidden sm:block" />
+              <span className="text-[#00c3ff]">Kemampuan harus dibuktikan.</span>
+            </h2>
           </div>
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
+
+          <div className="mt-20 relative max-w-5xl mx-auto">
+            <div className="hidden md:block absolute top-[45%] left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 md:gap-6 relative z-10">
+              {[
+                { step: 'Diagnostic', desc: 'Pemetaan awal' },
+                { step: 'Learning', desc: 'Pengetahuan inti' },
+                { step: 'Practice', desc: 'Simulasi aman' },
+                { step: 'Evidence', desc: 'Bukti terapan' },
+                { step: 'Assessment', desc: 'Validasi objektif' },
+                { step: 'Readiness', desc: 'Kesiapan rilis' }
+              ].map((item, index) => (
+                <div key={item.step} className="group relative">
+                  <div className="rounded-xl border border-white/10 bg-[#0a0a0a] p-5 text-center transition-all duration-300 hover:-translate-y-1 hover:border-[#00c3ff]/30 hover:shadow-[0_10px_20px_-10px_rgba(0,195,255,0.15)] h-full flex flex-col items-center justify-center">
+                    <p className="font-mono text-xs font-bold text-[#00c3ff]/50 mb-3 group-hover:text-[#00c3ff] transition-colors">0{index + 1}</p>
+                    <p className="font-bold text-white">{item.step}</p>
+                    <p className="text-[10px] text-white/40 mt-2 uppercase tracking-wide">{item.desc}</p>
+                  </div>
+                  {index < 5 && (
+                    <ArrowRight className="absolute -right-5 top-1/2 z-10 hidden h-4 w-4 -translate-y-1/2 text-white/20 md:block group-hover:text-[#00c3ff]/50 transition-colors" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Philosophy & Features */}
+        <section className="py-24 grid lg:grid-cols-[1fr_1.1fr] gap-12 lg:gap-20 items-center">
+          <div className="space-y-8">
+            <div className="rounded-3xl border border-red-500/20 bg-gradient-to-br from-red-500/10 to-black p-8 md:p-10 relative overflow-hidden">
+              <div className="absolute -right-10 -top-10 w-40 h-40 bg-red-500/20 blur-3xl rounded-full"></div>
+
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 mb-8">
+                <ShieldCheck className="h-7 w-7 text-red-400" />
+              </div>
+              <p className="font-mono text-xs font-bold tracking-[0.2em] text-red-400 mb-3">SAFETY PHILOSOPHY</p>
+              <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-6">Score is not enough.</h3>
+
+              <div className="space-y-4 text-white/70">
+                <p className="text-xl font-bold leading-snug text-white">
+                  Safety failure cannot be hidden by an average score.
+                </p>
+                <p className="leading-relaxed">
+                  Saat kriteria keselamatan kritis gagal, nilai tinggi pada area lain tidak dapat mengubah keputusan menjadi competent. Readiness tetap diblokir sampai reassessment membuktikan kemampuan yang aman.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-6">
             {[
-              ['Evidence-Based', 'Setiap capaian terhubung dengan bukti praktik yang valid, relevan, cukup, dan dapat ditelusuri.'],
-              ['Assessment & Remediation', 'Gap menghasilkan rencana perbaikan dan reassessment—bukan sekadar skor akhir.'],
-              ['Capability Passport', 'Learning, practice, evidence, assessment, dan readiness bertemu dalam satu rekam jejak longitudinal.'],
-            ].map(([title, description], index) => (
-              <article key={title} className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
-                <p className="font-mono text-xs text-[#00c3ff]">0{index + 1}</p>
-                <h3 className="mt-7 text-xl font-bold">{title}</h3>
-                <p className="mt-3 text-sm leading-7 text-white/50">{description}</p>
-              </article>
+              {
+                title: 'Evidence-Based',
+                desc: 'Setiap capaian terhubung dengan bukti praktik yang valid, relevan, cukup, dan dapat ditelusuri ke sumber aslinya.',
+                icon: Target
+              },
+              {
+                title: 'Assessment & Remediation',
+                desc: 'Gap menghasilkan rencana perbaikan (remediation) dan reassessment—bukan sekadar skor akhir.',
+                icon: Activity
+              },
+              {
+                title: 'Capability Passport',
+                desc: 'Learning, practice, evidence, assessment, dan readiness bertemu dalam satu rekam jejak longitudinal.',
+                icon: Globe
+              }
+            ].map((feature, i) => (
+              <div key={feature.title} className="group flex gap-5 rounded-2xl border border-white/5 bg-white/[0.01] p-6 transition-all hover:bg-white/[0.03] hover:border-white/10">
+                <div className="shrink-0 mt-1">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#00c3ff]/10 text-[#00c3ff]">
+                    <feature.icon className="h-5 w-5" />
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-white mb-2 group-hover:text-[#00c3ff] transition-colors">{feature.title}</h4>
+                  <p className="text-sm leading-relaxed text-white/50">{feature.desc}</p>
+                </div>
+              </div>
             ))}
           </div>
         </section>
 
-        <section className="grid gap-10 rounded-3xl border border-red-400/20 bg-[radial-gradient(circle_at_85%_20%,rgba(248,113,113,0.12),transparent_32%),#0b0b0c] p-7 md:grid-cols-[0.9fr_1.1fr] md:p-12">
-          <div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-red-300/20 bg-red-300/10">
-              <ShieldCheck className="h-5 w-5 text-red-300" />
+        {/* CTA Section */}
+        <section className="py-32 relative text-center border-t border-white/5">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1px] h-20 bg-gradient-to-b from-[#00c3ff]/50 to-transparent"></div>
+
+          <div className="max-w-4xl mx-auto px-4">
+            <p className="font-mono text-sm font-bold tracking-[0.25em] text-[#00c3ff] mb-6">CAPABILITY PASSPORT</p>
+            <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-white leading-[1.1] mb-8">
+              Ketahui posisi Anda. <br className="hidden sm:block" />
+              Ketahui yang perlu diperbaiki. <br className="hidden sm:block" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00c3ff] to-white">Ketahui kapan Anda siap.</span>
+            </h2>
+            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-white/50 mb-12">
+              Capability Passport menjadi output terpadu dari seluruh perjalanan capability—tanpa menghapus percobaan, gap, atau perkembangan sebelumnya.
+            </p>
+
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <Link href="/sign-up" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#00c3ff] px-8 py-4 font-bold text-black transition-all hover:scale-105 hover:bg-[#70dcff] hover:shadow-[0_0_30px_rgba(0,195,255,0.3)]">
+                Mulai TERAS <ArrowRight className="h-5 w-5" />
+              </Link>
+              <Link href="/sign-in" className="inline-flex items-center justify-center rounded-lg border border-white/20 bg-transparent px-8 py-4 font-bold text-white transition-all hover:bg-white/10">
+                Masuk
+              </Link>
             </div>
-            <p className="mt-8 font-mono text-xs font-bold tracking-[0.2em] text-red-300">SAFETY PHILOSOPHY</p>
-            <h2 className="mt-4 text-4xl font-extrabold tracking-tight">Score is not enough.</h2>
-          </div>
-          <div className="flex flex-col justify-center">
-            <p className="text-2xl font-bold leading-snug text-white">Safety failure cannot be hidden by an average score.</p>
-            <p className="mt-5 leading-7 text-white/50">Saat kriteria keselamatan kritis gagal, nilai tinggi pada area lain tidak dapat mengubah keputusan menjadi competent. Readiness tetap diblokir sampai reassessment membuktikan kemampuan yang aman.</p>
           </div>
         </section>
 
-        <section className="py-24 text-center">
-          <p className="font-mono text-xs font-bold tracking-[0.22em] text-[#00c3ff]">CAPABILITY PASSPORT</p>
-          <h2 className="mx-auto mt-5 max-w-4xl text-4xl font-extrabold tracking-tight sm:text-6xl">Ketahui posisi Anda. Ketahui yang perlu diperbaiki. <span className="text-[#00c3ff]">Ketahui kapan Anda siap.</span></h2>
-          <p className="mx-auto mt-6 max-w-2xl leading-7 text-white/50">Capability Passport menjadi output terpadu dari seluruh perjalanan capability—tanpa menghapus percobaan, gap, atau perkembangan sebelumnya.</p>
-          <div className="mt-9 flex justify-center gap-3">
-            <Link href="/sign-up" className="inline-flex items-center gap-2 rounded-lg bg-[#00c3ff] px-6 py-3.5 font-bold text-black transition hover:bg-[#70dcff]">Mulai TERAS <ArrowRight className="h-4 w-4" /></Link>
-            <Link href="/sign-in" className="rounded-lg border border-white/20 bg-white/5 px-6 py-3.5 font-bold text-white transition hover:border-[#00c3ff]/70">Masuk</Link>
+        {/* Footer */}
+        <footer className="mt-auto border-t border-white/10 pt-8 pb-12 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 rounded-sm bg-[#00c3ff]/20 border border-[#00c3ff]/50 flex items-center justify-center">
+              <div className="h-1.5 w-1.5 bg-[#00c3ff] rounded-full"></div>
+            </div>
+            <span className="font-mono text-[10px] tracking-[0.2em] text-white/40">TERAS ACADEMY · CAPABILITY WITH EVIDENCE</span>
           </div>
-        </section>
 
-        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 font-mono text-[10px] tracking-[0.15em] text-white/35">
-          <span>TERAS ACADEMY · CAPABILITY WITH EVIDENCE</span>
-          <span>DIAGNOSTIC → LEARNING → PRACTICE → ASSESSMENT → READINESS</span>
+          <div className="font-mono text-[10px] tracking-[0.15em] text-white/30 flex gap-2 flex-wrap justify-center">
+            <span>DIAGNOSTIC</span>
+            <span className="text-[#00c3ff]/30">→</span>
+            <span>LEARNING</span>
+            <span className="text-[#00c3ff]/30">→</span>
+            <span>PRACTICE</span>
+            <span className="text-[#00c3ff]/30">→</span>
+            <span>ASSESSMENT</span>
+            <span className="text-[#00c3ff]/30">→</span>
+            <span className="text-white/60">READINESS</span>
+          </div>
         </footer>
       </div>
     </main>
