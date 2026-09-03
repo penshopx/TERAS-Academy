@@ -8,7 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:pathway-isolation": "tsx ./src/pathway-isolation.integration.ts"
+    "test:pathway-isolation": "tsx ./src/pathway-isolation.integration.ts",
+    "test:safety-blockers": "tsx ./src/safety-blockers.integration.ts"
   },
   "dependencies": {
     "@clerk/express": "^2.1.65",
