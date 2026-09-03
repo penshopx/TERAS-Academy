@@ -1,0 +1,239 @@
+Saya setuju dengan kesimpulan tersebut. Dari temuan ini, saya akan **mengubah fokus TERAS dari “menambah fitur” menjadi “memperjelas produk yang sebenarnya sudah dibangun.”**
+
+Menurut saya, arah berikutnya sebaiknya dibuat sebagai **TERAS Academy UX/Brand Hardening v1**.
+
+### Prioritas 1 — Identitas TERAS
+
+Logo harus menjadi pekerjaan pertama. Bukan sekadar dibuat lebih bagus, tetapi harus **langsung terbaca “TERAS” dalam 1–2 detik**.
+
+Identitas visual sebaiknya membawa konsep:
+
+> **TERAS = tempat membangun, membuktikan, dan mengukur kesiapan kompetensi.**
+
+Sehingga visual brand dapat menggunakan metafora **fondasi / struktur / jalur naik / proof / readiness**, bukan simbol abstrak yang berpotensi terbaca sebagai huruf lain.
+
+### Prioritas 2 — Landing page jangan hanya menjual slogan
+
+Saya akan mempertahankan:
+
+> **Build Proof. Show Readiness.**
+
+tetapi menambahkan penjelasan yang jauh lebih spesifik.
+
+Misalnya struktur:
+
+**TERAS Academy**
+**Build Proof. Show Readiness.**
+
+> Platform pengembangan kompetensi berbasis evidence untuk membantu learner membangun kemampuan, berlatih, menghasilkan bukti, mengikuti assessment, dan mengetahui tingkat readiness mereka.
+
+Kemudian langsung tampilkan:
+
+**Diagnostic → Learning → Practice → Evidence → Assessment → Readiness**
+
+Ini menurut saya jauh lebih kuat daripada menambah paragraf panjang.
+
+### Prioritas 3 — Tampilkan “produk” di hero
+
+Ini sangat penting.
+
+Landing page saat ini terlalu banyak *negative space*. Sebagian ruang tersebut sebaiknya digunakan untuk memperlihatkan **Capability Passport / Readiness Cockpit** secara visual.
+
+Contohnya:
+
+> **Your Capability Passport**
+
+**Readiness: 78%**
+
+* Knowledge ✓
+* Practice ✓
+* Evidence 82%
+* Safety Gate ✓
+* Assessment 74%
+* Remediation → 2 items
+
+Dengan begitu calon pengguna **melihat hasil yang akan mereka dapatkan**, bukan hanya membaca penjelasan.
+
+### Prioritas 4 — Jadikan safety sebagai pembeda
+
+Menurut saya ini justru salah satu aset TERAS yang paling kuat.
+
+Jangan hanya mengatakan:
+
+> evidence-based capability
+
+Tetapi tunjukkan filosofi:
+
+**Score is not enough.**
+
+> A high score cannot override a critical safety failure.
+
+Ini membuat TERAS terlihat bukan sekadar LMS dengan quiz dan sertifikat.
+
+### Prioritas 5 — Bahasa Indonesia
+
+Saya cenderung memilih **Bahasa Indonesia sebagai default**, bukan sekadar menerjemahkan halaman Inggris.
+
+Istilah produk tetap bisa menggunakan istilah internasional bila memang menjadi nomenklatur sistem:
+
+* Capability Passport
+* Readiness
+* Evidence
+* Assessment
+* Safety Gate
+* Remediation
+
+Tetapi penjelasannya menggunakan Bahasa Indonesia.
+
+Contoh:
+
+> **Bangun kemampuan. Kumpulkan bukti. Buktikan kesiapan.**
+
+Lebih natural untuk target Indonesia.
+
+---
+
+## CTA cukup dua
+
+Saya setuju dengan rekomendasi Anda.
+
+**Primary:**
+
+> **Mulai TERAS**
+
+**Secondary:**
+
+> **Masuk**
+
+Jangan lagi:
+
+* Create account
+* Start your journey
+* Sign in
+* Sign in to TERAS
+
+Empat CTA tersebut sebenarnya hanya dua tindakan.
+
+---
+
+# Arsitektur landing page yang saya sarankan
+
+Saya akan membentuknya seperti ini:
+
+```text
+┌─────────────────────────────────────────────┐
+│ TERAS Academy              Masuk | Mulai TERAS │
+├─────────────────────────────────────────────┤
+│                                             │
+│  BUILD PROOF.                               │
+│  SHOW READINESS.            [Passport UI]   │
+│                                             │
+│  Platform pengembangan kompetensi           │
+│  berbasis evidence untuk membangun           │
+│  kemampuan dan membuktikan kesiapan.        │
+│                                             │
+│  [Mulai TERAS]   [Lihat cara kerja]         │
+│                                             │
+├─────────────────────────────────────────────┤
+│                                             │
+│ Diagnostic → Learning → Practice            │
+│ → Evidence → Assessment → Readiness         │
+│                                             │
+├─────────────────────────────────────────────┤
+│                                             │
+│ WHY TERAS                                   │
+│                                             │
+│ Evidence-Based | Safety Gates | Remediation │
+│ | Assessment | Capability Passport          │
+│                                             │
+├─────────────────────────────────────────────┤
+│                                             │
+│             CAPABILITY PASSPORT              │
+│          [visual dashboard preview]         │
+│                                             │
+├─────────────────────────────────────────────┤
+│                                             │
+│        Know where you stand.                │
+│        Know what to improve.                │
+│        Know when you're ready.              │
+│                                             │
+│              [Mulai TERAS]                  │
+└─────────────────────────────────────────────┘
+```
+
+Ini akan mengubah persepsi landing page dari:
+
+**“website aplikasi training”**
+
+menjadi:
+
+**“platform untuk membangun dan membuktikan capability.”**
+
+---
+
+## Dan saya akan menunda fitur backend baru
+
+Ini penting.
+
+Dari status yang Anda berikan, fondasi:
+
+**schema → migration → authorization → safety blocker → readiness → Path A/B → audit trail**
+
+sudah cukup kuat untuk masuk ke tahap berikutnya.
+
+Jadi saya tidak menyarankan sekarang menambah:
+
+* fitur AI baru,
+* modul baru,
+* tabel database baru,
+* workflow baru,
+* agent baru.
+
+Sebaliknya:
+
+### Fase berikutnya
+
+**TERAS Academy — Product Presentation Hardening**
+
+1. **Brand**
+
+   * Logo
+   * wordmark
+   * favicon
+   * visual identity
+
+2. **Landing**
+
+   * Bahasa Indonesia
+   * hero baru
+   * product visualization
+   * journey flow
+   * safety/value proposition
+   * Capability Passport preview
+
+3. **UX**
+
+   * protected-page messaging
+   * login context
+   * CTA simplification
+   * navigation consistency
+
+4. **Authenticated UX review**
+
+   * Learner dashboard
+   * Trainer dashboard
+   * Assessor dashboard
+   * Readiness
+   * Capability Passport
+
+5. **Regression**
+
+   * seluruh hardening backend tetap tidak boleh rusak
+   * safety blocker tetap absolute
+   * authorization tetap berjalan
+   * Path A/B tetap berjalan
+   * audit trail tetap berjalan
+
+**Jadi menurut saya: jangan bangun TERAS lebih besar dulu. Buat TERAS yang sudah ada terlihat sekuat mesinnya.**
+
+Dan satu hal yang menurut saya sangat penting: **Capability Passport harus menjadi “hero product” TERAS**, karena di situlah seluruh mesin TERAS—learning, evidence, practice, assessment, safety dan readiness—bertemu dalam satu output yang mudah dipahami pengguna.
