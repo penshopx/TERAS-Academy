@@ -1,0 +1,627 @@
+# TERAS ACADEMY — FINAL POST-MERGE INTEGRITY CHECK
+
+Lanjutkan dari kondisi terakhir.
+
+JANGAN menambahkan fitur baru.
+
+JANGAN mengubah architecture TERAS.
+
+JANGAN mengubah business rules yang sudah lulus regression.
+
+Fokuskan pekerjaan pada menyelesaikan schema reconciliation dan memastikan seluruh workflow trainer/assessor + safety blocker tetap utuh setelah merge.
+
+---
+
+## PRIORITY 1 — COMPLETE DATABASE RECONCILIATION
+
+Temuan saat ini:
+
+Application code menggunakan:
+
+`teras_people.email`
+
+tetapi database aktif sebelumnya belum memiliki kolom tersebut.
+
+Post-merge setup juga sebelumnya menggunakan package filter yang salah sehingga migration tidak dijalankan.
+
+Selesaikan akar masalah ini.
+
+Pastikan:
+
+* database schema sesuai dengan current Drizzle schema
+* `teras_people.email` tersedia apabila memang diwajibkan oleh current application schema
+* migration dapat dijalankan non-interactively
+* unique constraint ditangani secara aman
+* existing data tidak hilang
+* migration tidak bersifat destructive tanpa alasan
+* migration dapat dijalankan secara deterministik
+* post-merge setup menggunakan package/workspace target yang benar
+
+Jangan menggunakan workaround yang hanya membuat test lewat.
+
+---
+
+# PRIORITY 2 — MAKE POST-MERGE SETUP RELIABLE
+
+Perbaiki mekanisme post-merge setup sehingga setiap merge dapat melakukan:
+
+1. schema reconciliation / migration
+2. seed
+3. validation
+4. smoke test
+
+Pastikan tidak ada lagi ketergantungan terhadap interactive stdin.
+
+Jika migration membutuhkan konfirmasi:
+
+Jangan mengandalkan:
+
+`yes`
+
+atau stdin injection.
+
+Lebih baik gunakan migration SQL eksplisit yang telah direview.
+
+---
+
+# PRIORITY 3 — REVIEW MIGRATION SAFETY
+
+Sebelum menjalankan migration yang berkaitan dengan:
+
+`teras_people.email`
+
+pastikan:
+
+* apakah existing records memiliki email null?
+* apakah penambahan column harus nullable terlebih dahulu?
+* apakah unique constraint aman diterapkan?
+* apakah ada duplicate email?
+* apakah existing data membutuhkan backfill?
+* apakah application code mengharuskan email NOT NULL?
+
+Jangan langsung membuat column `NOT NULL UNIQUE` jika existing data dapat menyebabkan migration gagal atau kehilangan data.
+
+Pilih migration strategy yang paling aman terhadap data existing.
+
+---
+
+# PRIORITY 4 — IDEMPOTENT SEED
+
+Pastikan seed:
+
+* tidak membuat duplicate users
+* tidak membuat duplicate programs
+* tidak membuat duplicate pathways
+* tidak membuat duplicate modules
+* tidak membuat duplicate demo records
+
+Seed boleh dijalankan berulang kali.
+
+Gunakan deterministic identifiers atau upsert sesuai architecture.
+
+---
+
+# PRIORITY 5 — TYPECHECK
+
+Setelah database reconciliation:
+
+jalankan seluruh typecheck.
+
+Pastikan:
+
+* frontend PASS
+* backend PASS
+* scripts PASS
+* shared packages PASS
+
+---
+
+# PRIORITY 6 — SAFETY REGRESSION
+
+Jalankan kembali:
+
+`pnpm --filter @workspace/scripts run test:safety`
+
+Pastikan tetap PASS.
+
+Verifikasi:
+
+### Test 1
+
+Critical safety score = 0
+
+Other scores high.
+
+Average score high.
+
+Requested decision = Competent.
+
+Expected:
+
+`Not competent`
+
+Readiness:
+
+`Blocked`
+
+---
+
+### Test 2
+
+Critical safety score = 1
+
+Other scores high.
+
+Requested decision = Competent.
+
+Expected:
+
+`Not competent`
+
+Readiness:
+
+`Blocked`
+
+---
+
+### Test 3
+
+Critical safety score meets passing threshold.
+
+Expected:
+
+critical safety criterion tidak memblokir secara salah.
+
+---
+
+### Test 4
+
+Assessment belum pernah dilakukan.
+
+Expected:
+
+`Not attempted`
+
+bukan:
+
+`Critical failure`
+
+---
+
+# PRIORITY 7 — TRAINER EVIDENCE REVIEW
+
+Run a real API-level smoke test.
+
+Scenario:
+
+Learner submits evidence.
+
+Trainer/authorized reviewer opens evidence.
+
+Reviewer submits review.
+
+Verify:
+
+* HTTP response successful
+* database mutation successful
+* evidence status updated
+* reviewer recorded
+* timestamp recorded
+* event/history created
+
+Kemudian lakukan review kedua.
+
+Verify:
+
+Review #1 tetap dapat dilacak.
+
+Review #2 menjadi event baru.
+
+Jangan overwrite historical events.
+
+---
+
+# PRIORITY 8 — PRACTICE REVIEW
+
+Run real API-level smoke test.
+
+Scenario:
+
+Learner has practice attempt.
+
+Trainer reviews attempt.
+
+Trainer submits feedback/result.
+
+Verify:
+
+* authorization
+* mutation
+* reviewer identity
+* timestamp
+* feedback
+* history/event
+
+Repeat review.
+
+Ensure history is preserved.
+
+---
+
+# PRIORITY 9 — ASSESSOR DECISION
+
+Run real API-level smoke test.
+
+Scenario:
+
+Assessor opens candidate.
+
+Assessor sees:
+
+* assessment criteria
+* rubric
+* evidence
+* candidate information
+
+Assessor submits scores.
+
+Test:
+
+Critical safety = 0
+
+Other scores = 3
+
+Average remains high.
+
+Requested decision:
+
+`Competent`
+
+Expected stored decision:
+
+`Not competent`
+
+Expected:
+
+`Needs reassessment`
+
+Expected readiness:
+
+`Blocked`
+
+This must use the same pure safety rule already covered by regression tests.
+
+Do NOT duplicate safety logic in the endpoint.
+
+---
+
+# PRIORITY 10 — AUTHORIZATION
+
+Explicitly test backend authorization.
+
+## Learner
+
+Must NOT be able to:
+
+* submit assessor decision
+* approve evidence as assessor
+* modify assessment result
+* modify readiness result
+
+## Trainer
+
+May:
+
+* review practice
+* provide feedback
+* review evidence according to assigned permissions
+
+But must NOT automatically gain assessor authority.
+
+## Assessor
+
+May:
+
+* perform assessment
+* submit rubric
+* make assessment decision
+
+Authorization must be enforced server-side.
+
+Hiding buttons in frontend is NOT sufficient.
+
+---
+
+# PRIORITY 11 — AUDIT TRAIL
+
+For every important mutation verify a new event is created.
+
+Minimum:
+
+* evidence review
+* practice review
+* assessment decision
+* remediation
+* reassessment
+* readiness decision
+
+History must be append-oriented.
+
+Do not silently overwrite historical decisions.
+
+---
+
+# PRIORITY 12 — READINESS INTEGRITY
+
+Verify that readiness cannot become:
+
+`Ready`
+
+when any mandatory blocker remains unresolved.
+
+At minimum:
+
+### Critical safety failure
+
+→ readiness BLOCKED
+
+### Missing mandatory assessment
+
+→ readiness cannot be READY
+
+### Invalid/missing mandatory evidence
+
+→ readiness cannot be READY
+
+### Unresolved critical gap
+
+→ readiness cannot be READY
+
+Do not use average score as a substitute for these gates.
+
+---
+
+# PRIORITY 13 — PATHWAY REGRESSION
+
+Verify both active pathways after merge.
+
+## PATH A
+
+Capability Development
+
+Verify basic learner flow remains functional.
+
+## PATH B
+
+Pre-Certification
+
+Verify:
+
+* pathway selection
+* competency mapping
+* assessment
+* gap
+* readiness
+
+remain functional.
+
+Do not duplicate the entire application for each pathway.
+
+Both pathways must use the same core engines with pathway-specific rules.
+
+---
+
+# PRIORITY 14 — END-TO-END DEMO
+
+Use the existing demo learner.
+
+Run:
+
+Registration
+→ Diagnostic
+→ Learning Plan
+→ Learning
+→ Practice
+→ Assessment
+→ Evidence
+→ Evidence Review
+→ Gap
+→ Remediation
+→ Re-practice
+→ Reassessment
+→ Readiness
+→ Capability Passport
+
+At least one scenario must produce:
+
+`Needs reassessment`
+
+because of a critical safety failure.
+
+Then perform remediation/reassessment.
+
+Verify that the later successful reassessment can update readiness appropriately.
+
+IMPORTANT:
+
+Previous failed attempt must remain visible in history.
+
+Do not overwrite the failed attempt.
+
+---
+
+# PRIORITY 15 — CAPABILITY PASSPORT
+
+After successful reassessment verify Capability Passport reflects:
+
+* learning history
+* practice history
+* assessment history
+* evidence
+* gap
+* remediation
+* reassessment
+* latest capability status
+* readiness
+
+The passport is a longitudinal record.
+
+It must not erase previous attempts.
+
+---
+
+# PRIORITY 16 — SEARCH FOR OTHER SCHEMA DRIFT
+
+Do a code/schema consistency audit.
+
+Search for all references to:
+
+* `teras_people`
+* recently added columns
+* recently added tables
+* new foreign keys
+* new enums
+* new status values
+
+Identify any field used by application code but absent from database schema.
+
+Do not wait for another runtime 500 to discover it.
+
+---
+
+# PRIORITY 17 — DO NOT OVER-REFACTOR
+
+Keep changes focused.
+
+Do not:
+
+* redesign the database unnecessarily
+* change UI unnecessarily
+* change existing terminology
+* change assessment semantics
+* change safety rules
+* change readiness rules
+* introduce new dependencies unless necessary
+
+This is a hardening task.
+
+---
+
+# ACCEPTANCE GATE
+
+Do not mark the task complete unless ALL are true:
+
+[ ] Database schema synchronized
+
+[ ] Migration works non-interactively
+
+[ ] Seed is idempotent
+
+[ ] No data loss
+
+[ ] No schema drift detected
+
+[ ] Full typecheck PASS
+
+[ ] Safety regression PASS
+
+[ ] Evidence review PASS
+
+[ ] Practice review PASS
+
+[ ] Assessor decision PASS
+
+[ ] Authorization PASS
+
+[ ] Audit trail PASS
+
+[ ] Readiness blocker PASS
+
+[ ] Path A PASS
+
+[ ] Path B PASS
+
+[ ] Capability Passport PASS
+
+[ ] End-to-end learner journey PASS
+
+---
+
+# FINAL REPORT FORMAT
+
+When finished, report exactly:
+
+## 1. DATABASE
+
+Schema changes:
+...
+
+Migration:
+...
+
+Seed:
+...
+
+## 2. TEST RESULTS
+
+Typecheck:
+PASS/FAIL
+
+Safety regression:
+PASS/FAIL
+
+Evidence review:
+PASS/FAIL
+
+Practice review:
+PASS/FAIL
+
+Assessor decision:
+PASS/FAIL
+
+Authorization:
+PASS/FAIL
+
+Audit trail:
+PASS/FAIL
+
+Readiness:
+PASS/FAIL
+
+Path A:
+PASS/FAIL
+
+Path B:
+PASS/FAIL
+
+Capability Passport:
+PASS/FAIL
+
+End-to-end:
+PASS/FAIL
+
+## 3. FILES CHANGED
+
+List only files actually changed.
+
+## 4. BUSINESS RULES VERIFIED
+
+List the critical TERAS rules that were verified.
+
+## 5. REMAINING ISSUES
+
+Do not hide any issue.
+
+## 6. RISK LEVEL
+
+Critical / High / Medium / Low
+
+## 7. RECOMMENDATION
+
+State whether TERAS is ready to proceed to the next development task.
+
+IMPORTANT:
+
+"Build successful" alone is NOT acceptance.
+
+Acceptance requires functional workflow + database integrity + authorization + auditability + safety regression + readiness integrity.
