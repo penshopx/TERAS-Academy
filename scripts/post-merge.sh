@@ -1,7 +1,9 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 pnpm install --frozen-lockfile
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/post-merge.sql
+if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_people') IS NOT NULL")" = "t" ]; then
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/post-merge.sql
+fi
 pnpm --filter @workspace/db run push
 pnpm --filter @workspace/scripts run seed
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/schema-check.sql

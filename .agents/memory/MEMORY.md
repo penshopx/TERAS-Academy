@@ -1,2 +1,3 @@
 - [Composite FK migrations](composite-fk-migrations.md) — create referenced unique constraints before composite foreign keys when evolving live PostgreSQL tables.
+- [Post-merge schema bootstrap](post-merge-migrations.md) — reconcile existing schemas before push, but skip table-specific preflight when the database is empty.
 - [Non-interactive post-merge migrations](post-merge-migrations.md) — preflight data-preserving backfills before Drizzle push because force mode may still prompt without a TTY.

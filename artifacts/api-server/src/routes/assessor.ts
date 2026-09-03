@@ -21,6 +21,9 @@ import {
   peopleTable,
   readinessEventsTable,
   readinessGatesTable,
+  remediationActivitiesTable,
+  remediationEventsTable,
+  remediationPlansTable,
 } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import {
@@ -332,6 +335,24 @@ router.post(
             createdBy: assessorId,
           })),
         );
+        const plans = await tx.select().from(remediationPlansTable);
+        const gapIds = new Set(moduleGaps.map((gap) => gap.id));
+        const planIds = new Set(
+          plans.filter((plan) => gapIds.has(plan.gapId)).map((plan) => plan.id),
+        );
+        const activities = (await tx.select().from(remediationActivitiesTable)).filter(
+          (activity) => planIds.has(activity.planId),
+        );
+        if (activities.length) {
+          await tx.insert(remediationEventsTable).values(
+            activities.map((activity) => ({
+              id: id("remediation-event"),
+              activityId: activity.id,
+              status: decision === "Competent" ? "Completed" : "In progress",
+              createdBy: assessorId,
+            })),
+          );
+        }
       }
       if (assessment.gateCode) {
         const [gate] = await tx
