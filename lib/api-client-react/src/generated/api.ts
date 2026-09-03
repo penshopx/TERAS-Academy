@@ -794,7 +794,7 @@ export const createPracticeAttempt = async (taskId: string,
 
 
 
-export const getCreatePracticeAttemptMutationOptions = <TError = ErrorType<unknown>,
+export const getCreatePracticeAttemptMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPracticeAttempt>>, TError,{taskId: string;data: BodyType<PracticeAttemptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createPracticeAttempt>>, TError,{taskId: string;data: BodyType<PracticeAttemptInput>}, TContext> => {
 
@@ -823,12 +823,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreatePracticeAttemptMutationResult = NonNullable<Awaited<ReturnType<typeof createPracticeAttempt>>>
     export type CreatePracticeAttemptMutationBody = BodyType<PracticeAttemptInput>
-    export type CreatePracticeAttemptMutationError = ErrorType<unknown>
+    export type CreatePracticeAttemptMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
 
     /**
  * @summary Submit a practice attempt
  */
-export const useCreatePracticeAttempt = <TError = ErrorType<unknown>,
+export const useCreatePracticeAttempt = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPracticeAttempt>>, TError,{taskId: string;data: BodyType<PracticeAttemptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createPracticeAttempt>>,
@@ -942,7 +942,7 @@ export const createEvidence = async (evidenceInput: EvidenceInput, options?: Par
 
 
 
-export const getCreateEvidenceMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateEvidenceMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEvidence>>, TError,{data: BodyType<EvidenceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createEvidence>>, TError,{data: BodyType<EvidenceInput>}, TContext> => {
 
@@ -971,12 +971,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateEvidenceMutationResult = NonNullable<Awaited<ReturnType<typeof createEvidence>>>
     export type CreateEvidenceMutationBody = BodyType<EvidenceInput>
-    export type CreateEvidenceMutationError = ErrorType<unknown>
+    export type CreateEvidenceMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
 
     /**
  * @summary Submit an evidence record
  */
-export const useCreateEvidence = <TError = ErrorType<unknown>,
+export const useCreateEvidence = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEvidence>>, TError,{data: BodyType<EvidenceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createEvidence>>,
@@ -1321,7 +1321,7 @@ export const completeRemediation = async (remediationId: string, options?: Param
 
 
 
-export const getCompleteRemediationMutationOptions = <TError = ErrorType<unknown>,
+export const getCompleteRemediationMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeRemediation>>, TError,{remediationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof completeRemediation>>, TError,{remediationId: string}, TContext> => {
 
@@ -1350,12 +1350,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CompleteRemediationMutationResult = NonNullable<Awaited<ReturnType<typeof completeRemediation>>>
 
-    export type CompleteRemediationMutationError = ErrorType<unknown>
+    export type CompleteRemediationMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
 
     /**
  * @summary Mark a remediation activity complete
  */
-export const useCompleteRemediation = <TError = ErrorType<unknown>,
+export const useCompleteRemediation = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeRemediation>>, TError,{remediationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof completeRemediation>>,

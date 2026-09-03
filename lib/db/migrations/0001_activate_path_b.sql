@@ -1,8 +1,19 @@
 BEGIN;
 
 ALTER TABLE teras_people ADD COLUMN IF NOT EXISTS email text;
-CREATE UNIQUE INDEX IF NOT EXISTS teras_people_email_unique
-  ON teras_people (email) WHERE email IS NOT NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'teras_people_email_unique' AND contype = 'u'
+  ) THEN
+    IF to_regclass('public.teras_people_email_unique') IS NOT NULL THEN
+      DROP INDEX teras_people_email_unique;
+    END IF;
+    ALTER TABLE teras_people
+      ADD CONSTRAINT teras_people_email_unique UNIQUE (email);
+  END IF;
+END $$;
 UPDATE teras_people
 SET email = 'learner@teras.academy'
 WHERE id = 'learner-demo' AND email IS NULL;

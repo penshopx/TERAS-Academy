@@ -1,10 +1,16 @@
+BEGIN;
+
 ALTER TABLE teras_people ADD COLUMN IF NOT EXISTS email text;
 
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'teras_people_email_unique'
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'teras_people_email_unique' AND contype = 'u'
   ) THEN
+    IF to_regclass('public.teras_people_email_unique') IS NOT NULL THEN
+      DROP INDEX teras_people_email_unique;
+    END IF;
     ALTER TABLE teras_people
       ADD CONSTRAINT teras_people_email_unique UNIQUE (email);
   END IF;
@@ -45,3 +51,5 @@ BEGIN
       FOREIGN KEY (pathway_id) REFERENCES teras_pathways(id);
   END IF;
 END $$;
+
+COMMIT;
