@@ -22,7 +22,7 @@ import {
   remediationPlansTable,
 } from "@workspace/db";
 import type { LearningActor } from "./authorization";
-import { learnerContext, readiness } from "./teras";
+import { activeLearnerPathwayContext, readiness } from "./teras";
 
 export const LEARNING_STATES = [
   "NOT_STARTED",
@@ -212,7 +212,10 @@ export async function transitionLearningState(
   actor: LearningActor,
   transaction?: LearningTransaction,
 ): Promise<LearningTransitionResult> {
-  const context = await learnerContext(actor.role === "learner" ? actor.id : command.learnerId);
+  const context = await activeLearnerPathwayContext(command.learnerId, command.pathwayId);
+  if (!context) {
+    return reject("PATHWAY_MISMATCH", "The learning record is outside an active enrolled pathway.", command.currentState, 403);
+  }
   if (command.learnerId !== context.learner.id || (actor.role === "learner" && actor.id !== command.learnerId)) {
     return reject("LEARNER_MISMATCH", "The authenticated actor does not own this learner record.", command.currentState, 403);
   }
@@ -305,6 +308,7 @@ export async function transitionLearningState(
     let gap: typeof gapsTable.$inferSelect | undefined;
     let remediationPlan: typeof remediationPlansTable.$inferSelect | undefined;
     let reassessmentAttempt: typeof assessmentAttemptsTable.$inferSelect | undefined;
+    let previousAssessmentAttempt: typeof assessmentAttemptsTable.$inferSelect | undefined;
 
     if (references.outcomeId) {
       [outcome] = await tx.select().from(learningOutcomesTable).where(eq(learningOutcomesTable.id, references.outcomeId)).limit(1);
@@ -356,6 +360,17 @@ export async function transitionLearningState(
         return reject("CAUSAL_REFERENCE_INVALID", "Reassessment is not linked to the learning module.", storedState);
       }
     }
+    if (references.previousAssessmentAttemptId) {
+      [previousAssessmentAttempt] = await tx.select().from(assessmentAttemptsTable).where(eq(assessmentAttemptsTable.id, references.previousAssessmentAttemptId)).limit(1);
+      if (!previousAssessmentAttempt ||
+        previousAssessmentAttempt.learnerId !== command.learnerId ||
+        previousAssessmentAttempt.pathwayId !== command.pathwayId ||
+        !reassessmentAttempt ||
+        previousAssessmentAttempt.assessmentId !== reassessmentAttempt.assessmentId ||
+        previousAssessmentAttempt.number >= reassessmentAttempt.number) {
+        return reject("CAUSAL_REFERENCE_INVALID", "Previous assessment attempt is not a prior attempt for this reassessment.", storedState);
+      }
+    }
 
     if (command.targetState === "OUTCOME_VERIFIED" && !outcome) {
       return reject("PREREQUISITE_NOT_MET", "Outcome verification requires an outcome from this activity.", storedState);
@@ -377,7 +392,7 @@ export async function transitionLearningState(
       return reject("PREREQUISITE_NOT_MET", "A linked gap and remediation plan are required.", storedState);
     }
     if (command.targetState === "REASSESSMENT") {
-      if (!gap || !remediationPlan || !practiceAttempt || !evidence || !evidenceReview || !reassessmentAttempt) {
+      if (!gap || !remediationPlan || !practiceAttempt || !evidence || !evidenceReview || !reassessmentAttempt || !previousAssessmentAttempt) {
         return reject("REASSESSMENT_REQUIRED", "Reassessment requires the complete causal remediation chain.", storedState);
       }
     }

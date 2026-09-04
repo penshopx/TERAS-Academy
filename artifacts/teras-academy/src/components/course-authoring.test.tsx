@@ -48,10 +48,9 @@ test("Course authoring uses authored course endpoints, NOT learning endpoints", 
   assert.match(allContent, /data-testid="select-activity-type"/);
 });
 
-test("LearnerCondition invariant is preserved in trainer desk", async () => {
+test("trainer desk avoids learner-only condition requests", async () => {
   const trainerCode = await readFile(path.join(__dirname, "../pages/trainer.tsx"), "utf8");
-  assert.match(trainerCode, /import \{ LearnerCondition \} from "@\/components\/learner-condition"/);
-  assert.match(trainerCode, /<LearnerCondition owner="Trainer" \/>/);
+  assert.doesNotMatch(trainerCode, /LearnerCondition/);
 });
 
 test("Adding COURSE_MODULE requires canonical moduleId payload", async () => {

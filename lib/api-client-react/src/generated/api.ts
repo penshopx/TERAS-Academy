@@ -55,6 +55,7 @@ import type {
   EvidenceRecord,
   ForbiddenResponse,
   Gap,
+  GetAssessmentParams,
   HealthStatus,
   JourneyStep,
   LearnerDashboard,
@@ -1098,20 +1099,29 @@ export function useListAssessments<TData = Awaited<ReturnType<typeof listAssessm
 
 
 
-export const getGetAssessmentUrl = (assessmentId: string,) => {
+export const getGetAssessmentUrl = (assessmentId: string,
+    params?: GetAssessmentParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/assessments/${assessmentId}`
+  return stringifiedParams.length > 0 ? `/api/assessments/${assessmentId}?${stringifiedParams}` : `/api/assessments/${assessmentId}`
 }
 
 /**
  * @summary Get assessment criteria and results
  */
-export const getAssessment = async (assessmentId: string, options?: Parameters<typeof customFetch>[1]): Promise<AssessmentDetail> => {
+export const getAssessment = async (assessmentId: string,
+    params?: GetAssessmentParams, options?: Parameters<typeof customFetch>[1]): Promise<AssessmentDetail> => {
 
-  return customFetch<AssessmentDetail>(getGetAssessmentUrl(assessmentId),
+  return customFetch<AssessmentDetail>(getGetAssessmentUrl(assessmentId,params),
   {
     ...options,
     method: 'GET'
@@ -1124,23 +1134,25 @@ export const getAssessment = async (assessmentId: string, options?: Parameters<t
 
 
 
-export const getGetAssessmentQueryKey = (assessmentId: string,) => {
+export const getGetAssessmentQueryKey = (assessmentId: string,
+    params?: GetAssessmentParams,) => {
     return [
-    `/api/assessments/${assessmentId}`
+    `/api/assessments/${assessmentId}`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetAssessmentQueryOptions = <TData = Awaited<ReturnType<typeof getAssessment>>, TError = ErrorType<NotFoundResponse>>(assessmentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssessment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetAssessmentQueryOptions = <TData = Awaited<ReturnType<typeof getAssessment>>, TError = ErrorType<NotFoundResponse>>(assessmentId: string,
+    params?: GetAssessmentParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssessment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetAssessmentQueryKey(assessmentId);
+  const queryKey =  queryOptions?.queryKey ?? getGetAssessmentQueryKey(assessmentId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAssessment>>> = ({ signal }) => getAssessment(assessmentId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAssessment>>> = ({ signal }) => getAssessment(assessmentId,params, { signal, ...requestOptions });
 
 
 
@@ -1158,11 +1170,12 @@ export type GetAssessmentQueryError = ErrorType<NotFoundResponse>
  */
 
 export function useGetAssessment<TData = Awaited<ReturnType<typeof getAssessment>>, TError = ErrorType<NotFoundResponse>>(
- assessmentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssessment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ assessmentId: string,
+    params?: GetAssessmentParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssessment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetAssessmentQueryOptions(assessmentId,options)
+  const queryOptions = getGetAssessmentQueryOptions(assessmentId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

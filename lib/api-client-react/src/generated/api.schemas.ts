@@ -1027,6 +1027,7 @@ export const AssessorAssessmentDecisionInputDecision = {
 } as const;
 
 export interface AssessorAssessmentDecisionInput {
+  learnerId: string;
   decision: AssessorAssessmentDecisionInputDecision;
   observation: string;
   /** @minItems 1 */
@@ -1077,6 +1078,7 @@ export interface CapabilityPassport {
 export interface ReviewQueueItem {
   id: string;
   kind: string;
+  learnerId: string;
   learnerName: string;
   moduleName: string;
   pathwayId: string;
@@ -1087,6 +1089,30 @@ export interface ReviewQueueItem {
   updatedAt: string;
 }
 
+export type TrainerReviewHistoryEventKind = typeof TrainerReviewHistoryEventKind[keyof typeof TrainerReviewHistoryEventKind];
+
+
+export const TrainerReviewHistoryEventKind = {
+  Evidence: 'Evidence',
+  Practice: 'Practice',
+} as const;
+
+export interface TrainerReviewHistoryEvent {
+  id: string;
+  kind: TrainerReviewHistoryEventKind;
+  learnerId: string;
+  learnerName: string;
+  pathwayId: string;
+  pathwayName: string;
+  subject: string;
+  outcome: string;
+  comment: string;
+  quality: EvidenceQuality | null;
+  /** @nullable */
+  reviewer: string | null;
+  recordedAt: string;
+}
+
 export interface TrainerDashboard {
   trainer: LearnerProfile;
   assignedLearnerCount: number;
@@ -1095,6 +1121,7 @@ export interface TrainerDashboard {
   activeRemediationCount: number;
   blockedLearnerCount: number;
   recentActivity: ReviewQueueItem[];
+  reviewHistory: TrainerReviewHistoryEvent[];
 }
 
 export interface AssessorDashboard {
@@ -1130,6 +1157,13 @@ export type ForbiddenResponse = ErrorResponse;
  * Resource not found
  */
 export type NotFoundResponse = ErrorResponse;
+
+export type GetAssessmentParams = {
+/**
+ * Required for assessor access to an assigned learner; learners may omit it and can only view their own record.
+ */
+learnerId?: string;
+};
 
 export type CompleteRemediation409Error = typeof CompleteRemediation409Error[keyof typeof CompleteRemediation409Error];
 

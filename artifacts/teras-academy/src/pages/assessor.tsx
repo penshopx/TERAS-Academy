@@ -6,23 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Activity, BookOpen, AlertTriangle, Scale, ArrowRight, ShieldAlert, LockKeyhole, FileCheck2, History } from "lucide-react";
+import { Activity, BookOpen, AlertTriangle, Scale, ArrowRight, ShieldAlert, LockKeyhole, FileCheck2, History, ClipboardCheck } from "lucide-react";
 import { type ElementType, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { LearnerCondition } from "@/components/learner-condition";
 import { DecisionSummary, enforceInternalRecommendation, hasCriticalFailure, prioritizeDecisionQueue, recommendationLabel, restoreDecisionFocus, type LegacyAssessmentDecision } from "@/components/assessor-decision";
 
 export default function AssessorDesk() {
   const { data: dashboard, isLoading, error } = useGetAssessorDashboard();
-  const [assessmentId, setAssessmentId] = useState<string | null>(null);
-  const detailQuery = useGetAssessment(assessmentId ?? "", { query: { queryKey: getGetAssessmentQueryKey(assessmentId ?? ""), enabled: !!assessmentId } });
+  const [selectedAssessment, setSelectedAssessment] = useState<{ assessmentId: string; learnerId: string } | null>(null);
+  const assessmentId = selectedAssessment?.assessmentId ?? "";
+  const learnerId = selectedAssessment?.learnerId ?? "";
+  const assessmentParams = learnerId ? { learnerId } : undefined;
+  const detailQuery = useGetAssessment(assessmentId, assessmentParams, { query: { queryKey: getGetAssessmentQueryKey(assessmentId, assessmentParams), enabled: !!selectedAssessment } });
   const decisionMutation = useSubmitAssessmentDecision();
   const queryClient = useQueryClient(); const { toast } = useToast();
   const [decision, setDecision] = useState<"Competent" | "Not competent">("Competent");
   const [observation, setObservation] = useState("");
   const [scores, setScores] = useState<Record<string, number>>({});
   const [observations, setObservations] = useState<Record<string, string>>({});
+  const [decisionHistory, setDecisionHistory] = useState<Array<{ id: string; assessment: string; recommendation: string; recordedAt: string }>>([]);
   const decisionTriggerRef = useRef<HTMLButtonElement | null>(null);
   const queueTitleRef = useRef<HTMLHeadingElement | null>(null);
   const closeFocusTargetRef = useRef<HTMLElement | null>(null);
@@ -33,12 +36,12 @@ export default function AssessorDesk() {
     { label: "Reassessments", value: dashboard?.reassessmentCount ?? 0, Icon: Activity, color: "text-amber-500" },
     { label: "Blocked Gates", value: dashboard?.blockedGateCount ?? 0, Icon: AlertTriangle, color: "text-destructive" },
   ];
-  const openDecision = (id: string, trigger: HTMLButtonElement) => { decisionTriggerRef.current = trigger; closeFocusTargetRef.current = trigger; decisionScrollYRef.current = window.scrollY; setAssessmentId(id); setDecision("Competent"); setObservation(""); setScores({}); setObservations({}); };
+  const openDecision = (item: { id: string; learnerId: string }, trigger: HTMLButtonElement) => { decisionTriggerRef.current = trigger; closeFocusTargetRef.current = trigger; decisionScrollYRef.current = window.scrollY; setSelectedAssessment({ assessmentId: item.id, learnerId: item.learnerId }); setDecision("Competent"); setObservation(""); setScores({}); setObservations({}); };
   const submit = () => {
     const detail = detailQuery.data;
-    if (!assessmentId || !detail || !observation.trim() || detail.criteria.some(c => scores[c.id] === undefined)) { toast({ title: "Complete the rubric", description: "A decision, overall observation, and score for every criterion are required.", variant: "destructive" }); return; }
+    if (!assessmentId || !learnerId || !detail || !observation.trim() || detail.criteria.some(c => scores[c.id] === undefined)) { toast({ title: "Complete the rubric", description: "A decision, overall observation, and score for every criterion are required.", variant: "destructive" }); return; }
     const criticalFail = hasCriticalFailure(detail.criteria, scores);
-    decisionMutation.mutate({ assessmentId, data: { decision: enforceInternalRecommendation(decision, criticalFail), observation, criteria: detail.criteria.map(c => ({ criterionId: c.id, score: scores[c.id]!, observation: observations[c.id] || null, evidenceId: null })) } }, { onSuccess: () => { toast({ title: "Recommendation recorded", description: criticalFail ? "Critical criterion failure recorded. Readiness remains blocked." : "The internal evaluation recommendation has been recorded." }); closeFocusTargetRef.current = queueTitleRef.current; setAssessmentId(null); [getListAssessmentsQueryKey(), getListGapsQueryKey(), getGetLearnerDashboardQueryKey(), getGetLearnerJourneyQueryKey(), getGetLearnerLearningPlanQueryKey(), getGetLearnerReadinessQueryKey(), getGetCapabilityPassportQueryKey(), getGetAssessorDashboardQueryKey(), getGetAssessorQueueQueryKey(), getGetAssessmentQueryKey(assessmentId), getGetModuleQueryKey(detail.assessment.moduleId), getGetProgramQueryKey("solar-pv-tech")].forEach(queryKey => queryClient.invalidateQueries({ queryKey })); }, onError: () => toast({ title: "Recommendation failed", description: "The internal recommendation could not be recorded.", variant: "destructive" }) });
+    decisionMutation.mutate({ assessmentId, data: { learnerId, decision: enforceInternalRecommendation(decision, criticalFail), observation, criteria: detail.criteria.map(c => ({ criterionId: c.id, score: scores[c.id]!, observation: observations[c.id] || null, evidenceId: null })) } }, { onSuccess: () => { const recommendation = recommendationLabel(enforceInternalRecommendation(decision, criticalFail)); setDecisionHistory(current => [{ id: `${assessmentId}-${Date.now()}`, assessment: detail.assessment.name, recommendation, recordedAt: new Date().toLocaleString() }, ...current]); toast({ title: "Recommendation recorded", description: criticalFail ? "Critical criterion failure recorded. Readiness remains blocked." : "The internal evaluation recommendation has been recorded." }); closeFocusTargetRef.current = queueTitleRef.current; setSelectedAssessment(null); [getListAssessmentsQueryKey(), getListGapsQueryKey(), getGetLearnerDashboardQueryKey(), getGetLearnerJourneyQueryKey(), getGetLearnerLearningPlanQueryKey(), getGetLearnerReadinessQueryKey(), getGetCapabilityPassportQueryKey(), getGetAssessorDashboardQueryKey(), getGetAssessorQueueQueryKey(), getGetAssessmentQueryKey(assessmentId, assessmentParams), getGetModuleQueryKey(detail.assessment.moduleId), getGetProgramQueryKey("solar-pv-tech")].forEach(queryKey => queryClient.invalidateQueries({ queryKey })); }, onError: () => toast({ title: "Recommendation failed", description: "The internal recommendation could not be recorded.", variant: "destructive" }) });
   };
   if (isLoading) return <div className="h-full flex items-center justify-center"><Activity className="w-8 h-8 text-primary animate-pulse" /></div>;
   if (error || !dashboard) return <div className="text-destructive">Failed to load assessor dashboard.</div>;
@@ -48,12 +51,15 @@ export default function AssessorDesk() {
   const queue = prioritizeDecisionQueue(dashboard.recentActivity);
   return <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
     <div><h1 className="text-3xl font-bold tracking-tight">Internal Evaluation Center</h1><p className="text-muted-foreground mt-1 text-sm font-mono uppercase">ID: {dashboard.assessor.id} | {dashboard.assessor.name}</p></div>
-    <LearnerCondition owner="Internal Evaluator" />
+    <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm" data-testid="assessor-non-certification-notice">
+      <div className="flex items-center gap-2 font-semibold"><ShieldAlert className="h-4 w-4 text-amber-600" />Internal evaluation is not certification</div>
+      <p className="mt-1 text-muted-foreground">This workspace records evidence-informed readiness recommendations and blockers. It does not issue certification, licence, site access, or a final external clearance.</p>
+    </div>
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">{metrics.map(({ label, value, Icon, color }) => <Card key={label} className="border-border bg-card"><CardContent className="p-6"><div className="flex items-center justify-between pb-2"><p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">{label}</p><Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} /></div><div className={`text-3xl font-bold font-mono ${color}`}>{value}</div></CardContent></Card>)}</div>
     <Card className="cockpit-panel mt-6">
       <CardHeader className="gap-3">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle ref={queueTitleRef} tabIndex={-1} data-testid="decision-queue-title">Decision Queue</CardTitle>
+          <CardTitle ref={queueTitleRef} tabIndex={-1} data-testid="decision-queue-title">Assessor decision and reassessment queue</CardTitle>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <ShieldAlert className="h-4 w-4 text-destructive" />
             Safety-critical and gate-blocking work is shown first
@@ -85,7 +91,7 @@ export default function AssessorDesk() {
                   </TableCell>
                   <TableCell className="max-w-[220px] text-xs text-muted-foreground">{item.priority === "Critical" ? "Safety clearance and readiness gate remain blocked until resolved." : "Internal evaluation informs the learner readiness recommendation."}</TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" className="font-mono text-xs" onClick={event => openDecision(item.id, event.currentTarget)}>
+                    <Button size="sm" className="font-mono text-xs" data-testid={`button-decide-${item.id}`} onClick={event => openDecision(item, event.currentTarget)}>
                       REVIEW <ArrowRight className="w-3 h-3 ml-1" />
                     </Button>
                   </TableCell>
@@ -115,7 +121,7 @@ export default function AssessorDesk() {
                 <Badge variant="outline" className="font-mono text-[10px] uppercase bg-background">
                   {item.kind}
                 </Badge>
-                <Button size="sm" className="font-mono text-xs -mr-2" data-testid={`mobile-decide-${item.id}`} onClick={event => openDecision(item.id, event.currentTarget)}>
+                <Button size="sm" className="font-mono text-xs -mr-2" data-testid={`mobile-decide-${item.id}`} onClick={event => openDecision(item, event.currentTarget)}>
                   REVIEW <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
               </div>
@@ -129,7 +135,19 @@ export default function AssessorDesk() {
         </div>
       </CardContent>
     </Card>
-    <Dialog open={!!assessmentId} onOpenChange={open => !open && setAssessmentId(null)}>
+    <Card data-testid="assessor-handoff-context">
+      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ClipboardCheck className="h-4 w-4" />Readiness handoff context</CardTitle></CardHeader>
+      <CardContent className="grid gap-3 text-sm sm:grid-cols-3">
+        <div><strong>{dashboard.pendingEvidenceCount}</strong><p className="text-muted-foreground">Evidence under review — count only; evidence review remains a trainer responsibility.</p></div>
+        <div><strong>{dashboard.reassessmentCount}</strong><p className="text-muted-foreground">Reassessments requiring an internal decision.</p></div>
+        <div><strong>{dashboard.blockedGateCount}</strong><p className="text-muted-foreground">Readiness gates blocked; resolve through evidence, remediation, and reassessment.</p></div>
+      </CardContent>
+    </Card>
+    <Card data-testid="assessor-mutation-history">
+      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><History className="h-4 w-4" />Decision results this session</CardTitle></CardHeader>
+      <CardContent>{decisionHistory.length ? <ul className="space-y-2 text-sm">{decisionHistory.map(entry => <li key={entry.id} data-testid={`text-decision-result-${entry.id}`}><strong>{entry.recommendation}</strong> — {entry.assessment}<span className="text-muted-foreground"> · {entry.recordedAt}</span></li>)}</ul> : <p className="text-sm text-muted-foreground">No decision mutation has been recorded in this session. Stored attempt history is available when an assessment is opened.</p>}</CardContent>
+    </Card>
+    <Dialog open={!!selectedAssessment} onOpenChange={open => !open && setSelectedAssessment(null)}>
       <DialogContent
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
         onCloseAutoFocus={event => {
@@ -200,7 +218,7 @@ export default function AssessorDesk() {
             ))}
             <div>
               <label className="text-xs font-mono">OVERALL OBSERVATION</label>
-              <Textarea value={observation} onChange={e => setObservation(e.target.value)} placeholder="Record the recommendation rationale…" />
+            <Textarea value={observation} data-testid="input-assessor-observation" onChange={e => setObservation(e.target.value)} placeholder="Record the recommendation rationale…" />
             </div>
             <DecisionSummary
               requestedDecision={decision}
@@ -219,7 +237,7 @@ export default function AssessorDesk() {
           </div>
         )}
         <DialogFooter>
-          <Button onClick={submit} disabled={!detail || decisionMutation.isPending}>{decisionMutation.isPending ? "RECORDING..." : "RECORD RECOMMENDATION"}</Button>
+          <Button onClick={submit} disabled={!detail || decisionMutation.isPending} data-testid="button-record-assessor-recommendation">{decisionMutation.isPending ? "RECORDING..." : "RECORD RECOMMENDATION"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

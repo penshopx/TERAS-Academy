@@ -203,7 +203,7 @@ paths:
   /evidence:
     get:
       operationId: listEvidence
-      tags: [learner, trainer, assessor]
+      tags: [learner, assessor]
       summary: List learner evidence
       responses:
         "200":
@@ -242,7 +242,7 @@ paths:
   /assessments:
     get:
       operationId: listAssessments
-      tags: [learner, assessor]
+      tags: [learner]
       summary: List learner assessments
       responses:
         "200":
@@ -260,6 +260,11 @@ paths:
       summary: Get assessment criteria and results
       parameters:
         - $ref: "#/components/parameters/AssessmentId"
+        - name: learnerId
+          in: query
+          required: false
+          description: Required for assessor access to an assigned learner; learners may omit it and can only view their own record.
+          schema: { type: string }
       responses:
         "200":
           description: Assessment detail
@@ -1175,6 +1180,7 @@ x-pathway-selection-components:
     AssessorAssessmentDecisionInput:
       type: object
       properties:
+        learnerId: { type: string }
         decision:
           type: string
           enum: [Competent, Not competent]
@@ -1185,7 +1191,7 @@ x-pathway-selection-components:
           minItems: 1
           items:
             $ref: "#/components/schemas/AssessorCriterionInput"
-      required: [decision, observation, criteria]
+      required: [learnerId, decision, observation, criteria]
     AssessmentAttempt:
       type: object
       properties:
@@ -1297,13 +1303,14 @@ x-pathway-selection-components:
       properties:
         id: { type: string }
         kind: { type: string }
+        learnerId: { type: string }
         learnerName: { type: string }
         moduleName: { type: string }
         title: { type: string }
         status: { type: string }
         priority: { type: string }
         updatedAt: { type: string, format: date-time }
-      required: [id, kind, learnerName, moduleName, title, status, priority, updatedAt]
+      required: [id, kind, learnerId, learnerName, moduleName, title, status, priority, updatedAt]
     TrainerDashboard:
       type: object
       properties:
@@ -1318,7 +1325,30 @@ x-pathway-selection-components:
           type: array
           items:
             $ref: "#/components/schemas/ReviewQueueItem"
-      required: [trainer, assignedLearnerCount, pendingFeedbackCount, pendingEvidenceCount, activeRemediationCount, blockedLearnerCount, recentActivity]
+        reviewHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrainerReviewHistoryEvent"
+      required: [trainer, assignedLearnerCount, pendingFeedbackCount, pendingEvidenceCount, activeRemediationCount, blockedLearnerCount, recentActivity, reviewHistory]
+    TrainerReviewHistoryEvent:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [Evidence, Practice] }
+        learnerId: { type: string }
+        learnerName: { type: string }
+        pathwayId: { type: string }
+        pathwayName: { type: string }
+        subject: { type: string }
+        outcome: { type: string }
+        comment: { type: string }
+        quality:
+          anyOf:
+            - $ref: "#/components/schemas/EvidenceQuality"
+            - type: "null"
+        reviewer: { type: ["string", "null"] }
+        recordedAt: { type: string, format: date-time }
+      required: [id, kind, learnerId, learnerName, pathwayId, pathwayName, subject, outcome, comment, quality, reviewer, recordedAt]
     AssessorDashboard:
       type: object
       properties:
@@ -2554,6 +2584,7 @@ components:
     AssessorAssessmentDecisionInput:
       type: object
       properties:
+        learnerId: { type: string }
         decision:
           type: string
           enum: [Competent, Not competent]
@@ -2564,7 +2595,7 @@ components:
           minItems: 1
           items:
             $ref: "#/components/schemas/AssessorCriterionInput"
-      required: [decision, observation, criteria]
+      required: [learnerId, decision, observation, criteria]
     AssessmentAttempt:
       type: object
       properties:
@@ -2680,6 +2711,7 @@ components:
       properties:
         id: { type: string }
         kind: { type: string }
+        learnerId: { type: string }
         learnerName: { type: string }
         moduleName: { type: string }
         pathwayId: { type: string }
@@ -2688,7 +2720,7 @@ components:
         status: { type: string }
         priority: { type: string }
         updatedAt: { type: string, format: date-time }
-      required: [id, kind, learnerName, moduleName, pathwayId, pathwayName, title, status, priority, updatedAt]
+      required: [id, kind, learnerId, learnerName, moduleName, pathwayId, pathwayName, title, status, priority, updatedAt]
     TrainerDashboard:
       type: object
       properties:
@@ -2703,7 +2735,30 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ReviewQueueItem"
-      required: [trainer, assignedLearnerCount, pendingFeedbackCount, pendingEvidenceCount, activeRemediationCount, blockedLearnerCount, recentActivity]
+        reviewHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrainerReviewHistoryEvent"
+      required: [trainer, assignedLearnerCount, pendingFeedbackCount, pendingEvidenceCount, activeRemediationCount, blockedLearnerCount, recentActivity, reviewHistory]
+    TrainerReviewHistoryEvent:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [Evidence, Practice] }
+        learnerId: { type: string }
+        learnerName: { type: string }
+        pathwayId: { type: string }
+        pathwayName: { type: string }
+        subject: { type: string }
+        outcome: { type: string }
+        comment: { type: string }
+        quality:
+          anyOf:
+            - $ref: "#/components/schemas/EvidenceQuality"
+            - type: "null"
+        reviewer: { type: ["string", "null"] }
+        recordedAt: { type: string, format: date-time }
+      required: [id, kind, learnerId, learnerName, pathwayId, pathwayName, subject, outcome, comment, quality, reviewer, recordedAt]
     AssessorDashboard:
       type: object
       properties:

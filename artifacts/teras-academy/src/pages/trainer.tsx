@@ -3,7 +3,6 @@ import { Activity } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReviewQueue } from "@/components/trainer/review-queue";
 import { CourseAuthoring } from "@/components/trainer/authoring/course-authoring";
-import { LearnerCondition } from "@/components/learner-condition";
 
 export default function TrainerDesk() {
   const { data: dashboard, isLoading, error } = useGetTrainerDashboard();
@@ -13,7 +12,6 @@ export default function TrainerDesk() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <LearnerCondition owner="Trainer" />
       <Tabs defaultValue="queue" className="w-full">
         <TabsList className="grid w-[400px] grid-cols-2 mb-6 bg-black/40 border border-border/50">
           <TabsTrigger value="queue" className="font-mono text-xs tracking-wider uppercase data-[state=active]:bg-primary/20 data-[state=active]:text-primary">

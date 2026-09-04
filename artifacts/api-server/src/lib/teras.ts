@@ -15,6 +15,60 @@ export async function learnerContext(learnerId = DEMO_LEARNER) {
   if (!program || !pathway) throw new Error("Enrollment references missing catalogue records");
   return { enrollment, learner, program, pathway };
 }
+/** Current, active learner pathways explicitly assigned to a workspace actor.
+ * This is deliberately enrollment-based rather than derived from a default learner. */
+export async function workspaceAssignmentContexts(actorId: string, role: "trainer" | "assessor") {
+  const [enrollments, learners, programs, pathways, pathwayEvents] = await Promise.all([
+    db.select().from(enrollmentsTable).where(and(
+      eq(role === "trainer" ? enrollmentsTable.trainerId : enrollmentsTable.assessorId, actorId),
+      eq(enrollmentsTable.status, "active"),
+    )),
+    db.select().from(peopleTable),
+    db.select().from(programsTable),
+    db.select().from(pathwaysTable),
+    db.select().from(enrollmentPathwayEventsTable),
+  ]);
+  const learnerById = new Map(learners.map((learner) => [learner.id, learner]));
+  const programById = new Map(programs.map((program) => [program.id, program]));
+  const pathwayById = new Map(pathways.map((pathway) => [pathway.id, pathway]));
+  const latestPathwayEvent = new Map<string, typeof pathwayEvents[number]>();
+  for (const event of pathwayEvents) {
+    const current = latestPathwayEvent.get(event.enrollmentId);
+    if (!current || event.sequence > current.sequence ||
+      (event.sequence === current.sequence && event.createdAt > current.createdAt)) {
+      latestPathwayEvent.set(event.enrollmentId, event);
+    }
+  }
+  return enrollments.flatMap((enrollment) => {
+    const pathway = pathwayById.get(latestPathwayEvent.get(enrollment.id)?.pathwayId ?? enrollment.pathwayId);
+    const learner = learnerById.get(enrollment.learnerId);
+    const program = programById.get(enrollment.programId);
+    // Corrupt catalogue references must never broaden an actor's scope.
+    return learner && program && pathway && pathway.programId === enrollment.programId
+      ? [{ enrollment, learner, program, pathway }]
+      : [];
+  });
+}
+/** Resolves a specific active learner/pathway pair without letting the most
+ * recently-created enrollment substitute a different pathway. */
+export async function activeLearnerPathwayContext(learnerId: string, pathwayId: string) {
+  const contexts = await Promise.all(
+    (await db.select().from(enrollmentsTable).where(and(eq(enrollmentsTable.learnerId, learnerId), eq(enrollmentsTable.status, "active"))))
+      .map(async (enrollment) => {
+        const [learner, program, pathway, pathwayEvent] = await Promise.all([
+          db.select().from(peopleTable).where(eq(peopleTable.id, learnerId)).then((rows) => rows[0]),
+          db.select().from(programsTable).where(eq(programsTable.id, enrollment.programId)).then((rows) => rows[0]),
+          db.select().from(pathwaysTable).where(eq(pathwaysTable.id, pathwayId)).then((rows) => rows[0]),
+          db.select().from(enrollmentPathwayEventsTable).where(eq(enrollmentPathwayEventsTable.enrollmentId, enrollment.id)).orderBy(desc(enrollmentPathwayEventsTable.sequence), desc(enrollmentPathwayEventsTable.createdAt), desc(enrollmentPathwayEventsTable.id)).limit(1).then((rows) => rows[0]),
+        ]);
+        const activePathwayId = pathwayEvent?.pathwayId ?? enrollment.pathwayId;
+        return learner && program && pathway && activePathwayId === pathwayId && pathway.programId === enrollment.programId
+          ? { enrollment, learner, program, pathway }
+          : null;
+      }),
+  );
+  return contexts.find((context) => context !== null) ?? null;
+}
 export async function pathwaySummary(pathwayId: string) { const { paths, modules, gates } = await catalogue(); const pathway = paths.find((item) => item.id === pathwayId); if (!pathway) return null; const pathwayGates = gates.filter((gate) => gate.pathwayId === pathwayId).sort((a, b) => a.sequence - b.sequence).map(({ id, code, name, sequence, requirement }) => ({ id, code, name, sequence, requirement })); return { ...pathway, moduleCount: modules.filter((module) => module.pathwayId === pathwayId).length, gateCount: pathwayGates.length, gates: pathwayGates }; }
 export async function progressByModule(learnerId = DEMO_LEARNER, pathwayId?: string) { const activePathwayId = pathwayId ?? (await learnerContext(learnerId)).pathway.id; const [attempts, assessments, practiceAttempts, evidence] = await Promise.all([db.select().from(assessmentAttemptsTable).where(and(eq(assessmentAttemptsTable.learnerId, learnerId), eq(assessmentAttemptsTable.pathwayId, activePathwayId))), db.select().from(assessmentsTable), db.select().from(practiceAttemptsTable).where(and(eq(practiceAttemptsTable.learnerId, learnerId), eq(practiceAttemptsTable.pathwayId, activePathwayId))), db.select().from(evidenceTable).where(and(eq(evidenceTable.learnerId, learnerId), eq(evidenceTable.pathwayId, activePathwayId)))]); const assessmentModules = new Map(assessments.map((assessment) => [assessment.id, assessment.moduleId])); const completed = new Set(attempts.filter((attempt) => attempt.decision === "Competent").map((attempt) => assessmentModules.get(attempt.assessmentId))); const practiced = new Set(practiceAttempts.map((attempt) => attempt.taskId.replace(/^task-/, ""))); const evidenced = new Set(evidence.map((item) => item.moduleId)); return (id: string) => completed.has(id) ? { progress: 100, status: "Complete" } : evidenced.has(id) ? { progress: 60, status: "In progress" } : practiced.has(id) ? { progress: 30, status: "In progress" } : { progress: 0, status: "Not started" }; }
 export async function evidenceRecords(learnerId = DEMO_LEARNER, pathwayId?: string) { const activePathwayId = pathwayId ?? (await learnerContext(learnerId)).pathway.id; const [evidence, reviews, modules, people, links] = await Promise.all([db.select().from(evidenceTable), db.select().from(evidenceReviewsTable), db.select().from(modulesTable), db.select().from(peopleTable), db.select().from(learningRecordLinksTable).where(and(eq(learningRecordLinksTable.learnerId, learnerId), eq(learningRecordLinksTable.pathwayId, activePathwayId)))]); const reviewMap = latest(reviews, (review) => review.evidenceId), moduleMap = new Map(modules.map((module) => [module.id, module])), personMap = new Map(people.map((person) => [person.id, person])), linkMap = latest(links.filter((link): link is typeof link & { evidenceId: string } => Boolean(link.evidenceId)), (link) => link.evidenceId); return evidence.filter((item) => item.learnerId === learnerId && item.pathwayId === activePathwayId).map((item) => { const review = reviewMap.get(item.id), module = moduleMap.get(item.moduleId), link = linkMap.get(item.id); return { id: item.id, title: item.title, type: item.type, moduleId: item.moduleId, moduleName: module?.name ?? "Unknown module", taskId: item.taskId, pathwayId: item.pathwayId, sourceActivityId: link?.activityId ?? null, practiceAttemptId: link?.practiceAttemptId ?? null, description: item.description, status: review?.status ?? "Under review", submittedAt: item.createdAt, reviewer: review?.reviewerId ? personMap.get(review.reviewerId)?.name ?? null : null, reviewerComment: review?.comment ?? null, fileName: item.fileName, quality: review?.quality ?? { valid: false, relevant: false, sufficient: false, traceable: false } }; }); }

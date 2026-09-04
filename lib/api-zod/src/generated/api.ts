@@ -513,6 +513,10 @@ export const GetAssessmentParams = zod.object({
   "assessmentId": zod.coerce.string()
 })
 
+export const GetAssessmentQueryParams = zod.object({
+  "learnerId": zod.coerce.string().optional().describe('Required for assessor access to an assigned learner; learners may omit it and can only view their own record.')
+})
+
 export const getAssessmentResponseAssessmentScoreMin = 0;
 export const getAssessmentResponseAssessmentScoreMax = 100;
 
@@ -786,6 +790,7 @@ export const GetTrainerDashboardResponse = zod.object({
   "recentActivity": zod.array(zod.object({
   "id": zod.string(),
   "kind": zod.string(),
+  "learnerId": zod.string(),
   "learnerName": zod.string(),
   "moduleName": zod.string(),
   "pathwayId": zod.string(),
@@ -794,6 +799,25 @@ export const GetTrainerDashboardResponse = zod.object({
   "status": zod.string(),
   "priority": zod.string(),
   "updatedAt": zod.coerce.date()
+})),
+  "reviewHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['Evidence', 'Practice']),
+  "learnerId": zod.string(),
+  "learnerName": zod.string(),
+  "pathwayId": zod.string(),
+  "pathwayName": zod.string(),
+  "subject": zod.string(),
+  "outcome": zod.string(),
+  "comment": zod.string(),
+  "quality": zod.union([zod.object({
+  "valid": zod.boolean(),
+  "relevant": zod.boolean(),
+  "sufficient": zod.boolean(),
+  "traceable": zod.boolean()
+}),zod.null()]),
+  "reviewer": zod.string().nullable(),
+  "recordedAt": zod.coerce.date()
 }))
 })
 
@@ -804,6 +828,7 @@ export const GetTrainerDashboardResponse = zod.object({
 export const GetTrainerReviewQueueResponseItem = zod.object({
   "id": zod.string(),
   "kind": zod.string(),
+  "learnerId": zod.string(),
   "learnerName": zod.string(),
   "moduleName": zod.string(),
   "pathwayId": zod.string(),
@@ -908,6 +933,7 @@ export const GetAssessorDashboardResponse = zod.object({
   "recentActivity": zod.array(zod.object({
   "id": zod.string(),
   "kind": zod.string(),
+  "learnerId": zod.string(),
   "learnerName": zod.string(),
   "moduleName": zod.string(),
   "pathwayId": zod.string(),
@@ -926,6 +952,7 @@ export const GetAssessorDashboardResponse = zod.object({
 export const GetAssessorQueueResponseItem = zod.object({
   "id": zod.string(),
   "kind": zod.string(),
+  "learnerId": zod.string(),
   "learnerName": zod.string(),
   "moduleName": zod.string(),
   "pathwayId": zod.string(),
@@ -952,6 +979,7 @@ export const submitAssessmentDecisionBodyCriteriaItemScoreMax = 3;
 
 
 export const SubmitAssessmentDecisionBody = zod.object({
+  "learnerId": zod.string(),
   "decision": zod.enum(['Competent', 'Not competent']),
   "observation": zod.string(),
   "criteria": zod.array(zod.object({

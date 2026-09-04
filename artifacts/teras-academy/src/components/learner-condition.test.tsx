@@ -119,12 +119,10 @@ for (const failedSource of ["dashboard", "readiness"] as const) {
   });
 }
 
-test("all authenticated role pages include the canonical condition panel", async () => {
+test("learner-owned pages include the canonical condition panel", async () => {
   const routes = [
     ["dashboard.tsx", "Learner"],
     ["readiness.tsx", "Learner"],
-    ["trainer.tsx", "Trainer"],
-    ["assessor.tsx", "Internal Evaluator"],
     ["passport.tsx", "Learner"],
   ] as const;
 
@@ -135,4 +133,12 @@ test("all authenticated role pages include the canonical condition panel", async
       assert.match(source, new RegExp(`<LearnerCondition\\s+owner="${owner}"\\s*\\/>`));
     }),
   );
+});
+
+test("multi-learner staff desks do not request a single learner-only condition", async () => {
+  const routes = ["trainer.tsx", "assessor.tsx"] as const;
+  await Promise.all(routes.map(async (file) => {
+    const source = await readFile(new URL(`../pages/${file}`, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /LearnerCondition/);
+  }));
 });

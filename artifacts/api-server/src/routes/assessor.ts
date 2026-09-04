@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import {
   GetAssessmentParams,
+  GetAssessmentQueryParams,
   GetAssessmentResponse,
   GetAssessorDashboardResponse,
   GetAssessorQueueResponse,
@@ -15,6 +16,7 @@ import {
   assessmentsTable,
   criterionObservationsTable,
   db,
+  evidenceTable,
   gapEventsTable,
   gapsTable,
   modulesTable,
@@ -28,12 +30,13 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import {
   assessmentSummary,
-  DEMO_LEARNER,
+  activeLearnerPathwayContext,
   evidenceRecords,
   gapRecords,
   learnerContext,
+  workspaceAssignmentContexts,
 } from "../lib/teras";
-import { authorizeLearningActor, authorizeWorkspaceRole, type LearnerContext } from "../lib/authorization";
+import { authorizeLearner, authorizeLearningActor, authorizeWorkspaceRole, type LearnerContext } from "../lib/authorization";
 import { enforceSafetyDecision } from "../lib/safety";
 
 const router: IRouter = Router();
@@ -119,9 +122,9 @@ async function activeAssessments(requestContext?: LearnerContext) {
 
 router.get("/assessments", async (req, res): Promise<void> => {
   req.log.info("Listing assessments");
-  const actor = await authorizeLearningActor(req, res);
-  if (!actor) return;
-  const context = await learnerContext(actor.role === "learner" ? actor.id : DEMO_LEARNER);
+  const learnerId = await authorizeLearner(req, res);
+  if (!learnerId) return;
+  const context = await learnerContext(learnerId);
   const { summaries } = await activeAssessments(context);
   res.json(ListAssessmentsResponse.parse(summaries));
 });
@@ -132,39 +135,77 @@ router.get("/assessments/:assessmentId", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const query = GetAssessmentQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: query.error.message });
+    return;
+  }
   const [assessment] = await db
     .select()
     .from(assessmentsTable)
     .where(eq(assessmentsTable.id, parsed.data.assessmentId));
   const actor = await authorizeLearningActor(req, res);
   if (!actor) return;
-  const context = await learnerContext(actor.role === "learner" ? actor.id : DEMO_LEARNER);
+  if (actor.role === "trainer") {
+    res.status(403).json({ error: "Trainers are not authorized to view assessment detail" });
+    return;
+  }
   const [module] = assessment
     ? await db.select().from(modulesTable).where(eq(modulesTable.id, assessment.moduleId))
     : [];
-  if (!assessment || module?.pathwayId !== context.pathway.id) {
+  if (!assessment || !module) {
     res.status(404).json({ error: "Assessment not found for the enrolled pathway" });
+    return;
+  }
+  if (actor.role === "learner" && query.data.learnerId && query.data.learnerId !== actor.id) {
+    res.status(403).json({ error: "Learners may only view their own assessments" });
+    return;
+  }
+  const requestedLearnerId = actor.role === "learner" ? actor.id : query.data.learnerId;
+  if (!requestedLearnerId) {
+    res.status(400).json({ error: "learnerId is required for assessor assessment detail" });
+    return;
+  }
+  const contexts = actor.role === "learner"
+    ? [await activeLearnerPathwayContext(requestedLearnerId, module.pathwayId)]
+    : await workspaceAssignmentContexts(actor.id, actor.role);
+  const context = contexts.find((item) => item &&
+    item.learner.id === requestedLearnerId &&
+    item.program.id === module.programId &&
+    item.pathway.id === module.pathwayId,
+  );
+  if (!context) {
+    res.status(403).json({ error: "Assessment is outside your active assigned learner pathway" });
     return;
   }
   res.json(GetAssessmentResponse.parse(await assessmentDetail(assessment, context)));
 });
 
+async function assignedAssessments(assessorId: string) {
+  const contexts = await workspaceAssignmentContexts(assessorId, "assessor");
+  const [result, criteria] = await Promise.all([
+    Promise.all(contexts.map((context) => activeAssessments(context))),
+    db.select().from(assessmentCriteriaTable),
+  ]);
+  const actionableAssessmentIds = new Set(criteria.map((criterion) => criterion.assessmentId));
+  const actionable = result.map((item) => ({
+    ...item,
+    actionableSummaries: item.summaries.filter((summary) => actionableAssessmentIds.has(summary.id)),
+  }));
+  return { contexts, result: actionable };
+}
+
 router.get("/assessor/queue", async (req, res): Promise<void> => {
   const assessorId = await authorizeWorkspaceRole(req, res, "assessor");
   if (!assessorId) return;
-  const { context, pathwayModules, summaries } = await activeAssessments();
-  if (context.enrollment.assessorId !== assessorId) {
-    res.status(403).json({ error: "You are not assigned to this learner enrollment" });
-    return;
-  }
   res.json(
     GetAssessorQueueResponse.parse(
-      summaries
+      (await assignedAssessments(assessorId)).result.flatMap(({ context, pathwayModules, actionableSummaries }) => actionableSummaries
         .filter((summary) => summary.status !== "Completed" || summary.criticalFailure)
         .map((summary) => ({
           id: summary.id,
           kind: "Assessment",
-          learnerName: context.learner.name,
+          learnerId: context.learner.id, learnerName: context.learner.name,
           moduleName:
             pathwayModules.find((module) => module.id === summary.moduleId)?.name ?? "Module",
           pathwayId: context.pathway.id,
@@ -173,7 +214,7 @@ router.get("/assessor/queue", async (req, res): Promise<void> => {
           status: summary.status,
           priority: summary.criticalFailure ? "Critical" : "Normal",
           updatedAt: new Date(),
-        })),
+        }))),
     ),
   );
 });
@@ -181,25 +222,21 @@ router.get("/assessor/queue", async (req, res): Promise<void> => {
 router.get("/assessor/dashboard", async (req, res): Promise<void> => {
   const assessorId = await authorizeWorkspaceRole(req, res, "assessor");
   if (!assessorId) return;
-  const [{ context, pathwayModules, summaries }, evidence, gaps] = await Promise.all([
-    activeAssessments(),
-    evidenceRecords(),
-    gapRecords(),
-  ]);
-  if (context.enrollment.assessorId !== assessorId) {
-    res.status(403).json({ error: "You are not assigned to this learner enrollment" });
-    return;
-  }
+  const { contexts, result } = await assignedAssessments(assessorId);
+  const scoped = await Promise.all(contexts.map(async (context) => ({
+    evidence: await evidenceRecords(context.learner.id, context.pathway.id),
+    gaps: await gapRecords(context.learner.id, context.pathway.id),
+  })));
   const [assessor] = await db
     .select()
     .from(peopleTable)
-    .where(eq(peopleTable.id, context.enrollment.assessorId!));
-  const recentActivity = summaries
+    .where(eq(peopleTable.id, assessorId));
+  const recentActivity = result.flatMap(({ context, pathwayModules, actionableSummaries }) => actionableSummaries
     .filter((summary) => summary.status !== "Completed")
     .map((summary) => ({
       id: summary.id,
       kind: "Assessment",
-      learnerName: context.learner.name,
+      learnerId: context.learner.id, learnerName: context.learner.name,
       moduleName:
         pathwayModules.find((module) => module.id === summary.moduleId)?.name ?? "Module",
       pathwayId: context.pathway.id,
@@ -208,18 +245,14 @@ router.get("/assessor/dashboard", async (req, res): Promise<void> => {
       status: summary.status,
       priority: summary.criticalFailure ? "Critical" : "Normal",
       updatedAt: new Date(),
-    }));
+    })));
   res.json(
     GetAssessorDashboardResponse.parse({
       assessor,
-      pendingAssessmentCount: summaries.filter(
-        (summary) => summary.status !== "Completed",
-      ).length,
-      pendingEvidenceCount: evidence.filter((item) => item.status === "Under review").length,
-      reassessmentCount: summaries.filter((summary) => summary.criticalFailure).length,
-      blockedGateCount: gaps.filter(
-        (gap) => gap.status !== "Resolved" && gap.severity === "Critical",
-      ).length,
+      pendingAssessmentCount: result.flatMap((item) => item.actionableSummaries).filter((summary) => summary.status !== "Completed").length,
+      pendingEvidenceCount: scoped.flatMap((item) => item.evidence).filter((item) => item.status === "Under review").length,
+      reassessmentCount: result.flatMap((item) => item.actionableSummaries).filter((summary) => summary.criticalFailure).length,
+      blockedGateCount: scoped.flatMap((item) => item.gaps).filter((gap) => gap.status !== "Resolved" && gap.severity === "Critical").length,
       recentActivity,
     }),
   );
@@ -251,25 +284,21 @@ router.post(
       res.status(404).json({ error: "Assessment not found" });
       return;
     }
-    const context = await learnerContext();
-    if (context.enrollment.assessorId !== assessorId) {
-      res.status(403).json({ error: "You are not assigned to this active learner pathway" });
-      return;
-    }
     const [assessmentModule] = await db
       .select()
       .from(modulesTable)
       .where(eq(modulesTable.id, assessment.moduleId));
-    if (
-      !assessmentModule ||
-      assessmentModule.programId !== context.enrollment.programId ||
-      assessmentModule.pathwayId !== context.pathway.id
-    ) {
+    const contexts = await workspaceAssignmentContexts(assessorId, "assessor");
+    const context = assessmentModule ? contexts.find((item) =>
+      item.learner.id === body.data.learnerId &&
+      item.program.id === assessmentModule.programId && item.pathway.id === assessmentModule.pathwayId,
+    ) : undefined;
+    if (!assessmentModule || !context) {
       req.log.warn(
-        { assessmentId: assessment.id, programId: context.enrollment.programId },
+        { assessmentId: assessment.id, assessorId },
         "Assessment is outside the learner enrollment",
       );
-      res.status(403).json({ error: "Assessment is outside the learner's active pathway" });
+      res.status(403).json({ error: "Assessment is outside your assigned active learner pathway" });
       return;
     }
 
@@ -285,6 +314,23 @@ router.post(
     ) {
       res.status(400).json({ error: "A score is required for every assessment criterion" });
       return;
+    }
+    const evidenceIds = body.data.criteria.flatMap((criterion) => criterion.evidenceId ? [criterion.evidenceId] : []);
+    if (new Set(evidenceIds).size !== evidenceIds.length) {
+      res.status(400).json({ error: "An evidence item may support only one assessment criterion per decision" });
+      return;
+    }
+    if (evidenceIds.length) {
+      const referencedEvidence = await Promise.all(evidenceIds.map(async (evidenceId) =>
+        (await db.select().from(evidenceTable).where(eq(evidenceTable.id, evidenceId)))[0],
+      ));
+      if (referencedEvidence.some((evidence) => !evidence ||
+        evidence.learnerId !== context.learner.id ||
+        evidence.pathwayId !== context.pathway.id ||
+        evidence.moduleId !== assessment.moduleId)) {
+        res.status(400).json({ error: "Assessment evidence references must belong to this learner, pathway, and module" });
+        return;
+      }
     }
     const { decision, criticalFailure } = enforceSafetyDecision(
       criteria.map((criterion) => ({

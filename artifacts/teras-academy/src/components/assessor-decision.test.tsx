@@ -103,3 +103,12 @@ test("mobile queue controls expose item-specific browser selectors", async () =>
   assert.match(source, /data-testid="decision-queue-title"/);
   assert.match(source, /decisionScrollYRef\.current = window\.scrollY/);
 });
+
+test("assessor detail and decision stay scoped to the selected queue learner", async () => {
+  const source = await readFile(new URL("../pages/assessor.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /setSelectedAssessment\(\{ assessmentId: item\.id, learnerId: item\.learnerId \}\)/);
+  assert.match(source, /useGetAssessment\(assessmentId, assessmentParams,/);
+  assert.match(source, /getGetAssessmentQueryKey\(assessmentId, assessmentParams\)/);
+  assert.match(source, /data: \{ learnerId, decision:/);
+});

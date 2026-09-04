@@ -126,8 +126,9 @@ async function run() {
     await post("/learner/pathway", "learner", { pathwayId: "path-b" }, 201);
     await post("/learner/pathway", "learner", { pathwayId: "path-a" }, 201);
 
-    const m03 = await request<AssessmentDetail>("/assessments/assessment-m03", "assessor");
+    const m03 = await request<AssessmentDetail>("/assessments/assessment-m03?learnerId=learner-demo", "assessor");
     await post("/assessor/assessments/assessment-m03/decision", "learner", {
+      learnerId: "learner-demo",
       decision: "Competent", observation: marker,
       criteria: m03.criteria.map((criterion) => ({ criterionId: criterion.id, score: 3, observation: "Must not be accepted.", evidenceId: null })),
     }, 403);
@@ -146,6 +147,7 @@ async function run() {
       .where(eq(evidenceReviewsTable.evidenceId, "evidence-m07"));
     assert(reviewsAfterUnauthorizedReview.length === 1, "Unauthorized assessor review mutated evidence history");
     await post("/assessor/assessments/assessment-m03/decision", "assessor", {
+      learnerId: "learner-demo",
       decision: "Competent", observation: marker,
       criteria: m03.criteria.map((criterion, index) => ({
         criterionId: criterion.id,
@@ -154,7 +156,7 @@ async function run() {
         evidenceId: null,
       })),
     }, 201);
-    const failedM03 = await request<AssessmentDetail>("/assessments/assessment-m03", "assessor");
+    const failedM03 = await request<AssessmentDetail>("/assessments/assessment-m03?learnerId=learner-demo", "assessor");
     assert(
       failedM03.assessment.score === 67 &&
         failedM03.assessment.criticalFailure &&
@@ -164,10 +166,11 @@ async function run() {
     const blocked = await request<Readiness>("/readiness", "learner");
     assert(blocked.status === "Blocked" && blocked.blockers.some((blocker) => blocker.includes("Critical safety failure in M03")), "M03 critical failure did not block readiness");
 
-    const m07 = await request<AssessmentDetail>("/assessments/assessment-m07", "assessor");
+    const m07 = await request<AssessmentDetail>("/assessments/assessment-m07?learnerId=learner-demo", "assessor");
     await post("/assessor/assessments/assessment-m07/decision", "assessor", {
+      learnerId: "learner-demo",
       decision: "Competent", observation: `${marker}: M07 technical readiness`,
-      criteria: m07.criteria.map((criterion) => ({ criterionId: criterion.id, score: 3, observation: "Commissioning criterion met.", evidenceId: "evidence-m07" })),
+      criteria: m07.criteria.map((criterion, index) => ({ criterionId: criterion.id, score: 3, observation: "Commissioning criterion met.", evidenceId: index === 0 ? "evidence-m07" : null })),
     }, 201);
     const missingM07Evidence = await request<Readiness>("/readiness", "learner");
     assert(
@@ -232,10 +235,11 @@ async function run() {
     assert(stillBlocked.status === "Blocked" && stillBlocked.blockers.some((blocker) => blocker.includes("Critical safety failure in M03")), "Completing remediation cleared unresolved M03 critical failure");
 
     await post("/assessor/assessments/assessment-m03/decision", "assessor", {
+      learnerId: "learner-demo",
       decision: "Competent", observation: `${marker}: passing reassessment`,
-      criteria: m03.criteria.map((criterion) => ({ criterionId: criterion.id, score: 3, observation: "Safe reassessment.", evidenceId: "evidence-m03" })),
+      criteria: m03.criteria.map((criterion, index) => ({ criterionId: criterion.id, score: 3, observation: "Safe reassessment.", evidenceId: index === 0 ? "evidence-m03" : null })),
     }, 201);
-    const reassessed = await request<AssessmentDetail>("/assessments/assessment-m03", "assessor");
+    const reassessed = await request<AssessmentDetail>("/assessments/assessment-m03?learnerId=learner-demo", "assessor");
     assert(!reassessed.assessment.criticalFailure && reassessed.attempts.length === 3, "Passing M03 reassessment did not preserve attempt history or clear latest critical failure");
     const m03History = await db.select().from(assessmentAttemptsTable).where(eq(assessmentAttemptsTable.assessmentId, "assessment-m03"));
     assert(m03History.length === 3 && m03History.some((attempt) => attempt.decision === "Not competent") && m03History.some((attempt) => attempt.decision === "Competent" && attempt.decisionRationale === `${marker}: passing reassessment`), "Assessment attempt history was not immutable in the database");

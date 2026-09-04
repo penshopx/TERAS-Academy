@@ -9,6 +9,7 @@ import type { AssessorAssessmentDecisionInputDecision } from './assessorAssessme
 import type { AssessorCriterionInput } from './assessorCriterionInput';
 
 export interface AssessorAssessmentDecisionInput {
+  learnerId: string;
   decision: AssessorAssessmentDecisionInputDecision;
   observation: string;
   /** @minItems 1 */

@@ -161,6 +161,7 @@ async function completePathBModule(moduleId: string, seedEvidence = true) {
   await post(
     `/assessor/assessments/assessment-${moduleId}/decision`,
     {
+      learnerId: "learner-demo",
       decision: "Competent",
       observation: `Path B ${moduleId} gate verification`,
       criteria: detail.criteria.map((criterion) => ({
@@ -225,6 +226,7 @@ async function run() {
   await post(
     "/assessor/assessments/assessment-b01/decision",
     {
+      learnerId: "learner-demo",
       decision: "Competent",
       observation: "Path B integration verification",
       criteria: detail.criteria.map((criterion) => ({
@@ -312,6 +314,7 @@ async function run() {
   await post(
     "/assessor/assessments/assessment-b02/decision",
     {
+      learnerId: "learner-demo",
       decision: "Competent",
       observation: "Partial B2 verification",
       criteria: b02Detail.criteria.map((criterion) => ({

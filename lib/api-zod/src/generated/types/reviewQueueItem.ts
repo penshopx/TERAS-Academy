@@ -9,6 +9,7 @@
 export interface ReviewQueueItem {
   id: string;
   kind: string;
+  learnerId: string;
   learnerName: string;
   moduleName: string;
   pathwayId: string;

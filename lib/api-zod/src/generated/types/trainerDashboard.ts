@@ -7,6 +7,7 @@
  */
 import type { LearnerProfile } from './learnerProfile';
 import type { ReviewQueueItem } from './reviewQueueItem';
+import type { TrainerReviewHistoryEvent } from './trainerReviewHistoryEvent';
 
 export interface TrainerDashboard {
   trainer: LearnerProfile;
@@ -16,4 +17,5 @@ export interface TrainerDashboard {
   activeRemediationCount: number;
   blockedLearnerCount: number;
   recentActivity: ReviewQueueItem[];
+  reviewHistory: TrainerReviewHistoryEvent[];
 }
