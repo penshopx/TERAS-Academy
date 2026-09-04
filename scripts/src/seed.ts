@@ -1,8 +1,9 @@
 import { db, peopleTable, programsTable, pathwaysTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable, coursesTable, courseModulesTable, lessonsTable, learningActivitiesTable, contentResourcesTable, learningOutcomesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-const insert = async (table: any, values: any[]) => db.insert(table).values(values).onConflictDoNothing();
 const now = new Date("2025-02-14T10:00:00.000Z");
+const includeDemoFixtures = process.argv.includes("--demo") || process.env.TERAS_ENABLE_DEMO_FIXTURES === "1";
+const productionLike = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT === "1";
 const modules = [
   ["m01","path-a","M01","PV foundations","System fundamentals"], ["m02","path-a","M02","Site assessment","Survey and shading"],
   ["m03","path-a","M03","Electrical safety","Safe isolation and verification"], ["m04","path-a","M04","Array design","PV array configuration"],
@@ -22,18 +23,25 @@ const pathBModules = [
   ["b08","path-b","B08","Design pack","Produce a traceable client-ready design pack"],
 ];
 async function seed(): Promise<void> {
-  await insert(peopleTable, [
+  if (productionLike && includeDemoFixtures) {
+    throw new Error("Refusing to seed TERAS demo learner fixtures in a production environment");
+  }
+  await db.transaction(async tx => {
+  const insert = async (table: any, values: any[]) => tx.insert(table).values(values).onConflictDoNothing();
+  if (includeDemoFixtures) {
+    await insert(peopleTable, [
     { id:"learner-demo", name:"Demo Learner", initials:"DL", email:"learner@teras.academy", role:"Solar PV Technician", organization:"TERAS Academy" },
     { id:"trainer-aria", name:"Aria Trainer", initials:"AT", role:"Trainer", organization:"TERAS Academy" },
     { id:"assessor-sam", name:"Sam Assessor", initials:"SA", role:"Assessor", organization:"TERAS Academy" },
-  ]);
-  await db.update(peopleTable).set({email:"learner@teras.academy"}).where(eq(peopleTable.id,"learner-demo"));
+    ]);
+    await tx.update(peopleTable).set({email:"learner@teras.academy"}).where(eq(peopleTable.id,"learner-demo"));
+  }
   await insert(programsTable, [{ id:"solar-pv-tech", domain:"Renewable Energy", name:"Solar PV Technician", description:"Capability pathway for safe residential Solar PV installation.", status:"Active" }]);
   await insert(pathwaysTable, [
     {id:"path-a",programId:"solar-pv-tech",name:"Path A — Installation",type:"Primary",outcome:"Install and commission residential PV systems"},
     {id:"path-b",programId:"solar-pv-tech",name:"Path B — Design",type:"Operational",outcome:"Design, model, and assure residential PV systems"},
   ]);
-  await db.update(pathwaysTable).set({type:"Operational",outcome:"Design, model, and assure residential PV systems"}).where(eq(pathwaysTable.id,"path-b"));
+  await tx.update(pathwaysTable).set({type:"Operational",outcome:"Design, model, and assure residential PV systems"}).where(eq(pathwaysTable.id,"path-b"));
   await insert(modulesTable, [...modules, ...pathBModules].map(([id, pathwayId, code, name, capability], i) => ({id, programId:"solar-pv-tech", pathwayId, sequence:i < modules.length ? i+1 : i - modules.length + 1, code, name, capability, evidence:`${code} practical evidence`, learningOutcomes:[`Apply ${name.toLowerCase()} procedures`], theory:[`${name} guide`]})));
   await insert(coursesTable, [
     {id:"course-solar-installation",programId:"solar-pv-tech",pathwayId:"path-a",code:"SPV-INSTALL",title:"Solar PV Installation Learning Core",description:"Learning preparation linked to the existing installation capability pathway.",status:"PUBLISHED",sequence:1},
@@ -63,7 +71,9 @@ async function seed(): Promise<void> {
   await insert(evidenceRequirementsTable, [...modules, ...pathBModules].map(([id, pathwayId, code, name]) => ({id:`req-${id}`,moduleId:id,code:`EV-${code}`,name:`${name} evidence`,description:`Traceable evidence for ${name}.`,allowedTypes:pathwayId === "path-b" ? ["Design brief","Calculation","Drawing","Report"] : ["Photo","Checklist","Report"]})));
   const assessmentGates: Record<string, string> = {m03:"G1",m07:"G2",b01:"B1",b02:"B2",b03:"B2",b04:"B2",b05:"B2",b06:"B2",b07:"B3",b08:"B4"};
   await insert(assessmentsTable, [...modules, ...pathBModules].map(([id, pathwayId, code]) => ({id:`assessment-${id}`,moduleId:id,name:`${code} ${pathwayId === "path-b" ? "design assessment" : "practical assessment"}`,gateCode:assessmentGates[id]})));
-  await Promise.all(Object.entries(assessmentGates).map(([moduleId,gateCode])=>db.update(assessmentsTable).set({gateCode}).where(eq(assessmentsTable.id,`assessment-${moduleId}`))));
+  for (const [moduleId, gateCode] of Object.entries(assessmentGates)) {
+    await tx.update(assessmentsTable).set({ gateCode }).where(eq(assessmentsTable.id, `assessment-${moduleId}`));
+  }
   await insert(assessmentCriteriaTable, [
     {id:"crit-m03-isolation",assessmentId:"assessment-m03",code:"SAFE-01",label:"Proves safe isolation",layer:"Safety",critical:true},
     {id:"crit-m03-test",assessmentId:"assessment-m03",code:"SAFE-02",label:"Selects and proves test equipment",layer:"Safety",critical:true},
@@ -86,6 +96,7 @@ async function seed(): Promise<void> {
     {id:"crit-b08-pack",assessmentId:"assessment-b08",code:"DES-PACK-01",label:"Produces a complete design pack",layer:"Evidence",critical:false},
     {id:"crit-b08-trace",assessmentId:"assessment-b08",code:"DES-PACK-02",label:"Maintains traceability from brief to handover",layer:"Assurance",critical:false},
   ]);
+  if (includeDemoFixtures) {
   await insert(enrollmentsTable, [{id:"enrol-demo",learnerId:"learner-demo",programId:"solar-pv-tech",pathwayId:"path-a",trainerId:"trainer-aria",assessorId:"assessor-sam"}]);
   await insert(evidenceTable, [
     {id:"evidence-m03",learnerId:"learner-demo",pathwayId:"path-a",moduleId:"m03",taskId:"task-m03",title:"Safe isolation checklist",type:"Checklist",description:"Recorded safe isolation and proving sequence.",fileName:"m03-safe-isolation.pdf",createdAt:now},
@@ -105,6 +116,7 @@ async function seed(): Promise<void> {
   await insert(remediationPlansTable, [{id:"rem-m07",gapId:"gap-m07",title:"Commissioning record reinforcement",description:"Review and resubmit a complete commissioning record.",dueLabel:"This week"}]);
   await insert(remediationActivitiesTable, [{id:"rem-act-m07",planId:"rem-m07",title:"Review commissioning checklist",description:"Work through the annotated checklist with trainer.",type:"Coaching"}]);
   await insert(remediationEventsTable, [{id:"rem-event-m07",activityId:"rem-act-m07",status:"Not started"}]);
+  }
   await insert(readinessGatesTable, [
     {id:"gate-g1",programId:"solar-pv-tech",pathwayId:"path-a",sequence:1,code:"G1",name:"Safety foundation",requirement:"Pass critical M03 safety criteria.",assessmentMode:"Mapped",evidenceMode:"None"},
     {id:"gate-g2",programId:"solar-pv-tech",pathwayId:"path-a",sequence:2,code:"G2",name:"Technical commissioning",requirement:"Valid commissioning evidence and no open critical gaps.",assessmentMode:"Mapped",evidenceMode:"Mapped"},
@@ -114,11 +126,18 @@ async function seed(): Promise<void> {
     {id:"gate-b3",programId:"solar-pv-tech",pathwayId:"path-b",sequence:3,code:"B3",name:"Design assurance",requirement:"Pass the B07 design assurance assessment with no critical failures.",assessmentMode:"Mapped",evidenceMode:"None"},
     {id:"gate-b4",programId:"solar-pv-tech",pathwayId:"path-b",sequence:4,code:"B4",name:"Design-ready",requirement:"All Path B modules, evidence, and the client-ready design pack are complete.",assessmentMode:"All",evidenceMode:"All"},
   ]);
-  await Promise.all([
-    ...["gate-g1","gate-b1","gate-b3"].map(id=>db.update(readinessGatesTable).set({assessmentMode:"Mapped",evidenceMode:"None"}).where(eq(readinessGatesTable.id,id))),
-    ...["gate-g2","gate-b2"].map(id=>db.update(readinessGatesTable).set({assessmentMode:"Mapped",evidenceMode:"Mapped"}).where(eq(readinessGatesTable.id,id))),
-    ...["gate-g3","gate-b4"].map(id=>db.update(readinessGatesTable).set({assessmentMode:"All",evidenceMode:"All"}).where(eq(readinessGatesTable.id,id))),
-  ]);
-  await insert(readinessEventsTable, [{id:"ready-demo-g1",enrollmentId:"enrol-demo",pathwayId:"path-a",gateId:"gate-g1",status:"Passed",score:55,blockers:[],createdAt:now},{id:"ready-demo-g2",enrollmentId:"enrol-demo",pathwayId:"path-a",gateId:"gate-g2",status:"In progress",score:55,blockers:["Commissioning evidence review pending"],createdAt:now}]);
+  for (const id of ["gate-g1", "gate-b1", "gate-b3"]) {
+    await tx.update(readinessGatesTable).set({ assessmentMode:"Mapped", evidenceMode:"None" }).where(eq(readinessGatesTable.id, id));
+  }
+  for (const id of ["gate-g2", "gate-b2"]) {
+    await tx.update(readinessGatesTable).set({ assessmentMode:"Mapped", evidenceMode:"Mapped" }).where(eq(readinessGatesTable.id, id));
+  }
+  for (const id of ["gate-g3", "gate-b4"]) {
+    await tx.update(readinessGatesTable).set({ assessmentMode:"All", evidenceMode:"All" }).where(eq(readinessGatesTable.id, id));
+  }
+  if (includeDemoFixtures) {
+    await insert(readinessEventsTable, [{id:"ready-demo-g1",enrollmentId:"enrol-demo",pathwayId:"path-a",gateId:"gate-g1",status:"Passed",score:55,blockers:[],createdAt:now},{id:"ready-demo-g2",enrollmentId:"enrol-demo",pathwayId:"path-a",gateId:"gate-g2",status:"In progress",score:55,blockers:["Commissioning evidence review pending"],createdAt:now}]);
+  }
+  });
 }
-seed().then(() => process.stdout.write("TERAS seed complete\n")).catch((error: unknown) => { process.stderr.write(`${error}\n`); process.exitCode = 1; });
+seed().then(() => process.stdout.write(`TERAS ${includeDemoFixtures ? "catalogue + demo" : "catalogue"} seed complete\n`)).catch((error: unknown) => { process.stderr.write(`${error}\n`); process.exitCode = 1; });
