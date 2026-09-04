@@ -19,6 +19,10 @@ import {
   evidenceTable,
   gapEventsTable,
   gapsTable,
+  courseModulesTable,
+  learningActivitiesTable,
+  learningTransitionEventsTable,
+  lessonsTable,
   modulesTable,
   peopleTable,
   readinessEventsTable,
@@ -26,8 +30,9 @@ import {
   remediationActivitiesTable,
   remediationEventsTable,
   remediationPlansTable,
+  reassessmentLinksTable,
 } from "@workspace/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   assessmentSummary,
   activeLearnerPathwayContext,
@@ -340,6 +345,7 @@ router.post(
       body.data.decision,
     );
     const attemptId = id("assessment-attempt");
+    let reassessmentRejected = false;
 
     await db.transaction(async (tx) => {
       await tx.execute(
@@ -355,6 +361,20 @@ router.post(
             eq(assessmentAttemptsTable.pathwayId, context.pathway.id),
           ),
         );
+      if (decision === "Competent" && attempts.some(attempt => attempt.decision === "Not competent")) {
+        const moduleActivities = await tx.select({ id: learningActivitiesTable.id })
+          .from(learningActivitiesTable)
+          .innerJoin(lessonsTable, eq(learningActivitiesTable.lessonId, lessonsTable.id))
+          .innerJoin(courseModulesTable, eq(lessonsTable.courseModuleId, courseModulesTable.id))
+          .where(and(eq(courseModulesTable.moduleId, assessment.moduleId), eq(learningActivitiesTable.pathwayId, context.pathway.id)));
+        const activityIds = moduleActivities.map(activity => activity.id);
+        const [latestTransition] = activityIds.length ? await tx.select().from(learningTransitionEventsTable)
+          .where(and(eq(learningTransitionEventsTable.learnerId, context.learner.id), eq(learningTransitionEventsTable.pathwayId, context.pathway.id), inArray(learningTransitionEventsTable.activityId, activityIds)))
+          .orderBy(desc(learningTransitionEventsTable.createdAt), desc(learningTransitionEventsTable.id)).limit(1) : [];
+        const reassessmentAttemptId = (latestTransition?.metadata as { references?: { reassessmentAttemptId?: string } } | null)?.references?.reassessmentAttemptId;
+        const [linkedAttempt] = reassessmentAttemptId ? await tx.select().from(assessmentAttemptsTable).where(and(eq(assessmentAttemptsTable.id, reassessmentAttemptId), eq(assessmentAttemptsTable.assessmentId, assessment.id), eq(assessmentAttemptsTable.learnerId, context.learner.id), eq(assessmentAttemptsTable.pathwayId, context.pathway.id))).limit(1) : [];
+        if (latestTransition?.toState !== "REASSESSMENT" || !linkedAttempt) { reassessmentRejected = true; return; }
+      }
       await tx.insert(assessmentAttemptsTable).values({
         id: attemptId,
         assessmentId: assessment.id,
@@ -367,6 +387,12 @@ router.post(
         decisionRationale: body.data.observation,
         createdBy: assessorId,
       });
+      if (decision === "Competent") {
+        const [causal] = await tx.select().from(reassessmentLinksTable)
+          .where(and(eq(reassessmentLinksTable.learnerId, context.learner.id), eq(reassessmentLinksTable.pathwayId, context.pathway.id)))
+          .orderBy(desc(reassessmentLinksTable.createdAt)).limit(1);
+        if (causal) await tx.insert(reassessmentLinksTable).values({ ...causal, id: id("reassessment-link"), reassessmentAttemptId: attemptId, previousAssessmentAttemptId: causal.reassessmentAttemptId, createdAt: new Date(), createdBy: assessorId });
+      }
       await tx.insert(criterionObservationsTable).values(
         body.data.criteria.map((item) => ({
           id: id("criterion-observation"),
@@ -421,8 +447,12 @@ router.post(
         );
         if (activities.length) {
           if (decision !== "Competent") {
-            await tx.insert(remediationEventsTable).values(
-              activities.map((activity) => ({
+            const completedActivityIds = new Set((await tx.select().from(remediationEventsTable))
+              .filter(event => activities.some(activity => activity.id === event.activityId) && event.status === "Completed")
+              .map(event => event.activityId));
+            const reopen = activities.filter(activity => !completedActivityIds.has(activity.id));
+            if (reopen.length) await tx.insert(remediationEventsTable).values(
+              reopen.map((activity) => ({
                 id: id("remediation-event"),
                 activityId: activity.id,
                 status: "In progress",
@@ -471,6 +501,7 @@ router.post(
         }
       }
     });
+    if (reassessmentRejected) { res.status(409).json({ error: "REASSESSMENT_TRANSITION_REQUIRED" }); return; }
 
     req.log.info(
       { assessmentId: assessment.id, decision, criticalFailure },

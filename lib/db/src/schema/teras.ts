@@ -138,8 +138,8 @@ export const remediationActivitiesTable = pgTable("teras_remediation_activities"
 });
 export const remediationEventsTable = pgTable("teras_remediation_events", {
   id: text("id").primaryKey(), activityId: text("activity_id").notNull().references(() => remediationActivitiesTable.id),
-  status: text("status").notNull(), ...audit,
-});
+  status: text("status").notNull(), idempotencyKey: text("idempotency_key"), idempotencyFingerprint: text("idempotency_fingerprint"), ...audit,
+}, table => [uniqueIndex("teras_remediation_events_idempotency_unique").on(table.idempotencyKey)]);
 export const readinessGatesTable = pgTable("teras_readiness_gates", {
   id: text("id").primaryKey(), programId: text("program_id").notNull().references(() => programsTable.id),
   pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id),

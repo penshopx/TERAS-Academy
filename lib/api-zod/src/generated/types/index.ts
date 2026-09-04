@@ -113,6 +113,7 @@ export * from './programSummary';
 export * from './readinessGateSummary';
 export * from './readinessSummary';
 export * from './remediationActivity';
+export * from './remediationActivityCompletionInput';
 export * from './remediationPlan';
 export * from './reviewQueueItem';
 export * from './roleAssignmentInput';

@@ -10,3 +10,4 @@
 - [Security data remediation](security-data-remediation.md) — cleanup tools must run in the real upgrade path and prove results against an isolated database schema.
 - [Drizzle push isolation](drizzle-push-isolation.md) — test schema pushes in a separate database and inspect output because search_path and exit status can mislead.
 - [Multi-learner staff dashboards](multi-learner-staff-dashboards.md) — staff queues must carry learner/path identity; never reuse single-learner panels or demo contexts.
+- [Causal journey release gates](causal-journey-release-gates.md) — end-to-end gates must drive production transitions; seeded end states can hide broken remediation and readiness handoffs.

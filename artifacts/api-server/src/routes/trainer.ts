@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
 import { GetTrainerDashboardResponse, GetTrainerReviewQueueResponse, ReviewEvidenceByTrainerBody, ReviewEvidenceByTrainerParams, ReviewEvidenceByTrainerResponse, ReviewPracticeAttemptBody, ReviewPracticeAttemptParams, ReviewPracticeAttemptResponse } from "@workspace/api-zod";
-import { db, evidenceReviewsTable, evidenceTable, gapEventsTable, gapsTable, peopleTable, practiceAttemptsTable, practiceReviewsTable, practiceTasksTable, modulesTable, remediationActivitiesTable, remediationEventsTable, remediationPlansTable } from "@workspace/db";
+import { db, evidenceReviewsTable, evidenceTable, gapEventsTable, gapsTable, learningRecordLinksTable, peopleTable, practiceAttemptsTable, practiceReviewsTable, practiceTasksTable, modulesTable, remediationActivitiesTable, remediationEventsTable, remediationPlansTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { evidenceRecords, gapRecords, remediationRecords, workspaceAssignmentContexts } from "../lib/teras";
 import { authorizeWorkspaceRole } from "../lib/authorization";
+import { learningNextAction } from "../lib/learning-transition";
 
 const router: IRouter = Router();
 const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
@@ -78,7 +79,9 @@ router.post("/trainer/practice/:attemptId/review", async (req, res): Promise<voi
   await db.transaction(async (tx) => { await tx.insert(practiceReviewsTable).values({ id: id("practice-review"), attemptId: attempt.id, reviewerId, status: body.data.status, feedback: body.data.feedback, createdBy: reviewerId }); if (body.data.status === "Needs revision") await appendModuleRevisionState(tx, task.moduleId, attempt.learnerId, attempt.pathwayId, reviewerId); });
   const review = (await db.select().from(practiceReviewsTable).where(eq(practiceReviewsTable.attemptId, attempt.id))).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
   if (!review) throw new Error("Practice review was not recorded");
-  res.json(ReviewPracticeAttemptResponse.parse({ id: attempt.id, taskId: attempt.taskId, submittedAt: attempt.createdAt, status: review.status, reflection: attempt.reflection, outputSummary: attempt.outputSummary, feedback: review.feedback }));
+  const [link] = await db.select().from(learningRecordLinksTable).where(eq(learningRecordLinksTable.practiceAttemptId, attempt.id)).limit(1);
+  if (!link) throw new Error("Practice attempt has no causal learning record");
+  res.json(ReviewPracticeAttemptResponse.parse({ id: attempt.id, taskId: attempt.taskId, submittedAt: attempt.createdAt, status: review.status, reflection: attempt.reflection, outputSummary: attempt.outputSummary, pathwayId: attempt.pathwayId, sourceActivityId: link.activityId, nextAction: learningNextAction("REVISION_REQUIRED", { activityId: link.activityId, taskId: attempt.taskId, practiceAttemptId: attempt.id }), feedback: review.feedback }));
 });
 router.post("/trainer/evidence/:evidenceId/review", async (req, res): Promise<void> => {
   const params = ReviewEvidenceByTrainerParams.safeParse(req.params); const body = ReviewEvidenceByTrainerBody.safeParse(req.body);

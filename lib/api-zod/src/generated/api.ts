@@ -620,6 +620,45 @@ export const CompleteRemediationResponse = zod.object({
 
 
 /**
+ * @summary Append learner completion of one remediation activity
+ */
+
+
+
+export const CompleteRemediationActivityParams = zod.object({
+  "remediationId": zod.coerce.string(),
+  "activityId": zod.coerce.string().min(1)
+})
+
+export const completeRemediationActivityBodyIdempotencyKeyMax = 200;
+
+export const completeRemediationActivityBodyCompletionNoteMax = 1000;
+
+
+
+export const CompleteRemediationActivityBody = zod.object({
+  "idempotencyKey": zod.string().min(1).max(completeRemediationActivityBodyIdempotencyKeyMax),
+  "completionNote": zod.string().min(1).max(completeRemediationActivityBodyCompletionNoteMax)
+})
+
+export const CompleteRemediationActivityResponse = zod.object({
+  "id": zod.string(),
+  "gapId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.string(),
+  "dueLabel": zod.string().nullable(),
+  "activities": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.string(),
+  "type": zod.string()
+}))
+})
+
+
+/**
  * @summary Get learner readiness and gate progress
  */
 export const getLearnerReadinessResponseScoreMin = 0;
@@ -705,6 +744,7 @@ export const GetCapabilityPassportResponse = zod.object({
 }),
   "headline": zod.string(),
   "subtitle": zod.string(),
+  "readinessDisclaimer": zod.string().describe('Internal readiness-preparation information only; it is not an official competency or certification decision.'),
   "readiness": zod.object({
   "pathway": zod.object({
   "id": zod.string(),

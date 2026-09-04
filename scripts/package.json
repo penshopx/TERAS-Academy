@@ -11,9 +11,11 @@
     "test:resource-uri-audit": "tsx ./src/resource-uri-policy.test.ts",
     "test:resource-uri-upgrade": "bash ./resource-uri-upgrade.integration.test.sh",
     "test:admin-management-upgrade": "bash ./admin-management-upgrade.integration.test.sh",
+    "test:remediation-idempotency-upgrade": "bash ./remediation-idempotency-upgrade.integration.test.sh",
     "test:admin-management": "bash ./admin-management.integration.test.sh",
     "test:safety": "tsx ../artifacts/api-server/src/lib/safety.test.ts",
     "test:deployment-hardening": "bash ./deployment-hardening.test.sh",
+    "gate:certification-preparation": "bash ./certification-preparation-gate.sh",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

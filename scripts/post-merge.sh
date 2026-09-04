@@ -23,6 +23,9 @@ if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_people') IS
   # authoring audit history, and managed-resource upload claims.
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
     -f lib/db/migrations/0006_course_authoring_versions.sql
+  # Add persisted remediation activity idempotency without rewriting history.
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+    -f lib/db/migrations/0007_remediation_activity_idempotency.sql
 fi
 if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_content_resources') IS NOT NULL")" = "t" ]; then
   TERAS_MIGRATION_ACTOR=post-merge-upgrade \
@@ -40,6 +43,7 @@ pnpm --filter @workspace/api-server run test:resource-uri
 pnpm --filter @workspace/scripts run test:resource-uri-audit
 pnpm --filter @workspace/scripts run test:resource-uri-upgrade
 pnpm --filter @workspace/scripts run test:admin-management-upgrade
+pnpm --filter @workspace/scripts run test:remediation-idempotency-upgrade
 pnpm --filter @workspace/scripts run test:admin-management
 pnpm --filter @workspace/scripts run test:deployment-hardening
 pnpm --filter @workspace/scripts run test:safety

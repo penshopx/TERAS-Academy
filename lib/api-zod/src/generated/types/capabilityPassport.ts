@@ -16,6 +16,8 @@ export interface CapabilityPassport {
   pathway: PathwaySummary;
   headline: string;
   subtitle: string;
+  /** Internal readiness-preparation information only; it is not an official competency or certification decision. */
+  readinessDisclaimer: string;
   readiness: ReadinessSummary;
   achievements: CapabilityAchievement[];
   timeline: JourneyStep[];

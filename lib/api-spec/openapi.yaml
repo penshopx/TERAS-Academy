@@ -337,6 +337,41 @@ paths:
                     enum: [REMEDIATION_PREREQUISITES_NOT_MET]
                   message:
                     type: string
+  /remediation/{remediationId}/activities/{activityId}/complete:
+    post:
+      operationId: completeRemediationActivity
+      tags: [learner]
+      summary: Append learner completion of one remediation activity
+      parameters:
+        - $ref: "#/components/parameters/RemediationId"
+        - name: activityId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemediationActivityCompletionInput"
+      responses:
+        "201":
+          description: Completion event appended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemediationPlan"
+        "200":
+          description: Updated remediation plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemediationPlan"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Idempotency key reused with a different activity payload }
   /readiness:
     get:
       operationId: getLearnerReadiness
@@ -1275,6 +1310,9 @@ x-pathway-selection-components:
           $ref: "#/components/schemas/LearnerProfile"
         headline: { type: string }
         subtitle: { type: string }
+        readinessDisclaimer:
+          type: string
+          description: Internal readiness-preparation information only; it is not an official competency or certification decision.
         readiness:
           $ref: "#/components/schemas/ReadinessSummary"
         achievements:
@@ -1285,7 +1323,7 @@ x-pathway-selection-components:
           type: array
           items:
             $ref: "#/components/schemas/JourneyStep"
-      required: [learner, headline, subtitle, readiness, achievements, timeline]
+      required: [learner, headline, subtitle, readinessDisclaimer, achievements, timeline]
     CapabilityAchievement:
       type: object
       properties:
@@ -2683,6 +2721,9 @@ components:
           $ref: "#/components/schemas/PathwaySummary"
         headline: { type: string }
         subtitle: { type: string }
+        readinessDisclaimer:
+          type: string
+          description: Internal readiness-preparation information only; it is not an official competency or certification decision.
         readiness:
           $ref: "#/components/schemas/ReadinessSummary"
         achievements:
@@ -2693,7 +2734,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/JourneyStep"
-      required: [learner, pathway, headline, subtitle, readiness, achievements, timeline]
+      required: [learner, pathway, headline, subtitle, readinessDisclaimer, readiness, achievements, timeline]
+    RemediationActivityCompletionInput:
+      type: object
+      required: [idempotencyKey, completionNote]
+      properties:
+        idempotencyKey: { type: string, minLength: 1, maxLength: 200 }
+        completionNote: { type: string, minLength: 1, maxLength: 1000 }
     CapabilityAchievement:
       type: object
       properties:

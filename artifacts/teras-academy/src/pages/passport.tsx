@@ -41,6 +41,9 @@ export default function Passport() {
                 </div>
                 <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground mb-2">{passport.learner.name}</h1>
                 <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{passport.subtitle}</p>
+                <p role="note" className="max-w-2xl rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium leading-relaxed text-foreground">
+                  {passport.readinessDisclaimer}
+                </p>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground font-mono text-xs">
                   <span className="flex items-center gap-1.5 text-foreground/70"><FileText className="w-3.5 h-3.5" /> INTERNAL TERAS CAPABILITY RECORD</span>
                   <span className="text-border">•</span>

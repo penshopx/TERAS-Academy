@@ -78,6 +78,7 @@ import type {
   ProgramDetail,
   ProgramSummary,
   ReadinessSummary,
+  RemediationActivityCompletionInput,
   RemediationPlan,
   ReviewQueueItem,
   RoleAssignmentInput,
@@ -1411,6 +1412,80 @@ export const useCompleteRemediation = <TError = ErrorType<BadRequestResponse | U
         TContext
       > => {
       return useMutation(getCompleteRemediationMutationOptions(options));
+    }
+
+export const getCompleteRemediationActivityUrl = (remediationId: string,
+    activityId: string,) => {
+
+
+
+
+  return `/api/remediation/${remediationId}/activities/${activityId}/complete`
+}
+
+/**
+ * @summary Append learner completion of one remediation activity
+ */
+export const completeRemediationActivity = async (remediationId: string,
+    activityId: string,
+    remediationActivityCompletionInput: RemediationActivityCompletionInput, options?: Parameters<typeof customFetch>[1]): Promise<RemediationPlan> => {
+
+  return customFetch<RemediationPlan>(getCompleteRemediationActivityUrl(remediationId,activityId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(remediationActivityCompletionInput)
+  }
+);}
+
+
+
+
+
+export const getCompleteRemediationActivityMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeRemediationActivity>>, TError,{remediationId: string;activityId: string;data: BodyType<RemediationActivityCompletionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeRemediationActivity>>, TError,{remediationId: string;activityId: string;data: BodyType<RemediationActivityCompletionInput>}, TContext> => {
+
+const mutationKey = ['completeRemediationActivity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeRemediationActivity>>, {remediationId: string;activityId: string;data: BodyType<RemediationActivityCompletionInput>}> = (props) => {
+          const {remediationId,activityId,data} = props ?? {};
+
+          return  completeRemediationActivity(remediationId,activityId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteRemediationActivityMutationResult = NonNullable<Awaited<ReturnType<typeof completeRemediationActivity>>>
+    export type CompleteRemediationActivityMutationBody = BodyType<RemediationActivityCompletionInput>
+    export type CompleteRemediationActivityMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | void>
+
+    /**
+ * @summary Append learner completion of one remediation activity
+ */
+export const useCompleteRemediationActivity = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeRemediationActivity>>, TError,{remediationId: string;activityId: string;data: BodyType<RemediationActivityCompletionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeRemediationActivity>>,
+        TError,
+        {remediationId: string;activityId: string;data: BodyType<RemediationActivityCompletionInput>},
+        TContext
+      > => {
+      return useMutation(getCompleteRemediationActivityMutationOptions(options));
     }
 
 export const getGetLearnerReadinessUrl = () => {

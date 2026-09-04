@@ -1070,9 +1070,24 @@ export interface CapabilityPassport {
   pathway: PathwaySummary;
   headline: string;
   subtitle: string;
+  /** Internal readiness-preparation information only; it is not an official competency or certification decision. */
+  readinessDisclaimer: string;
   readiness: ReadinessSummary;
   achievements: CapabilityAchievement[];
   timeline: JourneyStep[];
+}
+
+export interface RemediationActivityCompletionInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  idempotencyKey: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  completionNote: string;
 }
 
 export interface ReviewQueueItem {
