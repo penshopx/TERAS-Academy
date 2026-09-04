@@ -25,6 +25,8 @@ import {
   type LearningTransitionResult,
 } from "./lib/learning-transition";
 import { learnerContext, readiness } from "./lib/teras";
+import { createIntegrationTestApp } from "./integration-test-app";
+import type { AddressInfo } from "node:net";
 
 const fixturePrefix = `phase1-test-${crypto.randomUUID()}`;
 const activityId = `${fixturePrefix}-activity`;
@@ -42,6 +44,11 @@ const fixtureIds = {
   rolledBackEvidence: `${fixturePrefix}-evidence-rollback`,
   rolledBackReview: `${fixturePrefix}-review-rollback`,
 };
+const routeRecords: {
+  practiceIds: string[];
+  evidenceIds: string[];
+  reviewIds: string[];
+} = { practiceIds: [], evidenceIds: [], reviewIds: [] };
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -102,6 +109,9 @@ async function removeTransitionRecords() {
 
 async function cleanup() {
   await removeTransitionRecords();
+  if (routeRecords.reviewIds.length) {
+    await db.delete(evidenceReviewsTable).where(inArray(evidenceReviewsTable.id, routeRecords.reviewIds));
+  }
   await db.delete(evidenceReviewsTable).where(eq(evidenceReviewsTable.id, fixtureIds.review));
   await db.delete(evidenceReviewsTable).where(eq(evidenceReviewsTable.id, fixtureIds.rolledBackReview));
   await db.delete(remediationPlansTable).where(eq(remediationPlansTable.id, fixtureIds.remediation));
@@ -109,10 +119,44 @@ async function cleanup() {
   await db.delete(assessmentAttemptsTable).where(eq(assessmentAttemptsTable.id, fixtureIds.reassessment));
   await db.delete(evidenceTable).where(inArray(evidenceTable.id, [fixtureIds.evidence, fixtureIds.pathBEvidence]));
   await db.delete(evidenceTable).where(eq(evidenceTable.id, fixtureIds.rolledBackEvidence));
+  if (routeRecords.evidenceIds.length) {
+    await db.delete(evidenceTable).where(inArray(evidenceTable.id, routeRecords.evidenceIds));
+  }
   await db.delete(practiceAttemptsTable).where(inArray(practiceAttemptsTable.id, [fixtureIds.practice, fixtureIds.rolledBackPractice]));
+  if (routeRecords.practiceIds.length) {
+    await db.delete(practiceAttemptsTable).where(inArray(practiceAttemptsTable.id, routeRecords.practiceIds));
+  }
   await db.delete(enrollmentPathwayEventsTable).where(eq(enrollmentPathwayEventsTable.id, fixtureIds.pathwaySelection));
   await db.delete(learningOutcomesTable).where(eq(learningOutcomesTable.id, fixtureIds.outcome));
   await db.delete(learningActivitiesTable).where(eq(learningActivitiesTable.id, activityId));
+}
+
+async function startLearnerRouteServer() {
+  const app = createIntegrationTestApp(() => ({
+    userId: `${fixturePrefix}-clerk-learner`,
+    role: "learner",
+    learnerId: "learner-demo",
+  }));
+  const server = await new Promise<ReturnType<typeof app.listen>>((resolve) => {
+    const listener = app.listen(0, () => resolve(listener));
+  });
+  const address = server.address();
+  assert(address && typeof address !== "string", "Learner route test server did not bind");
+  return {
+    baseUrl: `http://127.0.0.1:${(address as AddressInfo).port}/api`,
+    close: () => new Promise<void>((resolve, reject) => {
+      server.close(error => error ? reject(error) : resolve());
+    }),
+  };
+}
+
+async function postJson(baseUrl: string, path: string, body: unknown) {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return { status: response.status, body: await response.json() as any };
 }
 
 async function seedFixtures() {
@@ -264,6 +308,7 @@ async function run() {
   assert(learningNextAction("PRACTICE_IN_PROGRESS", { activityId, taskId: "task-m03", practiceAttemptId: fixtureIds.practice }).href?.includes("practiceAttemptId="), "Evidence next action lost practice causality");
 
   await seedFixtures();
+  const routeServer = await startLearnerRouteServer();
   try {
     const actorLearner = { id: "learner-demo", role: "learner" } as const;
     const actorTrainer = { id: "trainer-aria", role: "trainer" } as const;
@@ -287,6 +332,37 @@ async function run() {
       actorLearner,
     );
     assert(!wrongPath.ok && wrongPath.value.reason === "PATHWAY_MISMATCH", "Path B activity was accepted in Path A");
+
+    const rejectedPracticeReflection = `${fixturePrefix} rejected route practice`;
+    const rejectedPractice = await postJson(routeServer.baseUrl, "/practice/tasks/task-m03/attempts", {
+      reflection: rejectedPracticeReflection,
+      outputSummary: "This row must be rolled back with its rejected transition.",
+      sourceActivityId: activityId,
+    });
+    assert(rejectedPractice.status === 409, `Rejected practice route returned ${rejectedPractice.status}, expected 409`);
+    assert(rejectedPractice.body.status === "REJECTED" && rejectedPractice.body.reason === "INVALID_TRANSITION", "Rejected practice route lost the transition rejection reason");
+    const orphanPractice = await db.select().from(practiceAttemptsTable).where(eq(practiceAttemptsTable.reflection, rejectedPracticeReflection));
+    assert(orphanPractice.length === 0, "Rejected practice route left an orphan attempt");
+
+    const rejectedEvidenceTitle = `${fixturePrefix} rejected route evidence`;
+    const rejectedEvidence = await postJson(routeServer.baseUrl, "/evidence", {
+      moduleId: "m03",
+      taskId: "task-m03",
+      title: rejectedEvidenceTitle,
+      type: "Checklist",
+      description: "This evidence and its review must roll back.",
+      fileName: null,
+      sourceActivityId: activityId,
+      practiceAttemptId: fixtureIds.practice,
+    });
+    assert(rejectedEvidence.status === 409, `Rejected evidence route returned ${rejectedEvidence.status}, expected 409`);
+    assert(rejectedEvidence.body.status === "REJECTED" && rejectedEvidence.body.reason === "INVALID_TRANSITION", "Rejected evidence route lost the transition rejection reason");
+    const orphanEvidence = await db.select().from(evidenceTable).where(eq(evidenceTable.title, rejectedEvidenceTitle));
+    assert(orphanEvidence.length === 0, "Rejected evidence route left orphan evidence");
+    const orphanReviews = orphanEvidence.length
+      ? await db.select().from(evidenceReviewsTable).where(inArray(evidenceReviewsTable.evidenceId, orphanEvidence.map(({ id }) => id)))
+      : [];
+    assert(orphanReviews.length === 0, "Rejected evidence route left an orphan initial review");
 
     try {
       await db.transaction(async (tx) => {
@@ -368,18 +444,36 @@ async function run() {
     assert(JSON.stringify(beforeReadiness) === JSON.stringify(afterOutcome), "Outcome verification changed readiness");
 
     expectSuccess(await transitionLearningState(command("OUTCOME_VERIFIED", "PRACTICE_REQUIRED", "practice-required"), actorTrainer), "practice required");
-    expectSuccess(await transitionLearningState(command("PRACTICE_REQUIRED", "PRACTICE_IN_PROGRESS", "practice-start", {
-      practiceAttemptId: fixtureIds.practice,
-    }), actorLearner), "practice start");
+    const createdPractice = await postJson(routeServer.baseUrl, "/practice/tasks/task-m03/attempts", {
+      reflection: `${fixturePrefix} successful route practice`,
+      outputSummary: "Successful route practice output.",
+      sourceActivityId: activityId,
+    });
+    assert(createdPractice.status === 201, `Successful practice route returned ${createdPractice.status}, expected 201`);
+    assert(createdPractice.body.nextAction?.action === "SUBMIT_EVIDENCE", "Successful practice route did not return its causal next action");
+    routeRecords.practiceIds.push(createdPractice.body.id);
     const crossPathEvidence = await transitionLearningState(command("PRACTICE_IN_PROGRESS", "EVIDENCE_SUBMITTED", "cross-path-evidence", {
       evidenceId: fixtureIds.pathBEvidence,
     }), actorLearner);
     assert(!crossPathEvidence.ok && crossPathEvidence.value.reason === "CAUSAL_REFERENCE_INVALID", "Path B evidence was accepted for Path A");
-    expectSuccess(await transitionLearningState(command("PRACTICE_IN_PROGRESS", "EVIDENCE_SUBMITTED", "evidence", {
-      evidenceId: fixtureIds.evidence,
-    }), actorLearner), "evidence submission");
+    const createdEvidence = await postJson(routeServer.baseUrl, "/evidence", {
+      moduleId: "m03",
+      taskId: "task-m03",
+      title: `${fixturePrefix} successful route evidence`,
+      type: "Checklist",
+      description: "Successful route evidence linked to the new practice attempt.",
+      fileName: null,
+      sourceActivityId: activityId,
+      practiceAttemptId: createdPractice.body.id,
+    });
+    assert(createdEvidence.status === 201, `Successful evidence route returned ${createdEvidence.status}, expected 201`);
+    assert(createdEvidence.body.practiceAttemptId === createdPractice.body.id, "Successful evidence response lost its practice-attempt link");
+    routeRecords.evidenceIds.push(createdEvidence.body.id);
+    const [createdReview] = await db.select().from(evidenceReviewsTable).where(eq(evidenceReviewsTable.evidenceId, createdEvidence.body.id));
+    assert(createdReview?.status === "Under review", "Successful evidence route did not create the initial review");
+    routeRecords.reviewIds.push(createdReview.id);
     expectSuccess(await transitionLearningState(command("EVIDENCE_SUBMITTED", "UNDER_REVIEW", "review", {
-      evidenceId: fixtureIds.evidence,
+      evidenceId: createdEvidence.body.id,
     }), actorTrainer), "under review");
     expectSuccess(await transitionLearningState(command("UNDER_REVIEW", "REVISION_REQUIRED", "revision", {
       evidenceId: fixtureIds.evidence,
@@ -419,12 +513,13 @@ async function run() {
     const history = await db.select().from(learningTransitionEventsTable).where(eq(learningTransitionEventsTable.activityId, activityId));
     const links = await db.select().from(learningRecordLinksTable).where(eq(learningRecordLinksTable.activityId, activityId));
     assert(history.length === 14, `Expected 14 append-only journey events including re-practice, got ${history.length}`);
-    assert(links.some(link => link.practiceAttemptId === fixtureIds.practice), "Practice attempt causal link was not recorded");
-    assert(links.some(link => link.evidenceId === fixtureIds.evidence && link.practiceAttemptId === fixtureIds.practice), "Evidence was not causally linked to its practice attempt");
+    assert(links.some(link => link.practiceAttemptId === createdPractice.body.id), "Route-created practice attempt causal link was not recorded");
+    assert(links.some(link => link.evidenceId === createdEvidence.body.id && link.practiceAttemptId === createdPractice.body.id), "Route-created evidence was not causally linked to its practice attempt");
     assert(links.some(link => link.gapId === fixtureIds.gap && link.remediationPlanId === fixtureIds.remediation), "Causal remediation link was not recorded");
     assert(links.some(link => link.reassessmentAttemptId === fixtureIds.reassessment), "Causal reassessment link was not recorded");
     process.stdout.write("Learning transition integration checks passed\n");
   } finally {
+    await routeServer.close();
     await cleanup();
   }
 }
