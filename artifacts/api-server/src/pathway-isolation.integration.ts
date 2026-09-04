@@ -352,7 +352,7 @@ async function run() {
 
   await post("/learner/pathway", { pathwayId: "path-a" }, 201);
   await request("/modules/b01", undefined, 404);
-  await request("/assessments/assessment-b01", undefined, 404);
+  await request("/assessments/assessment-b01", undefined, 403);
   await post(
     `/trainer/practice/${practice.id}/review`,
     { status: "Reviewed", feedback: "Must be rejected outside Path B" },
