@@ -7,6 +7,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 run_id="${TERAS_GATE_RUN_ID:-$(node -e 'process.stdout.write(require("crypto").randomUUID())')}"
+candidate_sha="${TERAS_GATE_CANDIDATE_SHA:-$(git rev-parse HEAD 2>/dev/null || true)}"
 report_dir="${TERAS_GATE_REPORT_DIR:-$repo_root/.release-gate}"
 json_report="$report_dir/certification-preparation-$run_id.json"
 markdown_report="$report_dir/certification-preparation-$run_id.md"
@@ -32,12 +33,13 @@ write_report() {
     checks_json+="{\"name\":$(json_escape "$name"),\"status\":$(json_escape "$status"),\"detail\":$(json_escape "$detail")}"
   done
   cat >"$json_report" <<EOF
-{"gate":"certification-preparation","runId":$(json_escape "$run_id"),"testStatus":"$test_status","gateReview":"$([[ "$test_status" == PASS ]] && echo PENDING || echo NO-GO)","reviewer":null,"reviewedAt":null,"rationale":null,"storageEvidence":{"adapter":{"kind":"test-only in-process ObjectStorageService adapter","namespace":$(json_escape "$storage_namespace"),"coveredByThisReport":true},"realAppStorage":{"kind":"Replit App Storage sidecar integration","command":"pnpm --filter @workspace/api-server run test:app-storage-sidecar","coveredByThisReport":false},"note":"Adapter evidence and disposable real-storage evidence are intentionally reported and executed separately."},"database":{"name":$(json_escape "$test_database"),"isolated":true},"cleanup":{"status":"${cleanup_status:-NOT_RUN}"},"checks":[$checks_json],"failure":$(json_escape "$failure")}
+{"gate":"certification-preparation","runId":$(json_escape "$run_id"),"candidateSha":$(json_escape "$candidate_sha"),"testStatus":"$test_status","gateReview":"$([[ "$test_status" == PASS ]] && echo PENDING || echo NO-GO)","reviewer":null,"reviewedAt":null,"rationale":null,"storageEvidence":{"adapter":{"kind":"test-only in-process ObjectStorageService adapter","namespace":$(json_escape "$storage_namespace"),"coveredByThisReport":true},"realAppStorage":{"kind":"Replit App Storage sidecar integration","command":"pnpm --filter @workspace/api-server run test:app-storage-sidecar","coveredByThisReport":false},"note":"Adapter evidence and disposable real-storage evidence are intentionally reported and executed separately."},"database":{"name":$(json_escape "$test_database"),"isolated":true},"cleanup":{"status":"${cleanup_status:-NOT_RUN}"},"checks":[$checks_json],"failure":$(json_escape "$failure")}
 EOF
   {
     echo "# Certification-preparation release gate"
     echo
     echo "- Run: \`$run_id\`"
+    echo "- Release candidate SHA: \`$candidate_sha\`"
     echo "- Automated test status: **$test_status**"
     echo "- Gate review: **$([[ "$test_status" == PASS ]] && echo PENDING || echo NO-GO)** (tests never auto-GO)"
     echo "- Database: isolated disposable \`$test_database\`"
@@ -92,6 +94,7 @@ fail() {
 }
 
 [[ -n "${DATABASE_URL:-}" ]] || fail "DATABASE_URL is required to create a disposable gate database"
+[[ "$candidate_sha" =~ ^[0-9a-f]{40}$ ]] || fail "TERAS_GATE_CANDIDATE_SHA must be a full 40-character Git commit SHA"
 [[ "${TERAS_GATE_STORAGE_ADAPTER:-}" == "test" ]] || fail "TERAS_GATE_STORAGE_ADAPTER must be exactly 'test'; real storage is refused"
 [[ -n "${TERAS_GATE_STORAGE_NAMESPACE:-}" ]] || fail "TERAS_GATE_STORAGE_NAMESPACE is required"
 command -v createdb >/dev/null || fail "createdb is required"

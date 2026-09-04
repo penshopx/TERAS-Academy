@@ -27,6 +27,7 @@ job_block() {
 
 verify_block="$(job_block verify-approval-control)"
 evidence_block="$(job_block certification-preparation-evidence)"
+release_evidence_block="$(job_block verify-release-evidence)"
 review_block="$(job_block gate-review)"
 publish_block="$(job_block publish-release)"
 
@@ -37,6 +38,9 @@ if grep -Eq '^  (release|push):' "$workflow"; then
 fi
 grep -Fq "actions: read" "$workflow" ||
   fail "environment protection lookup needs actions read permission"
+grep -Fq "attestations: write" "$workflow" &&
+  grep -Fq "id-token: write" "$workflow" ||
+  fail "release evidence attestation needs attestations and OIDC write permissions"
 grep -Fq "github.rest.repos.getEnvironment" <<<"$verify_block" &&
   grep -Fq 'rule.type === "required_reviewers"' <<<"$verify_block" &&
   grep -Fq "rule.reviewers.length > 0" <<<"$verify_block" ||
@@ -54,9 +58,18 @@ grep -Fq "if: always()" "$workflow" &&
   fail "reports must be uploaded even when the gate fails"
 grep -Fq "needs: verify-approval-control" <<<"$evidence_block" ||
   fail "evidence must require a verified approval control"
-grep -Fq "needs: certification-preparation-evidence" <<<"$review_block" &&
+grep -Fq -- "- certification-preparation-evidence" <<<"$review_block" &&
+  grep -Fq -- "- verify-release-evidence" <<<"$review_block" &&
   grep -Fq "environment: release-gate-review" <<<"$review_block" ||
-  fail "Gate Review must wait for successful evidence and human approval"
+  fail "Gate Review must wait for verified evidence and human approval"
+grep -Fq "needs: certification-preparation-evidence" <<<"$release_evidence_block" &&
+  grep -Fq "actions/download-artifact@v4" <<<"$release_evidence_block" &&
+  grep -Fq "gh attestation verify" <<<"$release_evidence_block" &&
+  grep -Fq -- "--signer-workflow" <<<"$release_evidence_block" &&
+  grep -Fq "report_sha" <<<"$release_evidence_block" &&
+  grep -Fq '[[ "$report_sha" == "$TARGET_SHA" ]]' <<<"$release_evidence_block" &&
+  grep -Fq '[[ "$report_status" == "PASS" ]]' <<<"$release_evidence_block" ||
+  fail "Gate Review must verify provenance, PASS status, and candidate SHA first"
 grep -Fq -- "- gate-review" <<<"$publish_block" &&
   grep -Fq "run: bash scripts/publish-approved-release.sh" <<<"$publish_block" ||
   fail "release creation must happen only after Gate Review GO"
@@ -64,8 +77,18 @@ if grep -Fq "publish-approved-release.sh" <<<"$evidence_block$review_block"; the
   fail "evidence or review jobs must not publish a release"
 fi
 grep -Fq 'candidate_sha: ${{ steps.candidate.outputs.sha }}' <<<"$evidence_block" &&
+  grep -Fq 'TERAS_GATE_CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}' <<<"$evidence_block" &&
   grep -Fq 'TARGET_SHA: ${{ needs.certification-preparation-evidence.outputs.candidate_sha }}' <<<"$publish_block" ||
   fail "publication must use the exact SHA tested before approval"
+grep -Fq "actions/attest-build-provenance@v2" <<<"$evidence_block" &&
+  grep -Fq "release-gate-reports/*.json" <<<"$evidence_block" &&
+  grep -Fq "release-gate-reports/*.md" <<<"$evidence_block" ||
+  fail "both evidence reports must receive GitHub provenance attestations"
+grep -Fq "actions/download-artifact@v4" <<<"$publish_block" &&
+  grep -Fq "gh attestation verify" <<<"$publish_block" &&
+  grep -Fq 'candidateSha' <<<"$publish_block" &&
+  grep -Fq 'testStatus' <<<"$publish_block" ||
+  fail "publisher must reverify attestation, candidate SHA, and PASS status"
 grep -Fq 'RELEASE_TAG: ${{ inputs.tag_name }}' <<<"$publish_block" &&
   grep -Fq 'RELEASE_NAME: ${{ inputs.release_name || inputs.tag_name }}' <<<"$publish_block" ||
   fail "dispatcher input must reach the shell only through environment variables"
@@ -81,6 +104,10 @@ grep -Fq "cleanup || gate_exit=1" "$gate" ||
   fail "cleanup failure must make the gate fail"
 grep -Fq "trap - EXIT" "$gate" ||
   fail "exit trap must be disabled before propagating the final status"
+grep -Fq '"candidateSha":$(json_escape "$candidate_sha")' "$gate" &&
+  grep -Fq 'Release candidate SHA: \`$candidate_sha\`' "$gate" &&
+  grep -Fq '40-character Git commit SHA' "$gate" ||
+  fail "JSON and Markdown reports must identify a valid full candidate SHA"
 
 mock_dir="$(mktemp -d)"
 trap 'rm -rf "$mock_dir"' EXIT

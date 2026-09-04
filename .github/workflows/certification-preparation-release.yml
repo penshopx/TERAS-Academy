@@ -24,8 +24,10 @@ on:
 
 permissions:
   actions: read
+  attestations: write
   contents: write
   deployments: write
+  id-token: write
 
 concurrency:
   group: certification-preparation-release-${{ inputs.tag_name }}
@@ -110,7 +112,17 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run certification-preparation release gate
+        env:
+          TERAS_GATE_CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
         run: pnpm run gate:certification-preparation
+
+      - name: Attest release-gate evidence
+        if: always() && steps.candidate.outputs.sha != ''
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            release-gate-reports/*.json
+            release-gate-reports/*.md
 
       - name: Upload PASS or FAIL evidence
         if: always()
@@ -121,16 +133,68 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  verify-release-evidence:
+    name: Verify evidence belongs to release candidate
+    needs: certification-preparation-evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TARGET_SHA: ${{ needs.certification-preparation-evidence.outputs.candidate_sha }}
+    steps:
+      - name: Download release-gate evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: certification-preparation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-gate-reports
+
+      - name: Verify provenance, PASS status, and candidate SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mapfile -t reports < <(find release-gate-reports -maxdepth 1 -type f \( -name '*.json' -o -name '*.md' \) -print | sort)
+          [[ "${#reports[@]}" -eq 2 ]] &&
+            [[ "$(find release-gate-reports -maxdepth 1 -type f -name '*.json' | wc -l)" -eq 1 ]] &&
+            [[ "$(find release-gate-reports -maxdepth 1 -type f -name '*.md' | wc -l)" -eq 1 ]] || {
+            echo "::error::Expected exactly one JSON and one Markdown evidence report."
+            exit 1
+          }
+          for report in "${reports[@]}"; do
+            gh attestation verify "$report" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/certification-preparation-release.yml"
+          done
+          json_report="$(find release-gate-reports -maxdepth 1 -type f -name '*.json' -print -quit)"
+          markdown_report="$(find release-gate-reports -maxdepth 1 -type f -name '*.md' -print -quit)"
+          report_sha="$(jq -er '.candidateSha' "$json_report")"
+          report_status="$(jq -er '.testStatus' "$json_report")"
+          [[ "$report_sha" == "$TARGET_SHA" ]] || {
+            echo "::error::Evidence SHA $report_sha does not match release candidate $TARGET_SHA."
+            exit 1
+          }
+          [[ "$report_status" == "PASS" ]] || {
+            echo "::error::Release-gate evidence status is $report_status, not PASS."
+            exit 1
+          }
+          expected_markdown_line="$(printf -- '- Release candidate SHA: `%s`' "$TARGET_SHA")"
+          grep -Fqx -- "$expected_markdown_line" "$markdown_report" || {
+            echo "::error::Markdown evidence does not identify release candidate $TARGET_SHA."
+            exit 1
+          }
+
   gate-review:
     name: Gate Review GO/NO-GO
-    needs: certification-preparation-evidence
+    needs:
+      - certification-preparation-evidence
+      - verify-release-evidence
     runs-on: ubuntu-latest
     environment: release-gate-review
     env:
       RELEASE_TAG: ${{ inputs.tag_name }}
+      TARGET_SHA: ${{ needs.certification-preparation-evidence.outputs.candidate_sha }}
     steps:
-      - name: Record manual GO
-        run: echo "Gate Review GO recorded for ${RELEASE_TAG}."
+      - name: Record manual GO for verified candidate
+        run: echo "Gate Review GO recorded for ${RELEASE_TAG} at ${TARGET_SHA}."
 
   publish-release:
     name: Publish approved release
@@ -150,6 +214,43 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+
+      - name: Download approved release-gate evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: certification-preparation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-gate-reports
+
+      - name: Reverify approved evidence before publishing
+        run: |
+          set -euo pipefail
+          mapfile -t reports < <(find release-gate-reports -maxdepth 1 -type f \( -name '*.json' -o -name '*.md' \) -print | sort)
+          [[ "${#reports[@]}" -eq 2 ]] &&
+            [[ "$(find release-gate-reports -maxdepth 1 -type f -name '*.json' | wc -l)" -eq 1 ]] &&
+            [[ "$(find release-gate-reports -maxdepth 1 -type f -name '*.md' | wc -l)" -eq 1 ]] || {
+            echo "::error::Expected exactly one JSON and one Markdown evidence report."
+            exit 1
+          }
+          for report in "${reports[@]}"; do
+            gh attestation verify "$report" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/certification-preparation-release.yml"
+          done
+          json_report="$(find release-gate-reports -maxdepth 1 -type f -name '*.json' -print -quit)"
+          markdown_report="$(find release-gate-reports -maxdepth 1 -type f -name '*.md' -print -quit)"
+          [[ "$(jq -er '.candidateSha' "$json_report")" == "$TARGET_SHA" ]] || {
+            echo "::error::Approved evidence does not belong to release candidate $TARGET_SHA."
+            exit 1
+          }
+          [[ "$(jq -er '.testStatus' "$json_report")" == "PASS" ]] || {
+            echo "::error::Approved evidence is not a PASS report."
+            exit 1
+          }
+          expected_markdown_line="$(printf -- '- Release candidate SHA: `%s`' "$TARGET_SHA")"
+          grep -Fqx -- "$expected_markdown_line" "$markdown_report" || {
+            echo "::error::Approved Markdown evidence does not belong to release candidate $TARGET_SHA."
+            exit 1
+          }
 
       - name: Create locked tag and release
         run: bash scripts/publish-approved-release.sh
