@@ -75,7 +75,10 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
 
   return (
     <section
-      className="fixed bottom-24 right-4 z-50 flex h-[min(34rem,calc(100dvh-8rem))] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl md:right-6"
+      className={cn(
+        "fixed bottom-24 z-50 flex h-[min(34rem,calc(100dvh-8rem))] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl",
+        kind === "help" ? "left-4 md:left-6" : "right-4 md:right-6",
+      )}
       aria-label={copy.title}
     >
       <header className="flex items-center gap-3 border-b border-border bg-primary px-4 py-3 text-primary-foreground">
@@ -132,8 +135,7 @@ export function FloatingAssistants() {
   return (
     <>
       {active && <ChatPanel key={active} kind={active} onClose={() => setActive(null)} />}
-      <div className="fixed bottom-4 right-4 z-50 flex items-end gap-2 md:right-6">
-        {assistants.map((kind) => {
+      {assistants.map((kind) => {
           const copy = assistantCopy[kind];
           const Icon = copy.icon;
           const selected = active === kind;
@@ -145,7 +147,8 @@ export function FloatingAssistants() {
               aria-label={selected ? `Tutup ${copy.title}` : `Buka ${copy.title}`}
               aria-expanded={selected}
               className={cn(
-                "h-12 rounded-full px-4 shadow-xl transition-transform hover:-translate-y-0.5",
+                "fixed bottom-4 z-50 h-12 rounded-full px-4 shadow-xl transition-transform hover:-translate-y-0.5",
+                kind === "help" ? "left-4 md:left-6" : "right-4 md:right-6",
                 kind === "energy" && "bg-emerald-600 text-white hover:bg-emerald-700",
               )}
             >
@@ -154,7 +157,6 @@ export function FloatingAssistants() {
             </Button>
           );
         })}
-      </div>
     </>
   );
 }
