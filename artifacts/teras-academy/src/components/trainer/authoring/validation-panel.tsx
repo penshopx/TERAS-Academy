@@ -3,13 +3,37 @@ import { AlertCircle, CheckCircle2, AlertTriangle, Send, Clock, History } from "
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 
 interface ValidationPanelProps {
   courseId: string;
+}
+
+export function PublishSuccessMessage({ version }: { version: CourseVersion }) {
+  return <>Authoring revision {version.authoringRevision} was published as immutable version {version.version}.</>;
+}
+
+export function PublishedVersionHistory({ versions }: { versions: CourseVersion[] | undefined }) {
+  return (
+    <div className="space-y-2">
+      {versions?.length === 0 && <p className="text-xs text-muted-foreground font-mono">No published versions yet.</p>}
+      {versions?.map((version) => (
+        <div key={version.id} className="bg-black/20 border border-border/50 rounded-md p-2 flex justify-between items-center" data-testid={`version-item-${version.id}`}>
+          <div>
+            <p className="text-xs font-bold text-foreground font-mono">v{version.version}</p>
+            <p className="text-[10px] text-muted-foreground font-mono">{format(new Date(version.publishedAt), "MMM dd, yyyy HH:mm")}</p>
+            <p className="text-[10px] text-muted-foreground font-mono" data-testid={`text-authoring-revision-${version.id}`}>
+              {version.authoringRevision === 0 ? "Authoring revision: Legacy version" : `Authoring revision: ${version.authoringRevision}`}
+            </p>
+          </div>
+          <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">{version.lifecycle}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function ValidationPanel({ courseId }: ValidationPanelProps) {
@@ -139,21 +163,7 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
               <h4 className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest flex items-center gap-2 border-b border-border/50 pb-2">
                 <History className="w-3.5 h-3.5" /> PUBLISHED VERSIONS
               </h4>
-              <div className="space-y-2">
-                {versions?.length === 0 && <p className="text-xs text-muted-foreground font-mono">No published versions yet.</p>}
-                {versions?.map((v) => (
-                  <div key={v.id} className="bg-black/20 border border-border/50 rounded-md p-2 flex justify-between items-center" data-testid={`version-item-${v.id}`}>
-                    <div>
-                      <p className="text-xs font-bold text-foreground font-mono">v{v.version}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono">{format(new Date(v.publishedAt), 'MMM dd, yyyy HH:mm')}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono" data-testid={`text-authoring-revision-${v.id}`}>
-                        {v.authoringRevision === 0 ? "Authoring revision: Legacy version" : `Authoring revision: ${v.authoringRevision}`}
-                      </p>
-                    </div>
-                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">{v.lifecycle}</span>
-                  </div>
-                ))}
-              </div>
+              <PublishedVersionHistory versions={versions} />
             </div>
 
             <div className="space-y-2 pt-4">
@@ -187,7 +197,7 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
             <DialogTitle>{publishedVersion ? "Course Published" : "Confirm Publish"}</DialogTitle>
             <DialogDescription>
               {publishedVersion
-                ? `Authoring revision ${publishedVersion.authoringRevision} was published as immutable version ${publishedVersion.version}.`
+                ? <PublishSuccessMessage version={publishedVersion} />
                 : "This will create a new immutable published version of the course. It will become instantly available to all enrolled learners on this pathway."}
             </DialogDescription>
           </DialogHeader>
