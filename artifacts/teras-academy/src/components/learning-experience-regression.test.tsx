@@ -44,3 +44,22 @@ test("learning pages keep a clear learning-only information architecture", async
     assert.doesNotMatch(content, new RegExp(forbidden.replace(".", "\\."), "i"));
   }
 });
+
+test("learning journey analytics use one anonymous event contract", async () => {
+  const [list, course, lesson, analytics] = await Promise.all([
+    ...learningSources.map(path => readFile(new URL(path, import.meta.url), "utf8")),
+    readFile(new URL("../lib/analytics.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(analytics, /trackEvent\("learning_action"/);
+  assert.match(analytics, /window\.umami\?\.track/);
+  assert.match(analytics, /catch \{/);
+  assert.doesNotMatch(analytics, /learner_id|title|description|reason/i);
+
+  assert.match(list, /action: isStarted \? "continue_learning" : "start_course"/);
+  assert.match(list, /location: "learning_list_next_action"/);
+  assert.match(course, /action: "open_lesson"/);
+  assert.match(course, /location: "course_lesson_list"/);
+  assert.match(lesson, /action: targetState === "IN_PROGRESS" \? "start_activity" : "complete_activity"/);
+  assert.match(lesson, /location: "lesson_activity"/);
+});

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMemo } from "react";
+import { trackLearningAction } from "@/lib/analytics";
 
 export default function LearningCourseDetail() {
   const { courseId } = useParams();
@@ -152,7 +153,17 @@ export default function LearningCourseDetail() {
                           variant={isCurrent ? "default" : "secondary"} 
                           className={`w-full font-bold uppercase tracking-widest text-[10px] h-9 px-6 transition-all ${isCurrent ? 'shadow-[0_0_15px_rgba(0,195,255,0.3)] hover:shadow-[0_0_20px_rgba(0,195,255,0.4)]' : 'hover:bg-primary/10 hover:text-primary'}`}
                       >
-                        <Link href={`/learning/lessons/${lesson.id}`} data-testid={`link-lesson-${lesson.id}`}>
+                        <Link
+                          href={`/learning/lessons/${lesson.id}`}
+                          onClick={() => trackLearningAction({
+                            action: "open_lesson",
+                            location: "course_lesson_list",
+                            courseId: course.id,
+                            moduleId: module.id,
+                            lessonId: lesson.id,
+                          })}
+                          data-testid={`link-lesson-${lesson.id}`}
+                        >
                           {lessonComplete ? 'Review' : isCurrent ? 'Continue' : 'View'}
                           <ChevronRight className="w-3.5 h-3.5 ml-1.5" />
                         </Link>

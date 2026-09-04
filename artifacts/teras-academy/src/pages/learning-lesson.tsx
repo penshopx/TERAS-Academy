@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { trackLearningAction } from "@/lib/analytics";
 
 export default function LearningLessonDetail() {
   const { lessonId } = useParams();
@@ -101,6 +102,14 @@ export default function LearningLessonDetail() {
         idempotencyKeys.current.delete(actionKey);
         await queryClient.invalidateQueries({ queryKey: getListLearningCoursesQueryKey() });
         setActiveActivityId(null);
+        trackLearningAction({
+          action: targetState === "IN_PROGRESS" ? "start_activity" : "complete_activity",
+          location: "lesson_activity",
+          courseId: course.id,
+          moduleId: module.id,
+          lessonId: lesson.id,
+          activityId: activity.id,
+        });
         toast({
           title: targetState === 'IN_PROGRESS' ? 'Activity Started' : 'Activity Completed',
           description: targetState === 'IN_PROGRESS' ? 'You can now access the materials.' : 'Your progress has been saved.',

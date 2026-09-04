@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { BookOpen, PlayCircle, Clock, ChevronRight, Activity, Route } from "lucide-react";
 import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { trackLearningAction } from "@/lib/analytics";
 
 export default function LearningList() {
   const { data: courses, isLoading, error } = useListLearningCourses();
@@ -138,7 +139,18 @@ export default function LearningList() {
                       </p>
                       {progress.firstIncompleteAction ? (
                         <Button asChild className="w-full font-bold uppercase tracking-widest text-xs h-14 shadow-[0_0_20px_rgba(0,195,255,0.15)] hover:shadow-[0_0_30px_rgba(0,195,255,0.3)] transition-all">
-                          <Link href={`/learning/lessons/${progress.firstIncompleteAction.lessonId}`} data-testid={`link-course-resume-${course.id}`}>
+                          <Link
+                            href={`/learning/lessons/${progress.firstIncompleteAction.lessonId}`}
+                            onClick={() => trackLearningAction({
+                              action: isStarted ? "continue_learning" : "start_course",
+                              location: "learning_list_next_action",
+                              courseId: course.id,
+                              moduleId: progress.firstIncompleteAction!.moduleId,
+                              lessonId: progress.firstIncompleteAction!.lessonId,
+                              activityId: progress.firstIncompleteAction!.activityId,
+                            })}
+                            data-testid={`link-course-resume-${course.id}`}
+                          >
                             {isStarted ? (
                               <><PlayCircle className="w-5 h-5 mr-2" /> Continue Learning</>
                             ) : (
