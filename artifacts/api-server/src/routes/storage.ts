@@ -37,8 +37,10 @@ router.post("/storage/uploads/request-url", async (req, res): Promise<void> => {
 router.get("/storage/objects/*path", async (req, res): Promise<void> => {
   // Clerk middleware parses the session; test identities are also supported by
   // authorizeLearningActor, so no caller-controlled identity is accepted here.
-  const { userId } = getAuth(req);
-  if (!userId && process.env.NODE_ENV === "production") { res.status(401).json({ error: "Authentication required" }); return; }
+  if (process.env.NODE_ENV === "production") {
+    const { userId } = getAuth(req);
+    if (!userId) { res.status(401).json({ error: "Authentication required" }); return; }
+  }
   const actor = await authorizeLearningActor(req, res);
   if (!actor) return;
   const raw = req.params.path;
