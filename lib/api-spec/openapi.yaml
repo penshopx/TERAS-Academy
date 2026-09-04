@@ -305,6 +305,19 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: Required remediation activities and evidence prerequisites are not complete
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error, message]
+                properties:
+                  error:
+                    type: string
+                    enum: [REMEDIATION_PREREQUISITES_NOT_MET]
+                  message:
+                    type: string
   /readiness:
     get:
       operationId: getLearnerReadiness

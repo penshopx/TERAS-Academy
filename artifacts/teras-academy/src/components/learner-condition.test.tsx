@@ -124,7 +124,7 @@ test("all authenticated role pages include the canonical condition panel", async
     ["dashboard.tsx", "Learner"],
     ["readiness.tsx", "Learner"],
     ["trainer.tsx", "Trainer"],
-    ["assessor.tsx", "Assessor"],
+    ["assessor.tsx", "Internal Evaluator"],
     ["passport.tsx", "Learner"],
   ] as const;
 

@@ -1,6 +1,6 @@
 import React from "react";
 
-export type AssessorDecision = "Competent" | "Not competent";
+export type LegacyAssessmentDecision = "Competent" | "Not competent";
 
 type QueueItem = {
   priority: string;
@@ -51,11 +51,15 @@ export function hasCriticalFailure(criteria: Criterion[], scores: Record<string,
   );
 }
 
-export function getOfficialDecision(
-  requestedDecision: AssessorDecision,
+export function enforceInternalRecommendation(
+  requestedDecision: LegacyAssessmentDecision,
   criticalFailure: boolean,
-): AssessorDecision {
+): LegacyAssessmentDecision {
   return criticalFailure ? "Not competent" : requestedDecision;
+}
+
+export function recommendationLabel(decision: LegacyAssessmentDecision): string {
+  return decision === "Competent" ? "Ready for Next Stage" : "Needs Reinforcement";
 }
 
 export function DecisionSummary({
@@ -63,25 +67,25 @@ export function DecisionSummary({
   criticalFailure,
   requestedControl,
 }: {
-  requestedDecision: AssessorDecision;
+  requestedDecision: LegacyAssessmentDecision;
   criticalFailure: boolean;
   requestedControl?: React.ReactNode;
 }) {
-  const officialDecision = getOfficialDecision(requestedDecision, criticalFailure);
+  const storedRecommendation = enforceInternalRecommendation(requestedDecision, criticalFailure);
 
   return (
     <div className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
       <div>
-        <div className="text-xs font-mono text-muted-foreground">REQUESTED DECISION</div>
+        <div className="text-xs font-mono text-muted-foreground">REQUESTED RECOMMENDATION</div>
         <div data-testid="requested-decision-value">
-          {requestedControl ?? <div className="mt-2 text-lg font-bold">{requestedDecision}</div>}
+          {requestedControl ?? <div className="mt-2 text-lg font-bold">{recommendationLabel(requestedDecision)}</div>}
         </div>
         <p className="mt-2 text-xs text-muted-foreground">Your selection before safety enforcement is applied.</p>
       </div>
       <div className={criticalFailure ? "rounded-md border border-destructive/40 bg-destructive/5 p-3" : "rounded-md border border-primary/30 bg-primary/5 p-3"}>
-        <div className="text-xs font-mono text-muted-foreground">OFFICIAL DECISION TO BE STORED</div>
-        <div className={`mt-2 text-lg font-bold ${criticalFailure ? "text-destructive" : "text-primary"}`} data-testid="official-decision-value">{officialDecision}</div>
-        <p className="mt-1 text-xs text-muted-foreground">{criticalFailure ? "Overridden by critical-criterion safety enforcement." : "Matches the requested decision based on current scores."}</p>
+        <div className="text-xs font-mono text-muted-foreground">INTERNAL READINESS RECOMMENDATION</div>
+        <div className={`mt-2 text-lg font-bold ${criticalFailure ? "text-destructive" : "text-primary"}`} data-testid="internal-recommendation-value">{recommendationLabel(storedRecommendation)}</div>
+        <p className="mt-1 text-xs text-muted-foreground">{criticalFailure ? "Overridden by critical-criterion safety enforcement." : "Matches the requested recommendation based on current scores."}</p>
       </div>
     </div>
   );

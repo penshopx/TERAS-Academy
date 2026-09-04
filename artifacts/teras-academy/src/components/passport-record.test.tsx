@@ -73,6 +73,9 @@ test("renders professional empty achievements and preserves evidence counts", ()
 
 test("passport keeps the canonical safety panel beside the longitudinal record", async () => {
   const source = await readFile(new URL("../pages/passport.tsx", import.meta.url), "utf8");
+  assert.match(source, /Longitudinal Capability Record/);
+  assert.match(source, /INTERNAL TERAS CAPABILITY RECORD/);
+  assert.doesNotMatch(source, /Official Capability Record|VERIFIED ENGINE RECORD/);
   assert.match(source, /<LearnerCondition owner="Learner"\s*\/>/);
   assert.match(source, /<PassportRecord timeline=\{passport\.timeline\} achievements=\{passport\.achievements\}\s*\/>/);
 });

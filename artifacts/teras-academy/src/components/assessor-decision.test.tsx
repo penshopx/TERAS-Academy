@@ -5,9 +5,10 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   DecisionSummary,
-  getOfficialDecision,
+  enforceInternalRecommendation,
   hasCriticalFailure,
   prioritizeDecisionQueue,
+  recommendationLabel,
   restoreDecisionFocus,
 } from "./assessor-decision";
 
@@ -22,40 +23,42 @@ test("critical queue items appear before normal items", () => {
 });
 
 for (const score of [0, 1]) {
-  test(`critical score ${score} preserves the requested label and shows the official override`, () => {
+  test(`critical score ${score} preserves the requested recommendation and shows the safety override`, () => {
     const criticalFailure = hasCriticalFailure([{ id: "critical", critical: true }], { critical: score });
     const markup = renderToStaticMarkup(
       <DecisionSummary requestedDecision="Competent" criticalFailure={criticalFailure} />,
     );
 
-    assert.equal(getOfficialDecision("Competent", criticalFailure), "Not competent");
+    assert.equal(enforceInternalRecommendation("Competent", criticalFailure), "Not competent");
     assert.match(markup, /data-testid="requested-decision-value"/);
-    assert.match(markup, /REQUESTED DECISION[\s\S]*Competent/);
-    assert.match(markup, /data-testid="official-decision-value">Not competent/);
-    assert.match(markup, /OFFICIAL DECISION TO BE STORED[\s\S]*Not competent/);
+    assert.match(markup, /REQUESTED RECOMMENDATION[\s\S]*Ready for Next Stage/);
+    assert.match(markup, /data-testid="internal-recommendation-value">Needs Reinforcement/);
+    assert.match(markup, /INTERNAL READINESS RECOMMENDATION[\s\S]*Needs Reinforcement/);
     assert.match(markup, /Overridden by critical-criterion safety enforcement/);
   });
 }
 
-test("attempt history identifies decisions as official stored records", async () => {
+test("attempt history identifies decisions as internal evaluation records", async () => {
   const source = await readFile(new URL("../pages/assessment-detail.tsx", import.meta.url), "utf8");
 
-  assert.match(source, /Official Attempt History/);
-  assert.match(source, /Stored decisions only; newest official record appears last\./);
-  assert.match(source, /OFFICIAL STORED DECISION/);
+  assert.match(source, /Internal Evaluation History/);
+  assert.match(source, /Stored internal recommendations; newest record appears last\./);
+  assert.match(source, /INTERNAL READINESS RECOMMENDATION/);
 });
 
 test("submission still sends the requested decision unless safety enforcement overrides it", () => {
-  assert.equal(getOfficialDecision("Competent", false), "Competent");
-  assert.equal(getOfficialDecision("Not competent", false), "Not competent");
-  assert.equal(getOfficialDecision("Competent", true), "Not competent");
+  assert.equal(enforceInternalRecommendation("Competent", false), "Competent");
+  assert.equal(enforceInternalRecommendation("Not competent", false), "Not competent");
+  assert.equal(enforceInternalRecommendation("Competent", true), "Not competent");
+  assert.equal(recommendationLabel("Competent"), "Ready for Next Stage");
+  assert.equal(recommendationLabel("Not competent"), "Needs Reinforcement");
 });
 
 test("assessor selects expose stable keyboard-accessible names", async () => {
   const source = await readFile(new URL("../pages/assessor.tsx", import.meta.url), "utf8");
 
   assert.match(source, /aria-label=\{`Score for \$\{c\.code\} — \$\{c\.label\}`\}/);
-  assert.match(source, /aria-label="Requested decision"/);
+  assert.match(source, /aria-label="Requested recommendation"/);
   assert.match(source, /data-testid="requested-decision-select"/);
 });
 

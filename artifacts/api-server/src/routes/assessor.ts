@@ -326,15 +326,8 @@ router.post(
             eq(gapsTable.pathwayId, context.pathway.id),
           ),
         );
+      let remediationPrerequisitesMet = true;
       if (moduleGaps.length) {
-        await tx.insert(gapEventsTable).values(
-          moduleGaps.map((gap) => ({
-            id: id("gap-event"),
-            gapId: gap.id,
-            status: decision === "Competent" ? "Resolved" : "Open",
-            createdBy: assessorId,
-          })),
-        );
         const plans = await tx.select().from(remediationPlansTable);
         const gapIds = new Set(moduleGaps.map((gap) => gap.id));
         const planIds = new Set(
@@ -344,14 +337,37 @@ router.post(
           (activity) => planIds.has(activity.planId),
         );
         if (activities.length) {
-          await tx.insert(remediationEventsTable).values(
-            activities.map((activity) => ({
-              id: id("remediation-event"),
-              activityId: activity.id,
-              status: decision === "Competent" ? "Completed" : "In progress",
-              createdBy: assessorId,
-            })),
+          const activityIds = new Set(activities.map((activity) => activity.id));
+          const events = (await tx.select().from(remediationEventsTable))
+            .filter((event) => activityIds.has(event.activityId))
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+          const latestStatus = new Map<string, string>();
+          for (const event of events) {
+            if (!latestStatus.has(event.activityId)) latestStatus.set(event.activityId, event.status);
+          }
+          remediationPrerequisitesMet = activities.every(
+            (activity) => latestStatus.get(activity.id) === "Completed",
           );
+        }
+        await tx.insert(gapEventsTable).values(
+          moduleGaps.map((gap) => ({
+            id: id("gap-event"),
+            gapId: gap.id,
+            status: decision === "Competent" && remediationPrerequisitesMet ? "Resolved" : "Open",
+            createdBy: assessorId,
+          })),
+        );
+        if (activities.length) {
+          if (decision !== "Competent") {
+            await tx.insert(remediationEventsTable).values(
+              activities.map((activity) => ({
+                id: id("remediation-event"),
+                activityId: activity.id,
+                status: "In progress",
+                createdBy: assessorId,
+              })),
+            );
+          }
         }
       }
       if (assessment.gateCode) {
@@ -371,7 +387,7 @@ router.post(
             enrollmentId: context.enrollment.id,
             pathwayId: context.pathway.id,
             gateId: gate.id,
-            status: decision === "Competent" ? "Passed" : "In progress",
+            status: decision === "Competent" && remediationPrerequisitesMet ? "Passed" : "In progress",
             score: Math.round(
               (body.data.criteria.reduce((sum, item) => sum + item.score, 0) /
                 body.data.criteria.length /
@@ -379,12 +395,14 @@ router.post(
                 100,
             ),
             blockers:
-              decision === "Competent"
+              decision === "Competent" && remediationPrerequisitesMet
                 ? []
                 : [
                     criticalFailure
                       ? `Critical safety criterion failed in ${assessment.name}`
-                      : `Assessment decision is Not competent for ${assessment.name}`,
+                      : decision === "Competent"
+                        ? `Remediation prerequisites are not complete for ${assessment.name}`
+                        : `Internal evaluation recommends further reinforcement for ${assessment.name}`,
                   ],
             createdBy: assessorId,
           });

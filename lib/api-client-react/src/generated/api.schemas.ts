@@ -470,3 +470,15 @@ export type ForbiddenResponse = ErrorResponse;
  */
 export type NotFoundResponse = ErrorResponse;
 
+export type CompleteRemediation409Error = typeof CompleteRemediation409Error[keyof typeof CompleteRemediation409Error];
+
+
+export const CompleteRemediation409Error = {
+  REMEDIATION_PREREQUISITES_NOT_MET: 'REMEDIATION_PREREQUISITES_NOT_MET',
+} as const;
+
+export type CompleteRemediation409 = {
+  error: CompleteRemediation409Error;
+  message: string;
+};
+

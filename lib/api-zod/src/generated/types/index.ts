@@ -17,6 +17,8 @@ export * from './assessorDashboard';
 export * from './badRequestResponse';
 export * from './capabilityAchievement';
 export * from './capabilityPassport';
+export * from './completeRemediation409';
+export * from './completeRemediation409Error';
 export * from './enrollmentInput';
 export * from './errorResponse';
 export * from './evidenceCounts';

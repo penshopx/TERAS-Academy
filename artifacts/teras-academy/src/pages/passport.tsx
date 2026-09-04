@@ -37,12 +37,12 @@ export default function Passport() {
             <div className="flex-1 space-y-5">
               <div>
                 <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.2em] uppercase text-primary mb-3">
-                  <ShieldCheck className="w-4 h-4" /> Official Capability Record
+                  <ShieldCheck className="w-4 h-4" /> Longitudinal Capability Record
                 </div>
                 <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground mb-2">{passport.learner.name}</h1>
                 <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{passport.subtitle}</p>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground font-mono text-xs">
-                  <span className="flex items-center gap-1.5 text-foreground/70"><FileText className="w-3.5 h-3.5" /> VERIFIED ENGINE RECORD</span>
+                  <span className="flex items-center gap-1.5 text-foreground/70"><FileText className="w-3.5 h-3.5" /> INTERNAL TERAS CAPABILITY RECORD</span>
                   <span className="text-border">•</span>
                   <span className="text-foreground/70">CURRENT CONTEXT: {passport.pathway.name}</span>
                 </div>

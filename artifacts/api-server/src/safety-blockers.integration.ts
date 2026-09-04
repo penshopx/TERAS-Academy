@@ -191,9 +191,33 @@ async function run() {
       .select()
       .from(remediationEventsTable)
       .where(eq(remediationEventsTable.activityId, "rem-act-m07"));
+    const rejectedCompletion = await post<{ error: string }>(
+      "/remediation/rem-m07/complete",
+      "learner",
+      {},
+      409,
+    );
+    assert(
+      rejectedCompletion.error === "REMEDIATION_PREREQUISITES_NOT_MET",
+      "Incomplete remediation did not return the canonical prerequisite error",
+    );
+    const remediationHistoryAfterRejection = await db
+      .select()
+      .from(remediationEventsTable)
+      .where(eq(remediationEventsTable.activityId, "rem-act-m07"));
+    assert(
+      remediationHistoryAfterRejection.length === remediationHistoryBeforeCompletion.length,
+      "Rejected remediation completion inserted an event",
+    );
+    await db.insert(remediationEventsTable).values({
+      id: "test-rem-m07-prerequisites-complete",
+      activityId: "rem-act-m07",
+      status: "Completed",
+      createdBy: "trainer-sari",
+    });
     await post("/remediation/rem-m07/complete", "learner", {}, 200);
     const remediation = await request<Remediation>("/remediation", "learner");
-    assert(remediation.find(({ id }) => id === "rem-m07")?.status === "Completed", "Remediation completion was not persisted to GET");
+    assert(remediation.find(({ id }) => id === "rem-m07")?.status === "Completed", "Completed remediation was not returned by GET");
     const remediationHistory = await db
       .select()
       .from(remediationEventsTable)
@@ -201,8 +225,8 @@ async function run() {
     assert(
       remediationHistory.length === remediationHistoryBeforeCompletion.length + 1 &&
         remediationHistory.some((event) => event.status === "Not started") &&
-        remediationHistory.some((event) => event.status === "Completed" && event.createdBy === "learner-demo"),
-      "Remediation completion overwrote history instead of appending a new event",
+        remediationHistory.some((event) => event.status === "Completed" && event.createdBy === "trainer-sari"),
+      "Remediation prerequisite history was not preserved",
     );
     const stillBlocked = await request<Readiness>("/readiness", "learner");
     assert(stillBlocked.status === "Blocked" && stillBlocked.blockers.some((blocker) => blocker.includes("Critical safety failure in M03")), "Completing remediation cleared unresolved M03 critical failure");

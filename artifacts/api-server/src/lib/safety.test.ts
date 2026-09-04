@@ -12,6 +12,10 @@ assert.deepEqual(
   { decision: "Not competent", criticalFailure: true },
 );
 assert.deepEqual(
+  enforceSafetyDecision([pass(1), ...Array.from({ length: 9 }, () => ({ critical: false, score: 3 }))], "Competent"),
+  { decision: "Not competent", criticalFailure: true },
+);
+assert.deepEqual(
   enforceSafetyDecision([pass(2), pass(3)], "Competent"),
   { decision: "Competent", criticalFailure: false },
 );

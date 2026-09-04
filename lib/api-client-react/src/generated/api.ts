@@ -26,6 +26,7 @@ import type {
   AssessorDashboard,
   BadRequestResponse,
   CapabilityPassport,
+  CompleteRemediation409,
   EvidenceInput,
   EvidenceRecord,
   ForbiddenResponse,
@@ -1321,7 +1322,7 @@ export const completeRemediation = async (remediationId: string, options?: Param
 
 
 
-export const getCompleteRemediationMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+export const getCompleteRemediationMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | CompleteRemediation409>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeRemediation>>, TError,{remediationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof completeRemediation>>, TError,{remediationId: string}, TContext> => {
 
@@ -1350,12 +1351,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CompleteRemediationMutationResult = NonNullable<Awaited<ReturnType<typeof completeRemediation>>>
 
-    export type CompleteRemediationMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type CompleteRemediationMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | CompleteRemediation409>
 
     /**
  * @summary Mark a remediation activity complete
  */
-export const useCompleteRemediation = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+export const useCompleteRemediation = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | CompleteRemediation409>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeRemediation>>, TError,{remediationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof completeRemediation>>,

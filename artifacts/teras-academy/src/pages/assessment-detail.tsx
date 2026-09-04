@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Activity, ChevronRight, ShieldAlert, FileSignature, LockKeyhole, History, FileCheck2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { recommendationLabel, type LegacyAssessmentDecision } from "@/components/assessor-decision";
 
 export default function AssessmentDetail() {
   const { assessmentId } = useParams();
@@ -68,7 +69,7 @@ export default function AssessmentDetail() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground"><History className="h-4 w-4 text-primary" /> ATTEMPT CONTEXT</div>
-            <p className="mt-2 font-semibold">{assessment.attemptCount} official attempt{assessment.attemptCount === 1 ? "" : "s"}</p>
+            <p className="mt-2 font-semibold">{assessment.attemptCount} internal evaluation attempt{assessment.attemptCount === 1 ? "" : "s"}</p>
             <p className="mt-1 text-xs text-muted-foreground">Latest stored status: {assessment.status}</p>
           </CardContent>
         </Card>
@@ -179,8 +180,8 @@ export default function AssessmentDetail() {
 
         <Card className="bg-card h-fit">
           <CardHeader>
-            <CardTitle>Official Attempt History</CardTitle>
-            <CardDescription>Stored decisions only; newest official record appears last.</CardDescription>
+            <CardTitle>Internal Evaluation History</CardTitle>
+            <CardDescription>Stored internal recommendations; newest record appears last.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 relative before:absolute before:inset-0 before:left-4 before:-translate-x-px before:w-0.5 before:bg-border before:z-0">
@@ -196,13 +197,13 @@ export default function AssessmentDetail() {
                     </div>
                     {attempt.decision && (
                       <div className="mt-1">
-                        <div className="text-[10px] font-mono text-muted-foreground">OFFICIAL STORED DECISION</div>
-                        <div className="text-sm font-semibold">{attempt.decision}</div>
+                        <div className="text-[10px] font-mono text-muted-foreground">INTERNAL READINESS RECOMMENDATION</div>
+                        <div className="text-sm font-semibold">{recommendationLabel(attempt.decision as LegacyAssessmentDecision)}</div>
                       </div>
                     )}
                     {attempt.assessor && (
                       <div className="text-xs text-muted-foreground mt-2 border-t border-border pt-2">
-                        Assessor: {attempt.assessor}
+                        Internal evaluator: {attempt.assessor}
                       </div>
                     )}
                   </div>

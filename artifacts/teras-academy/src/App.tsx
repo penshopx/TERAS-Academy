@@ -380,7 +380,7 @@ function PublicHome() {
                 { step: 'Practice', desc: 'Simulasi aman' },
                 { step: 'Evidence', desc: 'Bukti terapan' },
                 { step: 'Assessment', desc: 'Validasi objektif' },
-                { step: 'Readiness', desc: 'Kesiapan rilis' }
+                { step: 'Readiness', desc: 'Kesiapan tahap berikutnya' }
               ].map((item, index) => (
                 <div key={item.step} className="group relative">
                   <div className="rounded-xl border border-white/10 bg-[#0a0a0a] p-5 text-center transition-all duration-300 hover:-translate-y-1 hover:border-[#00c3ff]/30 hover:shadow-[0_10px_20px_-10px_rgba(0,195,255,0.15)] h-full flex flex-col items-center justify-center">
@@ -413,7 +413,7 @@ function PublicHome() {
                   <ShieldCheck className="h-4 w-4 text-[#00c3ff]" />
                   <span className="font-mono text-[10px] font-bold tracking-[0.2em] text-[#00c3ff] uppercase">Field Verification</span>
                 </div>
-                <p className="text-sm text-white/80 font-medium leading-relaxed max-w-sm">Sertifikasi TERAS Academy menjamin readiness nyata di lapangan, bukan sekadar kelulusan teori di atas kertas.</p>
+                <p className="text-sm text-white/80 font-medium leading-relaxed max-w-sm">Program Pengembangan TERAS Academy membangun bukti kesiapan untuk tahap berikutnya, bukan sekadar kelulusan teori di atas kertas.</p>
               </div>
             </div>
 
@@ -431,7 +431,7 @@ function PublicHome() {
                   Safety failure cannot be hidden by an average score.
                 </p>
                 <p className="leading-relaxed">
-                  Saat kriteria keselamatan kritis gagal, nilai tinggi pada area lain tidak dapat mengubah keputusan menjadi competent. Readiness tetap diblokir sampai reassessment membuktikan kemampuan yang aman.
+                  Saat kriteria keselamatan kritis gagal, nilai tinggi pada area lain tidak dapat menghasilkan rekomendasi siap. Readiness tetap diblokir sampai reassessment membuktikan kemampuan yang aman.
                 </p>
               </div>
             </div>

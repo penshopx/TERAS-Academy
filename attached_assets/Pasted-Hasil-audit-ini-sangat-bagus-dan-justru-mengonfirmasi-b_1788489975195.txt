@@ -1,0 +1,1003 @@
+Hasil audit ini **sangat bagus dan justru mengonfirmasi bahwa kita tidak perlu membongkar TERAS**. Gate `READY FOR PHASE 1 = NO` juga tepat.
+
+Sekarang saya sarankan **jangan langsung membuat Course/Lesson/Activity**. Kita lakukan **PHASE 0 terlebih dahulu** untuk mengunci terminology, regression guard, dan menghilangkan bypass paling berbahaya.
+
+Urutannya menjadi:
+
+```text
+PHASE 0
+Positioning Compliance + Regression Guard
+        ↓
+PHASE 1
+LMS Domain Contract + Transition Contract
+        ↓
+PHASE 2
+LMS Foundation
+```
+
+Berikut prompt yang saya sarankan langsung diberikan ke Replit.
+
+# TERAS Academy — PHASE 0
+
+## Positioning Compliance + Regression Guard
+
+### IMPLEMENTATION TASK — CONTROLLED HARDENING
+
+Audit dan implementation blueprint sebelumnya sudah selesai.
+
+Status audit:
+
+```text
+AUDIT: PASS
+PHASE 1: BLOCKED
+PHASE 0: READY
+```
+
+Sekarang implementasikan **PHASE 0 ONLY**.
+
+Tujuan Phase 0:
+
+1. Menghilangkan positioning yang dapat membuat TERAS terlihat sebagai lembaga sertifikasi/assessor resmi.
+2. Mengunci terminology internal TERAS.
+3. Membuat regression guard untuk mencegah terminology tersebut kembali.
+4. Memperkuat regression tests untuk prinsip:
+
+   * Completed ≠ Capable ≠ Ready
+   * Safety is non-compensatory
+   * Path A/B isolation
+   * Authorization boundary
+5. Menghilangkan shortcut remediation yang dapat membuat proses terlihat selesai tanpa bukti proses yang sebenarnya.
+
+**JANGAN mengimplementasikan LMS Foundation pada fase ini.**
+
+---
+
+# 1. CORE POSITIONING
+
+TERAS Academy harus selalu diposisikan sebagai:
+
+> **Capability Development Platform**
+
+dengan:
+
+> **LMS sebagai Core Learning Engine**
+
+TERAS membantu proses:
+
+```text
+Learn
+→ Practice
+→ Evidence
+→ Feedback
+→ Improve
+→ Reassess
+→ Readiness
+→ Capability Passport
+```
+
+TERAS bukan:
+
+* lembaga sertifikasi;
+* assessor resmi;
+* pengganti proses uji kompetensi resmi;
+* penerbit sertifikat kompetensi;
+* pemberi keputusan kompetensi resmi.
+
+Semua readiness yang dihasilkan TERAS adalah:
+
+> **Internal Readiness Recommendation**
+
+dan bukan keputusan kompetensi resmi.
+
+---
+
+# 2. SAFE TERMINOLOGY CONTRACT
+
+Gunakan terminology berikut sebagai canonical vocabulary.
+
+| Jangan gunakan sebagai terminology TERAS | Gunakan                                            |
+| ---------------------------------------- | -------------------------------------------------- |
+| Sertifikasi TERAS Academy                | Program Pengembangan TERAS Academy                 |
+| Competent                                | Ready for Next Stage                               |
+| Not Competent                            | Needs Reinforcement                                |
+| Official Decision                        | Internal Readiness Recommendation                  |
+| Official Assessment                      | Internal Evaluation                                |
+| Official Assessment Record               | Internal Evaluation Record                         |
+| Official Attempt                         | Internal Evaluation Attempt                        |
+| Official Attempt History                 | Internal Evaluation History                        |
+| Official Capability Record               | Longitudinal Capability Record                     |
+| VERIFIED ENGINE RECORD                   | INTERNAL TERAS CAPABILITY RECORD                   |
+| Kesiapan Rilis                           | Kesiapan Tahap Berikutnya                          |
+| Certification Decision                   | Readiness Recommendation                           |
+| Assessor Decision                        | Evaluator Recommendation / Internal Recommendation |
+
+### Catatan penting
+
+Jangan melakukan global blind replacement.
+
+Setiap perubahan harus diperiksa berdasarkan konteks.
+
+Contoh:
+
+Jika `Competent` merupakan terminology teknis yang memang diperlukan untuk kompatibilitas data lama atau integrasi eksternal, pertahankan sebagai **legacy/internal compatibility value** bila benar-benar diperlukan, tetapi jangan tampilkan sebagai keputusan resmi TERAS kepada pengguna.
+
+Jika enum/API legacy harus dipertahankan demi backward compatibility:
+
+```text
+legacy value
+↓
+internal mapping
+↓
+canonical TERAS terminology
+```
+
+Jangan merusak data lama hanya demi mengganti string.
+
+---
+
+# 3. FILE YANG HARUS DIAUDIT DAN DIPERBAIKI
+
+Cari seluruh repository, bukan hanya file yang disebutkan dalam audit.
+
+Minimal:
+
+```text
+artifacts/teras-academy/src/
+artifacts/api-server/src/
+lib/api-spec/
+lib/db/src/schema/
+lib/api-zod/
+lib/api-client-react/
+tests/
+seed/
+fixtures/
+```
+
+Cari terminology:
+
+```text
+Competent
+Not competent
+official
+Official
+certification
+Certification
+sertifikasi
+Sertifikasi
+assessment decision
+official decision
+official assessment
+official record
+capability record
+verified engine
+kesiapan rilis
+release readiness
+assessor decision
+```
+
+Buat daftar semua occurrence terlebih dahulu.
+
+Kemudian kategorikan:
+
+```text
+USER-FACING
+API CONTRACT
+DATABASE / ENUM
+SEED
+TEST
+INTERNAL CODE
+DOCUMENTATION
+LEGACY COMPATIBILITY
+```
+
+---
+
+# 4. POSITIONING REGRESSION GUARD
+
+Tambahkan automated regression protection.
+
+Tujuannya adalah mencegah developer berikutnya secara tidak sengaja mengembalikan terminology yang salah.
+
+Regression guard minimal harus mendeteksi user-facing atau canonical domain usage yang kembali menggunakan:
+
+```text
+Official Decision
+Official Assessment
+Official Capability Record
+Certification
+Sertifikasi
+Competent
+Not Competent
+Kesiapan Rilis
+```
+
+Namun guard **tidak boleh sekadar melakukan string grep buta** jika string tersebut berada dalam:
+
+* migration history;
+* legacy compatibility mapping;
+* historical data;
+* comments yang menjelaskan terminology lama;
+* test yang secara eksplisit menguji backward compatibility.
+
+Guard harus fokus pada:
+
+```text
+canonical domain vocabulary
++
+user-facing UI
++
+active API contracts
+```
+
+Dokumentasikan exception secara eksplisit.
+
+---
+
+# 5. COMPLETED ≠ CAPABLE ≠ READY
+
+Tambahkan regression tests yang membuktikan ketiga konsep tidak dapat saling menggantikan.
+
+Minimal test scenarios:
+
+### Scenario A
+
+Learning activity selesai.
+
+Expected:
+
+```text
+learning completion = true
+capability = not automatically proven
+readiness = not automatically proven
+```
+
+### Scenario B
+
+Practice selesai.
+
+Expected:
+
+```text
+practice = completed
+capability = requires evidence/review according to contract
+readiness = not automatically proven
+```
+
+### Scenario C
+
+Evidence diterima.
+
+Expected:
+
+```text
+evidence = accepted
+readiness = still subject to all readiness prerequisites
+```
+
+### Scenario D
+
+Average score tinggi tetapi critical safety failure terjadi.
+
+Expected:
+
+```text
+readiness = blocked
+```
+
+### Scenario E
+
+Assessment/review pass tanpa required learning/practice/evidence chain.
+
+Expected:
+
+```text
+cannot bypass required prerequisites
+```
+
+---
+
+# 6. SAFETY REGRESSION GUARD
+
+JANGAN mengubah:
+
+```text
+artifacts/api-server/src/lib/safety.ts
+```
+
+dan jangan mengubah readiness formula.
+
+Tambahkan regression tests terhadap existing behavior.
+
+Minimal:
+
+```text
+critical criterion = 0
+→ BLOCKED
+
+critical criterion = 1
+→ BLOCKED
+
+high average score
++
+critical safety failure
+→ BLOCKED
+
+requested positive decision
++
+critical safety failure
+→ BLOCKED
+```
+
+Pastikan:
+
+> Average score never overrides critical safety failure.
+
+Jika existing tests sudah membuktikan hal tersebut, pertahankan dan tambahkan hanya coverage yang masih kurang.
+
+---
+
+# 7. REMEDIATION BYPASS — CRITICAL HARDENING
+
+Audit endpoint:
+
+```text
+artifacts/api-server/src/routes/learner.ts
+```
+
+dan semua route/service yang dapat mengubah status remediation.
+
+Temukan mekanisme seperti:
+
+```text
+Mark Plan Complete
+```
+
+atau equivalent behavior.
+
+Masalah yang harus dihilangkan:
+
+```text
+Remediation Plan
+→ manually mark complete
+→ readiness becomes eligible
+```
+
+jika required activities sebenarnya belum dilakukan.
+
+Target:
+
+```text
+Remediation
+↓
+Required Activity
+↓
+Completion
+↓
+Re-practice
+↓
+New Evidence
+↓
+Review
+↓
+Reassessment
+```
+
+Pada Phase 0, lakukan **minimal safe hardening**:
+
+Jika remediation memiliki required activities yang belum terpenuhi:
+
+```text
+Mark Complete
+→ REJECT
+```
+
+Jangan membuat shortcut.
+
+Return error yang jelas dan aman.
+
+Contoh semantik:
+
+```text
+REMEDIATION_PREREQUISITES_NOT_MET
+```
+
+Jangan menganggap seluruh remediation selesai hanya karena operator/evaluator meminta completion.
+
+---
+
+# 8. ASSESSOR / EVALUATOR BYPASS
+
+Audit:
+
+```text
+artifacts/api-server/src/routes/assessor.ts
+```
+
+dan seluruh decision flow.
+
+Jika existing decision flow menggunakan:
+
+```text
+Competent
+Not competent
+```
+
+jangan langsung merusak historical compatibility.
+
+Namun:
+
+* user-facing terminology harus menggunakan canonical TERAS vocabulary;
+* internal recommendation harus dibedakan dari official competency decision;
+* evaluator tidak boleh secara otomatis memenuhi remediation requirements yang belum benar-benar dibuktikan.
+
+Pastikan:
+
+```text
+Evaluator recommendation
+≠
+Official competency decision
+```
+
+dan:
+
+```text
+Recommendation
+≠
+automatic remediation completion
+```
+
+---
+
+# 9. AUTHORIZATION REGRESSION
+
+Tambahkan atau perkuat tests untuk:
+
+```text
+anonymous
+wrong role
+wrong learner
+wrong organization
+wrong program
+authorized actor
+```
+
+Untuk mutation endpoint, setiap denial harus memastikan:
+
+```text
+HTTP/API rejection
++
+NO DATABASE MUTATION
++
+NO EVENT INSERT
++
+NO STATUS CHANGE
+```
+
+Prioritaskan endpoint yang berkaitan dengan:
+
+* learning progress;
+* practice;
+* evidence;
+* review;
+* remediation;
+* reassessment;
+* readiness.
+
+Jangan membuat RBAC architecture baru pada Phase 0.
+
+Gunakan authorization foundation yang sudah ada.
+
+---
+
+# 10. PATH A / PATH B REGRESSION
+
+Jangan mengubah mekanisme Path A/B.
+
+Tambahkan atau pertahankan tests untuk memastikan:
+
+```text
+Path A evidence
+≠
+Path B evidence
+```
+
+dan:
+
+```text
+Path A readiness
+≠
+Path B readiness
+```
+
+Cross-path evidence tidak boleh memenuhi requirement.
+
+Cross-path mutation tidak boleh berhasil.
+
+Concurrent pathway switching tidak boleh menghasilkan record yang salah pathway.
+
+---
+
+# 11. PASSPORT POSITIONING
+
+Perbaiki terminology Passport agar menjadi:
+
+> **Longitudinal Capability Record**
+
+Passport bukan:
+
+> Official Capability Record
+
+dan bukan:
+
+> Verified Engine Record
+
+Jangan redesign Passport.
+
+Jangan mengubah projection architecture.
+
+Jangan menghapus historical data.
+
+Hanya lakukan:
+
+1. terminology correction;
+2. regression protection;
+3. test untuk memastikan historical records tetap ada.
+
+---
+
+# 12. ASSESSMENT POSITIONING
+
+Pada halaman:
+
+```text
+assessment-detail.tsx
+assessor-decision.tsx
+```
+
+atau equivalent component:
+
+ubah terminology user-facing dari official terminology menjadi internal terminology.
+
+Contoh:
+
+```text
+Official Attempt History
+→ Internal Evaluation History
+```
+
+```text
+OFFICIAL STORED DECISION
+→ INTERNAL READINESS RECOMMENDATION
+```
+
+```text
+official attempt
+→ internal evaluation attempt
+```
+
+Jika terdapat terminology `assessor` yang secara teknis merupakan role internal TERAS, jangan melakukan rename role secara destruktif pada Phase 0.
+
+Pisahkan:
+
+```text
+technical role compatibility
+```
+
+dengan:
+
+```text
+user-facing positioning
+```
+
+---
+
+# 13. LANDING PAGE
+
+Cari:
+
+```text
+artifacts/teras-academy/src/App.tsx
+```
+
+dan seluruh landing content.
+
+Jika terdapat:
+
+```text
+Sertifikasi TERAS Academy
+```
+
+ubah menjadi:
+
+```text
+Program Pengembangan TERAS Academy
+```
+
+Jika terdapat:
+
+```text
+Kesiapan rilis
+```
+
+ubah menjadi:
+
+```text
+Kesiapan Tahap Berikutnya
+```
+
+Jika terdapat claim yang menyiratkan:
+
+```text
+TERAS guarantees certification
+TERAS determines official competency
+TERAS replaces assessor
+```
+
+ubah menjadi terminology yang sesuai dengan positioning.
+
+**Jangan redesign visual.**
+
+Pertahankan:
+
+* layout;
+* spacing;
+* responsive behavior;
+* navigation;
+* visual identity;
+* existing Task #21 behavior.
+
+---
+
+# 14. API CONTRACT
+
+Audit:
+
+```text
+lib/api-spec/openapi.yaml
+```
+
+Jika terdapat canonical enum:
+
+```text
+Competent
+Not competent
+```
+
+jangan langsung menghapusnya jika sudah digunakan oleh existing clients/data.
+
+Gunakan strategi compatibility yang aman.
+
+Target canonical semantics:
+
+```text
+READY_FOR_NEXT_STAGE
+READY_WITH_SUPPORT
+NEEDS_STRENGTHENING
+NOT_READY
+```
+
+Tetapi Phase 0 hanya perlu:
+
+* menentukan mapping;
+* melindungi compatibility;
+* menambahkan regression test.
+
+**Jangan melakukan migrasi besar database pada Phase 0.**
+
+**Jangan melakukan breaking API change tanpa kebutuhan.**
+
+---
+
+# 15. TEST REQUIREMENTS
+
+Setelah perubahan selesai, jalankan:
+
+```text
+existing unit tests
+existing integration tests
+existing API tests
+existing typecheck
+existing build
+```
+
+Kemudian tambahkan tests untuk:
+
+### Positioning
+
+```text
+canonical readiness terminology
+no official certification claim
+```
+
+### State semantics
+
+```text
+completion ≠ capability
+capability ≠ readiness
+```
+
+### Safety
+
+```text
+critical failure cannot be overridden
+```
+
+### Remediation
+
+```text
+incomplete remediation cannot become completed
+```
+
+### Authorization
+
+```text
+unauthorized mutation = zero mutation
+```
+
+### Path isolation
+
+```text
+cross-path evidence = rejected
+```
+
+### Passport
+
+```text
+historical records retained
+```
+
+---
+
+# 16. DATABASE SAFETY
+
+Phase 0:
+
+**DO NOT DELETE DATA.**
+
+**DO NOT RESET DATABASE.**
+
+**DO NOT DROP TABLE.**
+
+**DO NOT rename existing tables unless absolutely required and explicitly justified.**
+
+**DO NOT rewrite historical event records.**
+
+Jika schema change benar-benar diperlukan:
+
+1. jelaskan alasannya;
+2. buat additive migration;
+3. jangan destructive migration;
+4. pastikan existing tests tetap pass.
+
+Jika tidak diperlukan, jangan lakukan schema change.
+
+---
+
+# 17. FILE CHANGE DISCIPLINE
+
+Sebelum coding:
+
+buat impact list.
+
+Setelah coding:
+
+tampilkan:
+
+```text
+FILES CHANGED
+FILES ADDED
+FILES DELETED
+```
+
+Expected Phase 0:
+
+```text
+small and targeted
+```
+
+Jika perubahan mulai menyentuh:
+
+```text
+safety formula
+readiness formula
+Path A/B architecture
+database replacement
+LMS entity architecture
+dashboard redesign
+```
+
+STOP.
+
+Jangan lanjut tanpa requirement baru.
+
+---
+
+# 18. NO LMS IMPLEMENTATION YET
+
+Phase 0 TIDAK boleh membuat:
+
+```text
+Course
+Lesson
+LearningActivity
+Quiz
+Assignment
+LiveSession
+WorkshopAttendance
+LearningRecord
+ReadinessTransfer
+```
+
+kecuali hanya test/compatibility scaffolding yang benar-benar diperlukan.
+
+Entity tersebut akan dibuat pada:
+
+> **PHASE 1 — LMS Domain Contract**
+
+---
+
+# 19. ACCEPTANCE CRITERIA
+
+Phase 0 dianggap PASS apabila:
+
+### Positioning
+
+* [ ] Tidak ada active user-facing official certification claim.
+* [ ] Passport menggunakan Longitudinal Capability Record.
+* [ ] Assessment menggunakan Internal Evaluation terminology.
+* [ ] Readiness menggunakan Internal Readiness Recommendation.
+* [ ] Landing page tidak menyatakan TERAS sebagai certification authority.
+
+### Safety
+
+* [ ] Critical safety failure tetap non-compensatory.
+* [ ] Tidak ada perubahan safety formula.
+
+### State
+
+* [ ] Completed tidak otomatis berarti Capable.
+* [ ] Capable tidak otomatis berarti Ready.
+* [ ] Readiness tidak dapat dicapai dengan shortcut.
+
+### Remediation
+
+* [ ] Incomplete remediation tidak dapat ditandai complete melalui shortcut.
+* [ ] Required activity prerequisites tetap enforced.
+
+### Authorization
+
+* [ ] Unauthorized mutation rejected.
+* [ ] Tidak terjadi mutation setelah rejection.
+
+### Pathway
+
+* [ ] Path A/B isolation tetap bekerja.
+* [ ] Cross-path evidence tidak dapat memenuhi requirement.
+
+### Passport
+
+* [ ] Historical record tetap tersimpan.
+* [ ] Tidak ada destructive rewrite.
+
+### Regression
+
+* [ ] Existing tests pass.
+* [ ] New regression tests pass.
+* [ ] Typecheck pass.
+* [ ] Build pass.
+
+---
+
+# 20. FINAL REPORT
+
+Setelah implementasi selesai, jangan hanya mengatakan "done".
+
+Berikan laporan:
+
+```text
+TERAS ACADEMY — PHASE 0 REPORT
+
+STATUS:
+PASS / BLOCKED
+
+POSITIONING:
+PASS / BLOCKED
+
+SAFETY:
+PASS / BLOCKED
+
+STATE SEMANTICS:
+PASS / BLOCKED
+
+REMEDIATION HARDENING:
+PASS / BLOCKED
+
+AUTHORIZATION:
+PASS / BLOCKED
+
+PATH A/B:
+PASS / BLOCKED
+
+PASSPORT:
+PASS / BLOCKED
+
+TESTS:
+X passed
+Y failed
+
+TYPECHECK:
+PASS / FAIL
+
+BUILD:
+PASS / FAIL
+
+FILES CHANGED:
+...
+
+FILES ADDED:
+...
+
+FILES DELETED:
+...
+
+DATABASE CHANGES:
+...
+
+API CHANGES:
+...
+
+UNRESOLVED RISKS:
+...
+
+READY FOR PHASE 1:
+YES / NO
+```
+
+Jika ada test gagal:
+
+**JANGAN menyembunyikan failure.**
+
+Jika ada konflik antara requirement baru dan existing architecture:
+
+**STOP dan laporkan konflik tersebut.**
+
+---
+
+# FINAL RULE
+
+Phase 0 adalah **hardening**, bukan redesign.
+
+Prinsip:
+
+```text
+PRESERVE
++
+HARDEN
++
+GUARD
++
+CLARIFY
+```
+
+bukan:
+
+```text
+REBUILD
++
+REPLACE
++
+MIGRATE
+```
+
+Jangan mengimplementasikan Phase 1 atau Phase 2 dalam task ini.
+
+### Kenapa saya memilih langkah ini?
+
+Karena hasil audit menemukan **dua risiko yang lebih penting daripada membuat Course/Lesson terlebih dahulu**:
+
+1. **Positioning TERAS masih berbahaya** — ada `Official Decision`, `Competent`, `Sertifikasi`, dan terminology sejenis.
+2. **Ada bypass nyata pada remediation** — `Mark Plan Complete` berpotensi membuat alur learning → practice → evidence → reassessment terlihat selesai padahal belum.
+
+Kalau kita langsung membangun LMS di atas dua masalah tersebut, kita justru akan **memperbesar masalah ke seluruh LMS baru**.
+
+Setelah Replit menyelesaikan Prompt Phase 0 ini dan memberikan report `PASS`, barulah kita masuk ke **Prompt Phase 1**, yang akan jauh lebih teknis: **mengunci schema Course → Lesson → Activity → Outcome, ownership, prerequisite, event model, dan Central Learning Transition Contract** tanpa mengubah engine capability/readiness yang sudah ada.
