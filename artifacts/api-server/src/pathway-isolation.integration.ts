@@ -10,8 +10,11 @@ import {
   practiceReviewsTable,
 } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
+import crypto from "node:crypto";
 
 const baseUrl = process.env.TERAS_API_URL ?? "http://localhost:80/api";
+const fixtureScopedKey = (operation: string, key: string) =>
+  `${operation}:${crypto.createHash("sha256").update(JSON.stringify({ learnerId: "learner-demo", key })).digest("hex")}`;
 
 async function request<T>(
   path: string,
@@ -59,6 +62,13 @@ type ReviewQueue = {
 };
 
 async function removePreviousIntegrationRecords() {
+  await db.delete(learningTransitionEventsTable).where(
+    inArray(learningTransitionEventsTable.idempotencyKey, [
+      fixtureScopedKey("practice-attempt", "pathway-isolation-b04-practice-attempt"),
+      fixtureScopedKey("evidence-submit", "pathway-isolation-b04-evidence"),
+    ]),
+  );
+
   const rationales = [
     "Path B integration verification",
     "Partial B2 verification",
@@ -93,6 +103,9 @@ async function removePreviousIntegrationRecords() {
     );
   if (integrationEvidence.length) {
     const evidenceIds = integrationEvidence.map((evidence) => evidence.id);
+    await db.delete(learningTransitionEventsTable).where(
+      inArray(learningTransitionEventsTable.entityReference, evidenceIds),
+    );
     await db.delete(learningRecordLinksTable).where(inArray(learningRecordLinksTable.evidenceId, evidenceIds));
     await db.delete(evidenceReviewsTable).where(inArray(evidenceReviewsTable.evidenceId, evidenceIds));
     await db.delete(evidenceTable).where(inArray(evidenceTable.id, evidenceIds));
@@ -104,6 +117,9 @@ async function removePreviousIntegrationRecords() {
     .where(eq(practiceAttemptsTable.reflection, "Verified pathway-scoped practice"));
   if (practiceAttempts.length) {
     const practiceAttemptIds = practiceAttempts.map((attempt) => attempt.id);
+    await db.delete(learningTransitionEventsTable).where(
+      inArray(learningTransitionEventsTable.entityReference, practiceAttemptIds),
+    );
     await db.delete(learningRecordLinksTable).where(inArray(learningRecordLinksTable.practiceAttemptId, practiceAttemptIds));
     await db
       .delete(practiceReviewsTable)
