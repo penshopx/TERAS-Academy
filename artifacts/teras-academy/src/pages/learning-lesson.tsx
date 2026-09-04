@@ -20,8 +20,19 @@ type LearningResourceLinkProps = {
   };
 };
 
+function isSupportedResourceUri(uri: string | null | undefined): uri is string {
+  if (!uri?.trim()) return false;
+
+  try {
+    const protocol = new URL(uri).protocol;
+    return protocol === "https:" || protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 export function LearningResourceLink({ activityId, resource }: LearningResourceLinkProps) {
-  if (!resource.uri?.trim()) {
+  if (!isSupportedResourceUri(resource.uri)) {
     return (
       <div
         className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-muted/20 text-muted-foreground"

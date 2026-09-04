@@ -74,6 +74,26 @@ test("keeps the native resource URI when the tracker throws", () => {
   assert.equal(link.props.href, resource.uri);
 });
 
+test("allows an http resource URI and tracks its opening", () => {
+  const calls: string[] = [];
+  setTestWindow({
+    track(name) {
+      calls.push(name);
+    },
+  });
+  const httpResource = {
+    ...resource,
+    uri: "http://example.com/materials/isolation.pdf",
+  };
+
+  const link = LearningResourceLink({ activityId: "activity-4", resource: httpResource });
+  link.props.onClick();
+
+  assert.equal(link.type, "a");
+  assert.equal(link.props.href, httpResource.uri);
+  assert.deepStrictEqual(calls, ["learning_resource_opened"]);
+});
+
 test("renders a clear non-interactive status when the resource URI is missing", () => {
   const unavailableResource = {
     ...resource,
@@ -104,4 +124,44 @@ test("treats a blank resource URI as unavailable", () => {
 
   assert.equal(status.type, "div");
   assert.doesNotMatch(renderToStaticMarkup(status), /href=/);
+});
+
+test("renders unsafe resource URI schemes as unavailable without analytics", () => {
+  const calls: string[] = [];
+  setTestWindow({
+    track(name) {
+      calls.push(name);
+    },
+  });
+
+  for (const uri of [
+    "javascript:alert(document.domain)",
+    "data:text/html,<script>alert(document.domain)</script>",
+  ]) {
+    const status = LearningResourceLink({
+      activityId: "activity-4",
+      resource: { ...resource, uri },
+    });
+    const markup = renderToStaticMarkup(status);
+
+    assert.equal(status.type, "div");
+    assert.equal(status.props.onClick, undefined);
+    assert.doesNotMatch(markup, /<a\b/);
+    assert.doesNotMatch(markup, /href=/);
+    assert.match(markup, /Material not available yet/);
+  }
+
+  assert.deepStrictEqual(calls, []);
+});
+
+test("renders relative and malformed resource URIs as unavailable", () => {
+  for (const uri of ["/materials/isolation.pdf", "not a URL"]) {
+    const status = LearningResourceLink({
+      activityId: "activity-4",
+      resource: { ...resource, uri },
+    });
+
+    assert.equal(status.type, "div");
+    assert.doesNotMatch(renderToStaticMarkup(status), /href=/);
+  }
 });
