@@ -72,26 +72,26 @@
   --radius: 0.5rem;
   
   /* Light mode (high contrast) */
-  --background: 0 0% 98%;
+  --background: 0 0% 100%;
   --foreground: 0 0% 0%;
-  --border: 0 0% 90%;
+  --border: 200 18% 84%;
   
   --card: 0 0% 100%;
   --card-foreground: 0 0% 0%;
-  --card-border: 0 0% 90%;
+  --card-border: 200 18% 84%;
   
   --popover: 0 0% 100%;
   --popover-foreground: 0 0% 0%;
-  --popover-border: 0 0% 90%;
+  --popover-border: 200 18% 84%;
   
   --primary: 200 98% 39%;
   --primary-foreground: 0 0% 100%;
   
-  --secondary: 210 20% 96%;
+  --secondary: 198 45% 95%;
   --secondary-foreground: 210 40% 10%;
   
-  --muted: 0 0% 96%;
-  --muted-foreground: 0 0% 45%;
+  --muted: 198 35% 96%;
+  --muted-foreground: 210 18% 32%;
   
   --accent: 200 98% 39%;
   --accent-foreground: 0 0% 100%;
@@ -99,15 +99,15 @@
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
   
-  --input: 0 0% 85%;
+  --input: 200 18% 78%;
   --ring: 200 98% 39%;
   
-  --sidebar: 0 0% 96%;
+  --sidebar: 0 0% 100%;
   --sidebar-foreground: 210 40% 10%;
-  --sidebar-border: 0 0% 90%;
+  --sidebar-border: 200 18% 84%;
   --sidebar-primary: 200 98% 39%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 0 0% 90%;
+  --sidebar-accent: 198 45% 92%;
   --sidebar-accent-foreground: 210 40% 10%;
 }
 
@@ -163,6 +163,15 @@
 }
 
 @layer utilities {
+  :root:not(.dark) .public-theme-surface {
+    background: linear-gradient(180deg, #ffffff 0%, #f1fbff 55%, #ffffff 100%) !important;
+  }
+  :root:not(.dark) .public-theme-surface section {
+    background-color: transparent !important;
+  }
+  :root:not(.dark) .public-theme-surface [class*="bg-gradient"] {
+    background-image: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(232,248,255,0.88)) !important;
+  }
   :root:not(.dark) .public-theme-surface [class*="text-white"] {
     color: hsl(var(--foreground)) !important;
   }
@@ -175,6 +184,9 @@
   :root:not(.dark) .public-theme-surface [class*="bg-black"],
   :root:not(.dark) .public-theme-surface [class*="bg-[#0"] {
     background-color: hsl(var(--card)) !important;
+  }
+  :root:not(.dark) .cockpit-panel {
+    box-shadow: 0 10px 30px -18px rgba(2, 132, 199, 0.28);
   }
   .cockpit-panel {
     @apply bg-card border border-card-border rounded-lg shadow-sm relative overflow-hidden;
