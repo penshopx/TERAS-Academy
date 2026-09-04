@@ -5,10 +5,42 @@ import { Activity as ActivityIcon, CheckCircle2, ChevronLeft, PlayCircle, FileTe
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { trackLearningAction, trackResourceOpened } from "@/lib/analytics";
+
+type LearningResourceLinkProps = {
+  activityId: string;
+  resource: {
+    id: string;
+    title: string;
+    type: string;
+    uri?: string | null;
+  };
+};
+
+export function LearningResourceLink({ activityId, resource }: LearningResourceLinkProps) {
+  return (
+    <a
+      href={resource.uri || "#"}
+      onClick={() => trackResourceOpened({
+        activityId,
+        resourceId: resource.id,
+        resourceType: resource.type,
+      })}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-background/50 hover:bg-muted/30 hover:border-primary/30 transition-all group/link"
+      data-testid={`activity-resource-link-${resource.id}`}
+    >
+      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover/link:bg-primary group-hover/link:text-black transition-colors">
+        <ExternalLink className="w-4 h-4" />
+      </div>
+      <span className="text-sm font-semibold flex-1 truncate">{resource.title}</span>
+    </a>
+  );
+}
 
 export default function LearningLessonDetail() {
   const { lessonId } = useParams();
@@ -237,24 +269,11 @@ export default function LearningLessonDetail() {
                       </p>
                       <div className="grid gap-2">
                         {activity.resources.map(res => (
-                          <a
+                          <LearningResourceLink
                             key={res.id}
-                            href={res.uri || "#"}
-                            onClick={() => trackResourceOpened({
-                              activityId: activity.id,
-                              resourceId: res.id,
-                              resourceType: res.type,
-                            })}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-background/50 hover:bg-muted/30 hover:border-primary/30 transition-all group/link"
-                            data-testid={`activity-resource-link-${res.id}`}
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover/link:bg-primary group-hover/link:text-black transition-colors">
-                              <ExternalLink className="w-4 h-4" />
-                            </div>
-                            <span className="text-sm font-semibold flex-1 truncate">{res.title}</span>
-                          </a>
+                            activityId={activity.id}
+                            resource={res}
+                          />
                         ))}
                       </div>
                     </div>
