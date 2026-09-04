@@ -822,6 +822,35 @@ paths:
       operationId: listAdminAuditEvents
       tags: [admin]
       responses: { "200": { description: Audit history, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AdminAuditEvent" } } } } } }
+  /assistant/knowledge/search:
+    post:
+      operationId: searchAssistantKnowledge
+      tags: [assistant]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeSearchInput" } } } }
+      responses: { "200": { description: Citation-backed answer, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeSearchResult" } } } }, "400": { $ref: "#/components/responses/BadRequest" }, "401": { $ref: "#/components/responses/Unauthorized" }, "403": { $ref: "#/components/responses/Forbidden" }, "500": { description: Retrieval failure, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } } }
+  /admin/knowledge:
+    get:
+      operationId: listAdminKnowledgeArticles
+      tags: [admin]
+      responses: { "200": { description: Knowledge articles, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/KnowledgeArticle" } } } } }, "401": { $ref: "#/components/responses/Unauthorized" }, "403": { $ref: "#/components/responses/Forbidden" }, "500": { description: Retrieval failure } }
+    post:
+      operationId: createAdminKnowledgeArticle
+      tags: [admin]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticleInput" } } } }
+      responses: { "201": { description: Draft created, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticle" } } } }, "400": { $ref: "#/components/responses/BadRequest" }, "401": { $ref: "#/components/responses/Unauthorized" }, "403": { $ref: "#/components/responses/Forbidden" }, "409": { $ref: "#/components/responses/Conflict" }, "500": { description: Creation failure } }
+  /admin/knowledge/{articleId}:
+    patch:
+      operationId: updateAdminKnowledgeArticle
+      tags: [admin]
+      parameters: [{ name: articleId, in: path, required: true, schema: { type: string, minLength: 1 } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticleUpdate" } } } }
+      responses: { "200": { description: Article updated, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticle" } } } }, "400": { $ref: "#/components/responses/BadRequest" }, "401": { $ref: "#/components/responses/Unauthorized" }, "403": { $ref: "#/components/responses/Forbidden" }, "404": { $ref: "#/components/responses/NotFound" }, "409": { $ref: "#/components/responses/Conflict" }, "500": { description: Update failure } }
+  /admin/knowledge/{articleId}/publish:
+    post:
+      operationId: publishAdminKnowledgeArticle
+      tags: [admin]
+      parameters: [{ name: articleId, in: path, required: true, schema: { type: string, minLength: 1 } }]
+      responses: { "200": { description: Article published, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticle" } } } }, "401": { $ref: "#/components/responses/Unauthorized" }, "403": { $ref: "#/components/responses/Forbidden" }, "404": { $ref: "#/components/responses/NotFound" }, "409": { $ref: "#/components/responses/Conflict" }, "500": { description: Publish failure } }
 x-pathway-selection-components:
   parameters:
     ProgramId:
@@ -1868,6 +1897,38 @@ x-pathway-selection-components:
         - REASSESSMENT_REQUIRED
         - SAFETY_BLOCKED
         - CAUSAL_REFERENCE_INVALID
+    /assistant/knowledge/search:
+      post:
+        operationId: searchAssistantKnowledge
+        tags: [assistant]
+        summary: Search published category-scoped assistant knowledge
+        requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeSearchInput" } } } }
+        responses:
+          "200": { description: Citation-backed answer, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeSearchResult" } } } }
+          "400": { $ref: "#/components/responses/BadRequest" }
+    /admin/knowledge:
+      get:
+        operationId: listAdminKnowledgeArticles
+        tags: [admin]
+        responses: { "200": { description: All knowledge articles, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/KnowledgeArticle" } } } } } }
+      post:
+        operationId: createAdminKnowledgeArticle
+        tags: [admin]
+        requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticleInput" } } } }
+        responses: { "201": { description: Draft created, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticle" } } } }, "400": { $ref: "#/components/responses/BadRequest" } }
+    /admin/knowledge/{articleId}:
+      patch:
+        operationId: updateAdminKnowledgeArticle
+        tags: [admin]
+        parameters: [{ name: articleId, in: path, required: true, schema: { type: string, minLength: 1 } }]
+        requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticleUpdate" } } } }
+        responses: { "200": { description: Article updated, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticle" } } } }, "404": { $ref: "#/components/responses/NotFound" } }
+    /admin/knowledge/{articleId}/publish:
+      post:
+        operationId: publishAdminKnowledgeArticle
+        tags: [admin]
+        parameters: [{ name: articleId, in: path, required: true, schema: { type: string, minLength: 1 } }]
+        responses: { "200": { description: Article published, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticle" } } } }, "404": { $ref: "#/components/responses/NotFound" } }
     LegacyCompactLearningTransitionRejection:
       type: object
       properties:
@@ -2269,6 +2330,53 @@ components:
       type: object
       required: [id, actorClerkUserId, action, entityType, entityId, before, after, createdAt]
       properties: { id: { type: string }, actorClerkUserId: { type: string }, action: { type: string }, entityType: { type: string }, entityId: { type: string }, before: {}, after: {}, createdAt: { type: string, format: date-time } }
+    KnowledgeArticle:
+      type: object
+      required: [id, category, title, body, audience, version, status, publishedAt, createdAt]
+      properties:
+        id: { type: string }
+        category: { type: string, enum: [help, energy] }
+        title: { type: string }
+        body: { type: string }
+        audience: { type: array, minItems: 1, items: { type: string, enum: [learner, trainer, assessor, admin] } }
+        version: { type: integer, minimum: 1 }
+        status: { type: string, enum: [draft, published, archived] }
+        publishedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    KnowledgeArticleInput:
+      type: object
+      required: [id, category, title, body, audience]
+      properties:
+        id: { type: string, minLength: 1 }
+        category: { type: string, enum: [help, energy] }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 12000 }
+        audience: { type: array, minItems: 1, items: { type: string, enum: [learner, trainer, assessor, admin] } }
+    KnowledgeArticleUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 12000 }
+        category: { type: string, enum: [help, energy] }
+        status: { type: string, enum: [draft, archived] }
+        audience: { type: array, minItems: 1, items: { type: string, enum: [learner, trainer, assessor, admin] } }
+    KnowledgeSearchInput:
+      type: object
+      required: [category, question]
+      properties:
+        category: { type: string, enum: [help, energy] }
+        question: { type: string, minLength: 1, maxLength: 1000 }
+    KnowledgeCitation:
+      type: object
+      required: [articleId, title, version]
+      properties: { articleId: { type: string }, title: { type: string }, version: { type: integer } }
+    KnowledgeSearchResult:
+      type: object
+      required: [answer, found, citations]
+      properties:
+        answer: { type: string }
+        found: { type: boolean }
+        citations: { type: array, items: { $ref: "#/components/schemas/KnowledgeCitation" } }
     HealthStatus:
       type: object
       properties:

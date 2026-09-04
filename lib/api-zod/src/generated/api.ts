@@ -1868,3 +1868,137 @@ export const ListAdminAuditEventsResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const ListAdminAuditEventsResponse = zod.array(ListAdminAuditEventsResponseItem)
+
+
+export const searchAssistantKnowledgeBodyQuestionMax = 1000;
+
+
+
+export const SearchAssistantKnowledgeBody = zod.object({
+  "category": zod.enum(['help', 'energy']),
+  "question": zod.string().min(1).max(searchAssistantKnowledgeBodyQuestionMax)
+})
+
+export const SearchAssistantKnowledgeResponse = zod.object({
+  "answer": zod.string(),
+  "found": zod.boolean(),
+  "citations": zod.array(zod.object({
+  "articleId": zod.string(),
+  "title": zod.string(),
+  "version": zod.int()
+}))
+})
+
+
+
+
+
+
+export const ListAdminKnowledgeArticlesResponseItem = zod.object({
+  "id": zod.string(),
+  "category": zod.enum(['help', 'energy']),
+  "title": zod.string(),
+  "body": zod.string(),
+  "audience": zod.array(zod.enum(['learner', 'trainer', 'assessor', 'admin'])).min(1),
+  "version": zod.int().min(1),
+  "status": zod.enum(['draft', 'published', 'archived']),
+  "publishedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminKnowledgeArticlesResponse = zod.array(ListAdminKnowledgeArticlesResponseItem)
+
+
+
+export const createAdminKnowledgeArticleBodyTitleMax = 200;
+
+export const createAdminKnowledgeArticleBodyBodyMax = 12000;
+
+
+
+
+export const CreateAdminKnowledgeArticleBody = zod.object({
+  "id": zod.string().min(1),
+  "category": zod.enum(['help', 'energy']),
+  "title": zod.string().min(1).max(createAdminKnowledgeArticleBodyTitleMax),
+  "body": zod.string().min(1).max(createAdminKnowledgeArticleBodyBodyMax),
+  "audience": zod.array(zod.enum(['learner', 'trainer', 'assessor', 'admin'])).min(1)
+})
+
+
+
+
+
+export const CreateAdminKnowledgeArticleResponse = zod.object({
+  "id": zod.string(),
+  "category": zod.enum(['help', 'energy']),
+  "title": zod.string(),
+  "body": zod.string(),
+  "audience": zod.array(zod.enum(['learner', 'trainer', 'assessor', 'admin'])).min(1),
+  "version": zod.int().min(1),
+  "status": zod.enum(['draft', 'published', 'archived']),
+  "publishedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+
+
+
+export const UpdateAdminKnowledgeArticleParams = zod.object({
+  "articleId": zod.coerce.string().min(1)
+})
+
+export const updateAdminKnowledgeArticleBodyTitleMax = 200;
+
+export const updateAdminKnowledgeArticleBodyBodyMax = 12000;
+
+
+
+
+export const UpdateAdminKnowledgeArticleBody = zod.object({
+  "title": zod.string().min(1).max(updateAdminKnowledgeArticleBodyTitleMax).optional(),
+  "body": zod.string().min(1).max(updateAdminKnowledgeArticleBodyBodyMax).optional(),
+  "category": zod.enum(['help', 'energy']).optional(),
+  "status": zod.enum(['draft', 'archived']).optional(),
+  "audience": zod.array(zod.enum(['learner', 'trainer', 'assessor', 'admin'])).min(1).optional()
+})
+
+
+
+
+
+export const UpdateAdminKnowledgeArticleResponse = zod.object({
+  "id": zod.string(),
+  "category": zod.enum(['help', 'energy']),
+  "title": zod.string(),
+  "body": zod.string(),
+  "audience": zod.array(zod.enum(['learner', 'trainer', 'assessor', 'admin'])).min(1),
+  "version": zod.int().min(1),
+  "status": zod.enum(['draft', 'published', 'archived']),
+  "publishedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+
+
+
+export const PublishAdminKnowledgeArticleParams = zod.object({
+  "articleId": zod.coerce.string().min(1)
+})
+
+
+
+
+
+export const PublishAdminKnowledgeArticleResponse = zod.object({
+  "id": zod.string(),
+  "category": zod.enum(['help', 'energy']),
+  "title": zod.string(),
+  "body": zod.string(),
+  "audience": zod.array(zod.enum(['learner', 'trainer', 'assessor', 'admin'])).min(1),
+  "version": zod.int().min(1),
+  "status": zod.enum(['draft', 'published', 'archived']),
+  "publishedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})

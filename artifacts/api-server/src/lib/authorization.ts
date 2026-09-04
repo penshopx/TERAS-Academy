@@ -30,6 +30,29 @@ function integrationIdentity(req: Request): TestAuthorizationIdentity | undefine
 }
 
 export type AdminActor = { clerkUserId: string; personId: string | null };
+export type KnowledgeRole = "admin" | "trainer" | "assessor" | "learner";
+export type KnowledgeActor = { clerkUserId: string; roles: KnowledgeRole[] };
+
+/** Authenticated, local-role-derived visibility scope for assistant content. */
+export async function authorizeKnowledgeActor(req: Request, res: Response): Promise<KnowledgeActor | null> {
+  const identity = integrationIdentity(req);
+  if (identity) {
+    if (identity.userId && identity.role) return { clerkUserId: identity.userId, roles: [identity.role] };
+    res.status(identity.userId ? 403 : 401).json({
+      error: identity.userId ? "A local TERAS role is required" : "Authentication required",
+    });
+    return null;
+  }
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Authentication required" }); return null; }
+  const assignments = await db.select({ role: personRolesTable.role }).from(peopleTable).innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+    .where(and(eq(peopleTable.clerkUserId, userId), eq(peopleTable.status, "active")));
+  const roles = [...new Set(assignments.map(assignment => assignment.role).filter((role): role is KnowledgeRole =>
+    ["admin", "trainer", "assessor", "learner"].includes(role),
+  ))];
+  if (!roles.length) { res.status(403).json({ error: "A local TERAS role is required" }); return null; }
+  return { clerkUserId: userId, roles };
+}
 
 /** Administrative authority is a local, active role assignment, never a Clerk
  * public-metadata claim supplied by the browser. */

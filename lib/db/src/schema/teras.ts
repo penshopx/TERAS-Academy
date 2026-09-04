@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean, foreignKey, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -75,6 +75,15 @@ export const adminAuditEventsTable = pgTable("teras_admin_audit_events", {
   entityType: text("entity_type").notNull(), entityId: text("entity_id").notNull(),
   before: jsonb("before"), after: jsonb("after"), ...audit,
 });
+/** Curated assistant knowledge. Drafts are never selected by the public retrieval route. */
+export const knowledgeArticlesTable = pgTable("teras_knowledge_articles", {
+  id: text("id").primaryKey(), category: text("category").notNull(), title: text("title").notNull(),
+  parentArticleId: text("parent_article_id"),
+  body: text("body").notNull(), version: integer("version").notNull().default(1),
+  status: text("status").notNull().default("draft"), audience: text("audience").array().notNull().default([]),
+  publishedAt: timestamp("published_at", { withTimezone: true }), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  ...audit,
+}, table => [uniqueIndex("teras_knowledge_articles_family_version_unique").on(sql`coalesce(${table.parentArticleId}, ${table.id})`, table.version)]);
 /** Pathway changes are immutable learner decisions; the enrollment row remains the original assignment. */
 export const enrollmentPathwayEventsTable = pgTable("teras_enrollment_pathway_events", {
   id: text("id").primaryKey(), enrollmentId: text("enrollment_id").notNull().references(() => enrollmentsTable.id),
@@ -156,7 +165,7 @@ export const readinessEventsTable = pgTable("teras_readiness_events", {
 export const programRelations = relations(programsTable, ({ many }) => ({ modules: many(modulesTable), pathways: many(pathwaysTable) }));
 export const moduleRelations = relations(modulesTable, ({ many }) => ({ tasks: many(practiceTasksTable), assessments: many(assessmentsTable) }));
 
-const tables = { peopleTable, personRolesTable, programsTable, pathwaysTable, cohortsTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, adminAuditEventsTable, enrollmentPathwayEventsTable, practiceAttemptsTable, practiceReviewsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable };
+const tables = { peopleTable, personRolesTable, programsTable, pathwaysTable, cohortsTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, adminAuditEventsTable, knowledgeArticlesTable, enrollmentPathwayEventsTable, practiceAttemptsTable, practiceReviewsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable };
 export const insertSchemas = Object.fromEntries(Object.entries(tables).map(([name, table]) => [name, createInsertSchema(table).omit({ createdAt: true })]));
 export type Person = typeof peopleTable.$inferSelect;
 export type Program = typeof programsTable.$inferSelect;

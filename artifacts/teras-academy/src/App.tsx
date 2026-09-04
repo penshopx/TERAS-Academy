@@ -635,7 +635,12 @@ function ClerkProviderWithRoutes() {
               <ThemeToggle compact />
             </div>
           </Show>
-          <FloatingAssistants />
+          {/* Assistant knowledge is internal, authenticated workspace content.
+              Do not mount this component until Clerk has resolved a signed-in
+              session: its chat panel owns the knowledge-query mutation. */}
+          <Show when="signed-in">
+            <FloatingAssistants />
+          </Show>
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>

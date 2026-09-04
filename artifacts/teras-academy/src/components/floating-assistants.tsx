@@ -3,9 +3,10 @@ import { Bot, Headphones, Leaf, Send, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useSearchAssistantKnowledge } from "@workspace/api-client-react";
 
 type AssistantKind = "help" | "energy";
-type Message = { id: number; role: "assistant" | "user"; text: string };
+type Message = { id: number; role: "assistant" | "user"; text: string; citations?: Array<{ title: string; version: number }> };
 
 const assistantCopy = {
   help: {
@@ -23,33 +24,12 @@ const assistantCopy = {
     prompts: ["Apa itu transisi energi?", "Apa peran TERAS?", "Mengapa kompetensi penting?"],
   },
 } as const;
-
-function answerHelp(question: string) {
-  const q = question.toLowerCase();
-  if (q.includes("mulai") || q.includes("belajar")) return "Buka menu Learning. TERAS akan menampilkan Current Learning dan langkah berikutnya berdasarkan enrollment serta progres yang tersimpan. Pilih aktivitas aktif, pelajari materi, lalu tandai selesai.";
-  if (q.includes("upload") || q.includes("video") || q.includes("materi")) return "Instruktur dapat membuka Trainer Desk, memilih course dan revisi draft, lalu menambahkan resource terkelola. Unggah video/dokumen, periksa metadata dan preview, kemudian publish revisi agar terlihat oleh learner.";
-  if (q.includes("readiness") || q.includes("kesiapan")) return "Readiness adalah status kesiapan internal berdasarkan learning, practice, evidence, review, remediation, dan reassessment. Readiness TERAS bukan keputusan kompeten dan bukan sertifikat resmi.";
-  if (q.includes("evidence") || q.includes("bukti")) return "Buka Evidence dari aktivitas atau practice terkait. Evidence harus tetap terhubung ke learning activity dan practice attempt agar riwayatnya dapat ditelusuri.";
-  if (q.includes("admin") || q.includes("enrollment") || q.includes("pengguna")) return "Admin Control Room digunakan untuk mengelola pengguna, peran, program, pathway, cohort, dan enrollment. Hak akses tetap ditentukan dan divalidasi oleh server.";
-  if (q.includes("validator") || q.includes("verifikasi")) return "Validator menggunakan work queue untuk memeriksa validitas, relevansi, kecukupan, dan traceability evidence, kemudian memberi feedback atau membuka remediation sesuai kewenangan.";
-  return "Saya belum menemukan panduan yang persis sama. Coba sebutkan menu atau prosesnya, misalnya Learning, upload materi, Evidence, Readiness, Trainer Desk, Validator, atau Admin.";
-}
-
-function answerEnergy(question: string) {
-  const q = question.toLowerCase();
-  if (q.includes("transisi energi")) return "Transisi energi adalah perubahan bertahap dari sistem energi berbasis emisi tinggi menuju sistem yang lebih bersih, efisien, aman, terjangkau, dan berkelanjutan. Perubahan ini mencakup teknologi, kebijakan, pembiayaan, infrastruktur, dan kesiapan tenaga kerja.";
-  if (q.includes("teras")) return "TERAS Academy membantu peserta membangun pengetahuan, practice, evidence, dan readiness sebelum mengikuti asesmen resmi dari Lembaga Sertifikasi. TERAS bukan Lembaga Sertifikasi dan tidak menerbitkan keputusan kompeten.";
-  if (q.includes("kompetensi") || q.includes("kapabilitas")) return "Teknologi energi bersih harus dipasang, dioperasikan, dan dipelihara secara aman. Kompetensi membuktikan kemampuan pada standar tertentu; kapabilitas mencakup kemampuan menerapkan pengetahuan, keterampilan, perilaku, dan evidence dalam konteks kerja.";
-  if (q.includes("surya") || q.includes("solar") || q.includes("pv")) return "Solar PV mengubah energi matahari menjadi listrik. Kesiapan teknisi mencakup keselamatan listrik, desain, pemasangan, pengujian, commissioning, dokumentasi, dan kemampuan menindaklanjuti temuan.";
-  if (q.includes("adil") || q.includes("berkeadilan")) return "Transisi yang berkeadilan memastikan manfaat dan risiko perubahan energi dibagi secara adil, termasuk akses pelatihan, perlindungan pekerja, kesempatan kerja baru, dan perhatian pada komunitas terdampak.";
-  return "Topik yang dapat saya bantu antara lain transisi energi, energi surya, kesiapan tenaga kerja, kompetensi, kapabilitas, keselamatan, dan peran TERAS dalam persiapan sertifikasi.";
-}
-
 function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void }) {
   const copy = assistantCopy[kind];
   const Icon = copy.icon;
   const nextId = useRef(1);
   const [input, setInput] = useState("");
+  const knowledge = useSearchAssistantKnowledge();
   const [messages, setMessages] = useState<Message[]>([
     { id: 0, role: "assistant", text: copy.greeting },
   ]);
@@ -57,14 +37,16 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
   const respond = (question: string) => {
     const clean = question.trim();
     if (!clean) return;
-    const answer = kind === "help" ? answerHelp(clean) : answerEnergy(clean);
     const id = nextId.current;
     nextId.current += 2;
     setMessages((current) => [
       ...current,
       { id, role: "user", text: clean },
-      { id: id + 1, role: "assistant", text: answer },
     ]);
+    knowledge.mutate({ data: { category: kind, question: clean } }, {
+      onSuccess: (result) => setMessages((current) => [...current, { id: id + 1, role: "assistant", text: result.answer, citations: result.citations }]),
+      onError: () => setMessages((current) => [...current, { id: id + 1, role: "assistant", text: "Maaf, pengetahuan TERAS sedang tidak dapat dimuat. Silakan coba lagi." }]),
+    });
     setInput("");
   };
 
@@ -98,12 +80,13 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
         {messages.map((message) => (
           <div key={message.id} className={cn("flex gap-2", message.role === "user" && "justify-end")}>
             {message.role === "assistant" && <Bot className="mt-1 h-4 w-4 shrink-0 text-primary" />}
-            <p className={cn(
+            <div className={cn(
               "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed",
               message.role === "assistant" ? "rounded-tl-sm bg-muted" : "rounded-tr-sm bg-primary text-primary-foreground",
             )}>
               {message.text}
-            </p>
+              {message.citations?.length ? <p className="mt-2 border-t border-border/50 pt-2 text-xs text-muted-foreground">Rujukan: {message.citations.map(citation => `${citation.title} (v${citation.version})`).join(", ")}</p> : null}
+            </div>
             {message.role === "user" && <User className="mt-1 h-4 w-4 shrink-0 text-primary" />}
           </div>
         ))}
@@ -118,8 +101,8 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
           ))}
         </div>
         <form onSubmit={submit} className="flex gap-2">
-          <Input value={input} onChange={(event) => setInput(event.target.value)} placeholder="Tulis pertanyaan..." aria-label={`Pertanyaan untuk ${copy.title}`} />
-          <Button type="submit" size="icon" disabled={!input.trim()} aria-label="Kirim pertanyaan">
+          <Input value={input} onChange={(event) => setInput(event.target.value)} placeholder={knowledge.isPending ? "Mencari panduan terbit…" : "Tulis pertanyaan..."} aria-label={`Pertanyaan untuk ${copy.title}`} disabled={knowledge.isPending} />
+          <Button type="submit" size="icon" disabled={!input.trim() || knowledge.isPending} aria-label="Kirim pertanyaan">
             <Send className="h-4 w-4" />
           </Button>
         </form>

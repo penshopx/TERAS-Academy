@@ -58,6 +58,11 @@ import type {
   GetAssessmentParams,
   HealthStatus,
   JourneyStep,
+  KnowledgeArticle,
+  KnowledgeArticleInput,
+  KnowledgeArticleUpdate,
+  KnowledgeSearchInput,
+  KnowledgeSearchResult,
   LearnerDashboard,
   LearningCourse,
   LearningPlanItem,
@@ -4191,3 +4196,341 @@ export function useListAdminAuditEvents<TData = Awaited<ReturnType<typeof listAd
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
+export const getSearchAssistantKnowledgeUrl = () => {
+
+
+
+
+  return `/api/assistant/knowledge/search`
+}
+
+export const searchAssistantKnowledge = async (knowledgeSearchInput: KnowledgeSearchInput, options?: Parameters<typeof customFetch>[1]): Promise<KnowledgeSearchResult> => {
+
+  return customFetch<KnowledgeSearchResult>(getSearchAssistantKnowledgeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgeSearchInput)
+  }
+);}
+
+
+
+
+
+export const getSearchAssistantKnowledgeMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof searchAssistantKnowledge>>, TError,{data: BodyType<KnowledgeSearchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof searchAssistantKnowledge>>, TError,{data: BodyType<KnowledgeSearchInput>}, TContext> => {
+
+const mutationKey = ['searchAssistantKnowledge'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof searchAssistantKnowledge>>, {data: BodyType<KnowledgeSearchInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  searchAssistantKnowledge(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SearchAssistantKnowledgeMutationResult = NonNullable<Awaited<ReturnType<typeof searchAssistantKnowledge>>>
+    export type SearchAssistantKnowledgeMutationBody = BodyType<KnowledgeSearchInput>
+    export type SearchAssistantKnowledgeMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse>
+
+    export const useSearchAssistantKnowledge = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof searchAssistantKnowledge>>, TError,{data: BodyType<KnowledgeSearchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof searchAssistantKnowledge>>,
+        TError,
+        {data: BodyType<KnowledgeSearchInput>},
+        TContext
+      > => {
+      return useMutation(getSearchAssistantKnowledgeMutationOptions(options));
+    }
+
+export const getListAdminKnowledgeArticlesUrl = () => {
+
+
+
+
+  return `/api/admin/knowledge`
+}
+
+export const listAdminKnowledgeArticles = async ( options?: Parameters<typeof customFetch>[1]): Promise<KnowledgeArticle[]> => {
+
+  return customFetch<KnowledgeArticle[]>(getListAdminKnowledgeArticlesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminKnowledgeArticlesQueryKey = () => {
+    return [
+    `/api/admin/knowledge`
+    ] as const;
+    }
+
+
+export const getListAdminKnowledgeArticlesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminKnowledgeArticles>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminKnowledgeArticles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminKnowledgeArticlesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminKnowledgeArticles>>> = ({ signal }) => listAdminKnowledgeArticles({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminKnowledgeArticles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminKnowledgeArticlesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminKnowledgeArticles>>>
+export type ListAdminKnowledgeArticlesQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | void>
+
+
+
+export function useListAdminKnowledgeArticles<TData = Awaited<ReturnType<typeof listAdminKnowledgeArticles>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminKnowledgeArticles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminKnowledgeArticlesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminKnowledgeArticleUrl = () => {
+
+
+
+
+  return `/api/admin/knowledge`
+}
+
+export const createAdminKnowledgeArticle = async (knowledgeArticleInput: KnowledgeArticleInput, options?: Parameters<typeof customFetch>[1]): Promise<KnowledgeArticle> => {
+
+  return customFetch<KnowledgeArticle>(getCreateAdminKnowledgeArticleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgeArticleInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminKnowledgeArticleMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminKnowledgeArticle>>, TError,{data: BodyType<KnowledgeArticleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminKnowledgeArticle>>, TError,{data: BodyType<KnowledgeArticleInput>}, TContext> => {
+
+const mutationKey = ['createAdminKnowledgeArticle'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminKnowledgeArticle>>, {data: BodyType<KnowledgeArticleInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminKnowledgeArticle(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminKnowledgeArticleMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminKnowledgeArticle>>>
+    export type CreateAdminKnowledgeArticleMutationBody = BodyType<KnowledgeArticleInput>
+    export type CreateAdminKnowledgeArticleMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse | void>
+
+    export const useCreateAdminKnowledgeArticle = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminKnowledgeArticle>>, TError,{data: BodyType<KnowledgeArticleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminKnowledgeArticle>>,
+        TError,
+        {data: BodyType<KnowledgeArticleInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminKnowledgeArticleMutationOptions(options));
+    }
+
+export const getUpdateAdminKnowledgeArticleUrl = (articleId: string,) => {
+
+
+
+
+  return `/api/admin/knowledge/${articleId}`
+}
+
+export const updateAdminKnowledgeArticle = async (articleId: string,
+    knowledgeArticleUpdate: KnowledgeArticleUpdate, options?: Parameters<typeof customFetch>[1]): Promise<KnowledgeArticle> => {
+
+  return customFetch<KnowledgeArticle>(getUpdateAdminKnowledgeArticleUrl(articleId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgeArticleUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminKnowledgeArticleMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminKnowledgeArticle>>, TError,{articleId: string;data: BodyType<KnowledgeArticleUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminKnowledgeArticle>>, TError,{articleId: string;data: BodyType<KnowledgeArticleUpdate>}, TContext> => {
+
+const mutationKey = ['updateAdminKnowledgeArticle'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminKnowledgeArticle>>, {articleId: string;data: BodyType<KnowledgeArticleUpdate>}> = (props) => {
+          const {articleId,data} = props ?? {};
+
+          return  updateAdminKnowledgeArticle(articleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminKnowledgeArticleMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminKnowledgeArticle>>>
+    export type UpdateAdminKnowledgeArticleMutationBody = BodyType<KnowledgeArticleUpdate>
+    export type UpdateAdminKnowledgeArticleMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | void>
+
+    export const useUpdateAdminKnowledgeArticle = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminKnowledgeArticle>>, TError,{articleId: string;data: BodyType<KnowledgeArticleUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminKnowledgeArticle>>,
+        TError,
+        {articleId: string;data: BodyType<KnowledgeArticleUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminKnowledgeArticleMutationOptions(options));
+    }
+
+export const getPublishAdminKnowledgeArticleUrl = (articleId: string,) => {
+
+
+
+
+  return `/api/admin/knowledge/${articleId}/publish`
+}
+
+export const publishAdminKnowledgeArticle = async (articleId: string, options?: Parameters<typeof customFetch>[1]): Promise<KnowledgeArticle> => {
+
+  return customFetch<KnowledgeArticle>(getPublishAdminKnowledgeArticleUrl(articleId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPublishAdminKnowledgeArticleMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishAdminKnowledgeArticle>>, TError,{articleId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishAdminKnowledgeArticle>>, TError,{articleId: string}, TContext> => {
+
+const mutationKey = ['publishAdminKnowledgeArticle'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishAdminKnowledgeArticle>>, {articleId: string}> = (props) => {
+          const {articleId} = props ?? {};
+
+          return  publishAdminKnowledgeArticle(articleId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishAdminKnowledgeArticleMutationResult = NonNullable<Awaited<ReturnType<typeof publishAdminKnowledgeArticle>>>
+
+    export type PublishAdminKnowledgeArticleMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | void>
+
+    export const usePublishAdminKnowledgeArticle = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishAdminKnowledgeArticle>>, TError,{articleId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof publishAdminKnowledgeArticle>>,
+        TError,
+        {articleId: string},
+        TContext
+      > => {
+      return useMutation(getPublishAdminKnowledgeArticleMutationOptions(options));
+    }

@@ -642,6 +642,156 @@ export interface AdminAuditEvent {
   createdAt: string;
 }
 
+export type KnowledgeArticleCategory = typeof KnowledgeArticleCategory[keyof typeof KnowledgeArticleCategory];
+
+
+export const KnowledgeArticleCategory = {
+  help: 'help',
+  energy: 'energy',
+} as const;
+
+export type KnowledgeArticleAudienceItem = typeof KnowledgeArticleAudienceItem[keyof typeof KnowledgeArticleAudienceItem];
+
+
+export const KnowledgeArticleAudienceItem = {
+  learner: 'learner',
+  trainer: 'trainer',
+  assessor: 'assessor',
+  admin: 'admin',
+} as const;
+
+export type KnowledgeArticleStatus = typeof KnowledgeArticleStatus[keyof typeof KnowledgeArticleStatus];
+
+
+export const KnowledgeArticleStatus = {
+  draft: 'draft',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export interface KnowledgeArticle {
+  id: string;
+  category: KnowledgeArticleCategory;
+  title: string;
+  body: string;
+  /** @minItems 1 */
+  audience: KnowledgeArticleAudienceItem[];
+  /** @minimum 1 */
+  version: number;
+  status: KnowledgeArticleStatus;
+  /** @nullable */
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+export type KnowledgeArticleInputCategory = typeof KnowledgeArticleInputCategory[keyof typeof KnowledgeArticleInputCategory];
+
+
+export const KnowledgeArticleInputCategory = {
+  help: 'help',
+  energy: 'energy',
+} as const;
+
+export type KnowledgeArticleInputAudienceItem = typeof KnowledgeArticleInputAudienceItem[keyof typeof KnowledgeArticleInputAudienceItem];
+
+
+export const KnowledgeArticleInputAudienceItem = {
+  learner: 'learner',
+  trainer: 'trainer',
+  assessor: 'assessor',
+  admin: 'admin',
+} as const;
+
+export interface KnowledgeArticleInput {
+  /** @minLength 1 */
+  id: string;
+  category: KnowledgeArticleInputCategory;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 12000
+     */
+  body: string;
+  /** @minItems 1 */
+  audience: KnowledgeArticleInputAudienceItem[];
+}
+
+export type KnowledgeArticleUpdateCategory = typeof KnowledgeArticleUpdateCategory[keyof typeof KnowledgeArticleUpdateCategory];
+
+
+export const KnowledgeArticleUpdateCategory = {
+  help: 'help',
+  energy: 'energy',
+} as const;
+
+export type KnowledgeArticleUpdateStatus = typeof KnowledgeArticleUpdateStatus[keyof typeof KnowledgeArticleUpdateStatus];
+
+
+export const KnowledgeArticleUpdateStatus = {
+  draft: 'draft',
+  archived: 'archived',
+} as const;
+
+export type KnowledgeArticleUpdateAudienceItem = typeof KnowledgeArticleUpdateAudienceItem[keyof typeof KnowledgeArticleUpdateAudienceItem];
+
+
+export const KnowledgeArticleUpdateAudienceItem = {
+  learner: 'learner',
+  trainer: 'trainer',
+  assessor: 'assessor',
+  admin: 'admin',
+} as const;
+
+export interface KnowledgeArticleUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title?: string;
+  /**
+     * @minLength 1
+     * @maxLength 12000
+     */
+  body?: string;
+  category?: KnowledgeArticleUpdateCategory;
+  status?: KnowledgeArticleUpdateStatus;
+  /** @minItems 1 */
+  audience?: KnowledgeArticleUpdateAudienceItem[];
+}
+
+export type KnowledgeSearchInputCategory = typeof KnowledgeSearchInputCategory[keyof typeof KnowledgeSearchInputCategory];
+
+
+export const KnowledgeSearchInputCategory = {
+  help: 'help',
+  energy: 'energy',
+} as const;
+
+export interface KnowledgeSearchInput {
+  category: KnowledgeSearchInputCategory;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  question: string;
+}
+
+export interface KnowledgeCitation {
+  articleId: string;
+  title: string;
+  version: number;
+}
+
+export interface KnowledgeSearchResult {
+  answer: string;
+  found: boolean;
+  citations: KnowledgeCitation[];
+}
+
 export interface HealthStatus {
   status: string;
 }

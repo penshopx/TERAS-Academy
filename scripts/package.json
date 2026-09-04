@@ -12,6 +12,7 @@
     "test:resource-uri-upgrade": "bash ./resource-uri-upgrade.integration.test.sh",
     "test:admin-management-upgrade": "bash ./admin-management-upgrade.integration.test.sh",
     "test:remediation-idempotency-upgrade": "bash ./remediation-idempotency-upgrade.integration.test.sh",
+    "test:knowledge-upgrade": "bash ./knowledge-upgrade.integration.test.sh",
     "test:admin-management": "bash ./admin-management.integration.test.sh",
     "test:safety": "tsx ../artifacts/api-server/src/lib/safety.test.ts",
     "test:deployment-hardening": "bash ./deployment-hardening.test.sh",
