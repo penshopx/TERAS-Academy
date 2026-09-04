@@ -73,3 +73,35 @@ test("keeps the native resource URI when the tracker throws", () => {
   assert.doesNotThrow(() => link.props.onClick());
   assert.equal(link.props.href, resource.uri);
 });
+
+test("renders a clear non-interactive status when the resource URI is missing", () => {
+  const unavailableResource = {
+    ...resource,
+    uri: null,
+  };
+
+  const status = LearningResourceLink({
+    activityId: "activity-4",
+    resource: unavailableResource,
+  });
+  const markup = renderToStaticMarkup(status);
+
+  assert.equal(status.type, "div");
+  assert.equal(status.props.href, undefined);
+  assert.equal(status.props.target, undefined);
+  assert.doesNotMatch(markup, /<a\b/);
+  assert.match(markup, /Material not available yet/);
+});
+
+test("treats a blank resource URI as unavailable", () => {
+  const status = LearningResourceLink({
+    activityId: "activity-4",
+    resource: {
+      ...resource,
+      uri: "   ",
+    },
+  });
+
+  assert.equal(status.type, "div");
+  assert.doesNotMatch(renderToStaticMarkup(status), /href=/);
+});

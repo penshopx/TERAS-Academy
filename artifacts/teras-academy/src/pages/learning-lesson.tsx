@@ -21,9 +21,24 @@ type LearningResourceLinkProps = {
 };
 
 export function LearningResourceLink({ activityId, resource }: LearningResourceLinkProps) {
+  if (!resource.uri?.trim()) {
+    return (
+      <div
+        className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-muted/20 text-muted-foreground"
+        data-testid={`activity-resource-unavailable-${resource.id}`}
+      >
+        <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center">
+          <FileText className="w-4 h-4" />
+        </div>
+        <span className="text-sm font-semibold flex-1 truncate">{resource.title}</span>
+        <span className="text-xs font-medium">Material not available yet</span>
+      </div>
+    );
+  }
+
   return (
     <a
-      href={resource.uri || "#"}
+      href={resource.uri}
       onClick={() => trackResourceOpened({
         activityId,
         resourceId: resource.id,
