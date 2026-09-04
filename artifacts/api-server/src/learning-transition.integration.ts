@@ -5,11 +5,12 @@ import {
   evidenceReviewsTable,
   evidenceTable,
   gapsTable,
+  learningActivitiesTable,
+  learningOutcomesTable,
   learningRecordLinksTable,
   learningTransitionEventsTable,
   outcomeVerificationEventsTable,
   activityCompletionEventsTable,
-  readinessTransferEventsTable,
   reassessmentLinksTable,
   practiceAttemptsTable,
   remediationPlansTable,
@@ -24,15 +25,18 @@ import {
 } from "./lib/learning-transition";
 import { learnerContext, readiness } from "./lib/teras";
 
-const activityId = "activity-m03-safe-isolation";
+const fixturePrefix = `phase1-test-${crypto.randomUUID()}`;
+const activityId = `${fixturePrefix}-activity`;
 const fixtureIds = {
-  practice: "phase1-test-practice-a",
-  evidence: "phase1-test-evidence-a",
-  pathBEvidence: "phase1-test-evidence-b",
-  review: "phase1-test-review-a",
-  gap: "phase1-test-gap-a",
-  remediation: "phase1-test-remediation-a",
-  reassessment: "phase1-test-reassessment-a",
+  outcome: `${fixturePrefix}-outcome`,
+  pathwaySelection: `${fixturePrefix}-pathway-selection`,
+  practice: `${fixturePrefix}-practice-a`,
+  evidence: `${fixturePrefix}-evidence-a`,
+  pathBEvidence: `${fixturePrefix}-evidence-b`,
+  review: `${fixturePrefix}-review-a`,
+  gap: `${fixturePrefix}-gap-a`,
+  remediation: `${fixturePrefix}-remediation-a`,
+  reassessment: `${fixturePrefix}-reassessment-a`,
 };
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -52,9 +56,9 @@ function command(
     pathwayId: "path-a",
     programId: "solar-pv-tech",
     activityId,
-    entityReference: `phase1-test:${suffix}`,
+    entityReference: `${fixturePrefix}:${suffix}`,
     reason: `Phase 1 integration ${suffix}`,
-    idempotencyKey: `phase1-test-${suffix}`,
+    idempotencyKey: `${fixturePrefix}-${suffix}`,
     references,
   };
 }
@@ -71,12 +75,23 @@ async function removeTransitionRecords() {
   if (eventIds.length) {
     const links = await db.select({ id: learningRecordLinksTable.id })
       .from(learningRecordLinksTable)
-      .where(eq(learningRecordLinksTable.activityId, activityId));
-    await db.delete(readinessTransferEventsTable).where(eq(readinessTransferEventsTable.learnerId, "learner-demo"));
+      .where(and(
+        eq(learningRecordLinksTable.activityId, activityId),
+        eq(learningRecordLinksTable.learnerId, "learner-demo"),
+        eq(learningRecordLinksTable.pathwayId, "path-a"),
+      ));
     await db.delete(reassessmentLinksTable).where(eq(reassessmentLinksTable.reassessmentAttemptId, fixtureIds.reassessment));
     if (links.length) await db.delete(learningRecordLinksTable).where(inArray(learningRecordLinksTable.id, links.map(({ id }) => id)));
-    await db.delete(outcomeVerificationEventsTable).where(eq(outcomeVerificationEventsTable.activityId, activityId));
-    await db.delete(activityCompletionEventsTable).where(eq(activityCompletionEventsTable.activityId, activityId));
+    await db.delete(outcomeVerificationEventsTable).where(and(
+      eq(outcomeVerificationEventsTable.activityId, activityId),
+      eq(outcomeVerificationEventsTable.learnerId, "learner-demo"),
+      eq(outcomeVerificationEventsTable.pathwayId, "path-a"),
+    ));
+    await db.delete(activityCompletionEventsTable).where(and(
+      eq(activityCompletionEventsTable.activityId, activityId),
+      eq(activityCompletionEventsTable.learnerId, "learner-demo"),
+      eq(activityCompletionEventsTable.pathwayId, "path-a"),
+    ));
     await db.delete(learningTransitionEventsTable).where(inArray(learningTransitionEventsTable.id, eventIds));
   }
 }
@@ -89,17 +104,46 @@ async function cleanup() {
   await db.delete(assessmentAttemptsTable).where(eq(assessmentAttemptsTable.id, fixtureIds.reassessment));
   await db.delete(evidenceTable).where(inArray(evidenceTable.id, [fixtureIds.evidence, fixtureIds.pathBEvidence]));
   await db.delete(practiceAttemptsTable).where(eq(practiceAttemptsTable.id, fixtureIds.practice));
+  await db.delete(enrollmentPathwayEventsTable).where(eq(enrollmentPathwayEventsTable.id, fixtureIds.pathwaySelection));
+  await db.delete(learningOutcomesTable).where(eq(learningOutcomesTable.id, fixtureIds.outcome));
+  await db.delete(learningActivitiesTable).where(eq(learningActivitiesTable.id, activityId));
 }
 
 async function seedFixtures() {
   await cleanup();
+  const existingActivities = await db.select({ sequence: learningActivitiesTable.sequence })
+    .from(learningActivitiesTable)
+    .where(eq(learningActivitiesTable.lessonId, "lesson-m03-isolation"));
+  await db.insert(learningActivitiesTable).values({
+    id: activityId,
+    lessonId: "lesson-m03-isolation",
+    programId: "solar-pv-tech",
+    pathwayId: "path-a",
+    type: "READING",
+    title: "Phase 1 isolated transition fixture",
+    description: "Disposable activity owned only by the transition integration test.",
+    sequence: existingActivities.reduce((highest, activity) => Math.max(highest, activity.sequence), 0) + 1,
+    required: true,
+    estimatedDurationMinutes: 1,
+    status: "PUBLISHED",
+    createdBy: fixturePrefix,
+  });
+  await db.insert(learningOutcomesTable).values({
+    id: fixtureIds.outcome,
+    activityId,
+    capabilityModuleId: "m03",
+    description: "Verify the isolated integration-test transition.",
+    verificationMethod: "TRAINER_REVIEW",
+    required: true,
+    createdBy: fixturePrefix,
+  });
   const [lastSelection] = await db.select({ sequence: enrollmentPathwayEventsTable.sequence })
     .from(enrollmentPathwayEventsTable)
     .where(eq(enrollmentPathwayEventsTable.enrollmentId, "enrol-demo"))
     .orderBy(desc(enrollmentPathwayEventsTable.sequence))
     .limit(1);
   await db.insert(enrollmentPathwayEventsTable).values({
-    id: `phase1-path-a-${Date.now()}`,
+    id: fixtureIds.pathwaySelection,
     enrollmentId: "enrol-demo",
     pathwayId: "path-a",
     programId: "solar-pv-tech",
@@ -256,7 +300,7 @@ async function run() {
     assert(JSON.stringify(beforeReadiness) === JSON.stringify(afterCompletion), "Learning completion changed readiness");
 
     expectSuccess(await transitionLearningState(command("LEARNING_COMPLETED", "OUTCOME_VERIFIED", "outcome", {
-      outcomeId: "outcome-m03-sequence",
+      outcomeId: fixtureIds.outcome,
     }), actorTrainer), "outcome verification");
     const afterOutcome = await readiness(await learnerContext());
     assert(JSON.stringify(beforeReadiness) === JSON.stringify(afterOutcome), "Outcome verification changed readiness");

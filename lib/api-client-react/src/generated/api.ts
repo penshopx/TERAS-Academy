@@ -419,7 +419,7 @@ export const selectLearnerPathway = async (pathwaySelectionInput: PathwaySelecti
 
 
 
-export const getSelectLearnerPathwayMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+export const getSelectLearnerPathwayMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | LearningTransitionRejection>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectLearnerPathway>>, TError,{data: BodyType<PathwaySelectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof selectLearnerPathway>>, TError,{data: BodyType<PathwaySelectionInput>}, TContext> => {
 
@@ -448,12 +448,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SelectLearnerPathwayMutationResult = NonNullable<Awaited<ReturnType<typeof selectLearnerPathway>>>
     export type SelectLearnerPathwayMutationBody = BodyType<PathwaySelectionInput>
-    export type SelectLearnerPathwayMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type SelectLearnerPathwayMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | LearningTransitionRejection>
 
     /**
  * @summary Select a capability pathway
  */
-export const useSelectLearnerPathway = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+export const useSelectLearnerPathway = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | LearningTransitionRejection>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectLearnerPathway>>, TError,{data: BodyType<PathwaySelectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof selectLearnerPathway>>,

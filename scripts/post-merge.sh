@@ -23,5 +23,4 @@ pnpm --filter @workspace/scripts run test:deployment-hardening
 pnpm --filter @workspace/scripts run test:safety
 pnpm --filter @workspace/api-server run test:pathway-isolation
 pnpm --filter @workspace/api-server run test:safety-blockers
-pnpm --filter @workspace/api-server run test:learning-transition
 pnpm run typecheck

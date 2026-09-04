@@ -99,9 +99,17 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          description: Transition rejected because the actor, learner, program, or pathway is not authorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningTransitionRejection"
         "404":
-          $ref: "#/components/responses/NotFound"
+          description: Transition rejected because the learning activity does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningTransitionRejection"
   /learner/journey:
     get:
       operationId: getLearnerJourney
