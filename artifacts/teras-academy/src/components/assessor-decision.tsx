@@ -12,6 +12,29 @@ type Criterion = {
   critical: boolean;
 };
 
+type FocusTarget = {
+  focus: (options?: FocusOptions) => void;
+};
+
+export function restoreDecisionFocus({
+  target,
+  preserveViewport,
+  scrollY,
+  schedule,
+  scrollTo,
+}: {
+  target: FocusTarget | null;
+  preserveViewport: boolean;
+  scrollY: number;
+  schedule: (callback: () => void) => void;
+  scrollTo: (x: number, y: number) => void;
+}) {
+  schedule(() => {
+    target?.focus({ preventScroll: preserveViewport });
+    if (preserveViewport) scrollTo(0, scrollY);
+  });
+}
+
 export function prioritizeDecisionQueue<T extends QueueItem>(items: T[]): T[] {
   return [...items].sort((a, b) => {
     const priority = (value: string) => value === "Critical" ? 0 : 1;

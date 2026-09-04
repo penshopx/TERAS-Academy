@@ -11,7 +11,7 @@ import { type ElementType, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { LearnerCondition } from "@/components/learner-condition";
-import { DecisionSummary, getOfficialDecision, hasCriticalFailure, prioritizeDecisionQueue } from "@/components/assessor-decision";
+import { DecisionSummary, getOfficialDecision, hasCriticalFailure, prioritizeDecisionQueue, restoreDecisionFocus } from "@/components/assessor-decision";
 
 export default function AssessorDesk() {
   const { data: dashboard, isLoading, error } = useGetAssessorDashboard();
@@ -26,13 +26,14 @@ export default function AssessorDesk() {
   const decisionTriggerRef = useRef<HTMLButtonElement | null>(null);
   const queueTitleRef = useRef<HTMLHeadingElement | null>(null);
   const closeFocusTargetRef = useRef<HTMLElement | null>(null);
+  const decisionScrollYRef = useRef(0);
   const metrics: { label: string; value: number; Icon: ElementType; color: string }[] = [
     { label: "Assessments", value: dashboard?.pendingAssessmentCount ?? 0, Icon: Scale, color: "text-primary" },
     { label: "Evidence", value: dashboard?.pendingEvidenceCount ?? 0, Icon: BookOpen, color: "" },
     { label: "Reassessments", value: dashboard?.reassessmentCount ?? 0, Icon: Activity, color: "text-amber-500" },
     { label: "Blocked Gates", value: dashboard?.blockedGateCount ?? 0, Icon: AlertTriangle, color: "text-destructive" },
   ];
-  const openDecision = (id: string, trigger: HTMLButtonElement) => { decisionTriggerRef.current = trigger; closeFocusTargetRef.current = trigger; setAssessmentId(id); setDecision("Competent"); setObservation(""); setScores({}); setObservations({}); };
+  const openDecision = (id: string, trigger: HTMLButtonElement) => { decisionTriggerRef.current = trigger; closeFocusTargetRef.current = trigger; decisionScrollYRef.current = window.scrollY; setAssessmentId(id); setDecision("Competent"); setObservation(""); setScores({}); setObservations({}); };
   const submit = () => {
     const detail = detailQuery.data;
     if (!assessmentId || !detail || !observation.trim() || detail.criteria.some(c => scores[c.id] === undefined)) { toast({ title: "Complete the rubric", description: "A decision, overall observation, and score for every criterion are required.", variant: "destructive" }); return; }
@@ -52,7 +53,7 @@ export default function AssessorDesk() {
     <Card className="cockpit-panel mt-6">
       <CardHeader className="gap-3">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle ref={queueTitleRef} tabIndex={-1}>Decision Queue</CardTitle>
+          <CardTitle ref={queueTitleRef} tabIndex={-1} data-testid="decision-queue-title">Decision Queue</CardTitle>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <ShieldAlert className="h-4 w-4 text-destructive" />
             Safety-critical and gate-blocking work is shown first
@@ -114,7 +115,7 @@ export default function AssessorDesk() {
                 <Badge variant="outline" className="font-mono text-[10px] uppercase bg-background">
                   {item.kind}
                 </Badge>
-                <Button size="sm" className="font-mono text-xs -mr-2" onClick={event => openDecision(item.id, event.currentTarget)}>
+                <Button size="sm" className="font-mono text-xs -mr-2" data-testid={`mobile-decide-${item.id}`} onClick={event => openDecision(item.id, event.currentTarget)}>
                   DECIDE <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
               </div>
@@ -134,7 +135,13 @@ export default function AssessorDesk() {
         onCloseAutoFocus={event => {
           event.preventDefault();
           const target = closeFocusTargetRef.current ?? decisionTriggerRef.current;
-          requestAnimationFrame(() => target?.focus());
+          restoreDecisionFocus({
+            target,
+            preserveViewport: target === decisionTriggerRef.current,
+            scrollY: decisionScrollYRef.current,
+            schedule: requestAnimationFrame,
+            scrollTo: window.scrollTo.bind(window),
+          });
         }}
       >
         <DialogHeader>

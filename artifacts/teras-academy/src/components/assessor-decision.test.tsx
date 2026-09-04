@@ -8,6 +8,7 @@ import {
   getOfficialDecision,
   hasCriticalFailure,
   prioritizeDecisionQueue,
+  restoreDecisionFocus,
 } from "./assessor-decision";
 
 test("critical queue items appear before normal items", () => {
@@ -56,4 +57,46 @@ test("assessor selects expose stable keyboard-accessible names", async () => {
   assert.match(source, /aria-label=\{`Score for \$\{c\.code\} — \$\{c\.label\}`\}/);
   assert.match(source, /aria-label="Requested decision"/);
   assert.match(source, /data-testid="requested-decision-select"/);
+});
+
+test("closing a mobile decision restores its trigger without moving the queue viewport", () => {
+  const calls: string[] = [];
+  const target = {
+    focus: (options?: FocusOptions) => calls.push(`focus:${options?.preventScroll}`),
+  };
+
+  restoreDecisionFocus({
+    target,
+    preserveViewport: true,
+    scrollY: 640,
+    schedule: callback => callback(),
+    scrollTo: (x, y) => calls.push(`scroll:${x},${y}`),
+  });
+
+  assert.deepEqual(calls, ["focus:true", "scroll:0,640"]);
+});
+
+test("successful mobile submission focuses the visible queue title without restoring stale scroll", () => {
+  const calls: string[] = [];
+  const target = {
+    focus: (options?: FocusOptions) => calls.push(`focus:${options?.preventScroll}`),
+  };
+
+  restoreDecisionFocus({
+    target,
+    preserveViewport: false,
+    scrollY: 640,
+    schedule: callback => callback(),
+    scrollTo: () => calls.push("unexpected-scroll"),
+  });
+
+  assert.deepEqual(calls, ["focus:false"]);
+});
+
+test("mobile queue controls expose item-specific browser selectors", async () => {
+  const source = await readFile(new URL("../pages/assessor.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /data-testid=\{`mobile-decide-\$\{item\.id\}`\}/);
+  assert.match(source, /data-testid="decision-queue-title"/);
+  assert.match(source, /decisionScrollYRef\.current = window\.scrollY/);
 });
