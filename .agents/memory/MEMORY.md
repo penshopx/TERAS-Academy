@@ -5,3 +5,4 @@
 - [TERAS institutional positioning](teras-institutional-positioning.md) — TERAS prepares people and evidence for competency testing; it does not conduct official certification or assessment.
 - [Assessor browser fixtures](assessor-browser-fixtures.md) — keyboard decision tests need isolated pending critical rubrics, not mutable shared assessment state.
 - [OpenAPI canonical anchors](openapi-canonical-anchors.md) — schema-like legacy snapshots can capture ambiguous patches; anchor active paths and schemas to canonical root blocks.
+- [Phase 2 entry gate](phase-2-entry-gate.md) — complete and verify upgrade hardening plus real lesson progress before building learner-facing LMS foundation UX.
