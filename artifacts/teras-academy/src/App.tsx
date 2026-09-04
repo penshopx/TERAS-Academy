@@ -314,7 +314,7 @@ function PublicHome() {
                 </a>
               </div>
 
-              <div className="mt-14 relative rounded-xl overflow-hidden border border-white/10 group">
+              <div className="theme-image-card mt-14 relative rounded-xl overflow-hidden border border-white/10 group">
                 <div className="aspect-[16/9] w-full relative">
                   <img
                     src={`${basePath}/images/teras-transition-2046.jpg`}
@@ -322,7 +322,7 @@ function PublicHome() {
                     className="object-cover w-full h-full transition-transform duration-1000 group-hover:scale-105"
                     loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/20 to-transparent" />
+                  <div className="theme-image-overlay absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/20 to-transparent" />
                   <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between">
                     <div>
                       <p className="font-mono text-[10px] font-bold tracking-[0.2em] text-[#00c3ff] mb-1">TERAS ACADEMY</p>
@@ -409,14 +409,14 @@ function PublicHome() {
         {/* Philosophy & Features */}
         <section className="py-24 grid lg:grid-cols-[1fr_1.1fr] gap-12 lg:gap-20 items-center">
           <div className="space-y-6">
-            <div className="relative rounded-3xl overflow-hidden border border-white/10 group h-[260px] md:h-[300px]">
+            <div className="theme-image-card relative rounded-3xl overflow-hidden border border-white/10 group h-[260px] md:h-[300px]">
               <img
                 src={`${basePath}/images/teras-solar-technician.jpg`}
                 alt="Teknisi TERAS Academy melakukan inspeksi panel surya lapangan dengan standar keselamatan ketat"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-transparent" />
+              <div className="theme-image-overlay absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-transparent" />
               <div className="absolute bottom-6 left-6 right-6">
                 <div className="flex items-center gap-2 mb-2">
                   <ShieldCheck className="h-4 w-4 text-[#00c3ff]" />

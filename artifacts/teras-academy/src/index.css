@@ -170,7 +170,7 @@
     background-color: transparent !important;
   }
   :root:not(.dark) .public-theme-surface section[class*="bg-gradient"],
-  :root:not(.dark) .public-theme-surface div[class*="bg-gradient"] {
+  :root:not(.dark) .public-theme-surface div[class*="bg-gradient"]:not(.theme-image-overlay) {
     background-image: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(232,248,255,0.88)) !important;
   }
   :root:not(.dark) .public-theme-surface [class*="text-white"] {
@@ -185,6 +185,9 @@
   :root:not(.dark) .public-theme-surface [class*="bg-black"],
   :root:not(.dark) .public-theme-surface [class*="bg-[#0"] {
     background-color: hsl(var(--card)) !important;
+  }
+  :root:not(.dark) .public-theme-surface .theme-image-card [class*="text-white"] {
+    color: #ffffff !important;
   }
   :root:not(.dark) .cockpit-panel {
     box-shadow: 0 10px 30px -18px rgba(2, 132, 199, 0.28);
