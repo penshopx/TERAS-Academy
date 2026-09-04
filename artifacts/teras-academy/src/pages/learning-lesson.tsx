@@ -1,7 +1,7 @@
 import { useListLearningCourses, useGetLearnerDashboard, useTransitionLearningState, LearningActivity, LearningState, getListLearningCoursesQueryKey } from "@workspace/api-client-react";
-import { isLearningCompleted, isOutcomeVerified } from "@/lib/learning-progress";
+import { isLearningCompleted } from "@/lib/learning-progress";
 import { useParams, Link } from "wouter";
-import { Activity as ActivityIcon, CheckCircle2, ChevronLeft, PlayCircle, FileText, Video, Headphones, MessagesSquare, FileArchive, ArrowRight, ExternalLink } from "lucide-react";
+import { Activity as ActivityIcon, CheckCircle2, ChevronLeft, PlayCircle, FileText, Video, Headphones, MessagesSquare, FileArchive, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,15 +37,15 @@ export default function LearningLessonDetail() {
 
   if (loadingCourses || loadingDashboard) {
     return (
-      <div className="space-y-8 animate-in fade-in max-w-4xl mx-auto">
-        <div className="space-y-4">
+      <div className="space-y-8 animate-in fade-in max-w-4xl mx-auto" data-testid="lesson-loading">
+        <div className="space-y-4 border-b border-border/50 pb-8">
           <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-6 w-3/4" />
+          <Skeleton className="h-12 w-3/4" />
+          <Skeleton className="h-6 w-1/2" />
         </div>
-        <div className="space-y-6 mt-12">
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-48 w-full" />
+        <div className="space-y-8 mt-12">
+          <Skeleton className="h-48 w-full rounded-2xl" />
+          <Skeleton className="h-48 w-full rounded-2xl" />
         </div>
       </div>
     );
@@ -53,7 +53,7 @@ export default function LearningLessonDetail() {
 
   if (coursesError || !courses || !dashboard) {
     return (
-      <div className="flex h-full flex-col items-center justify-center text-center p-8 bg-destructive/10 rounded-xl">
+      <div className="flex h-[50vh] flex-col items-center justify-center text-center p-8 bg-destructive/10 rounded-xl border border-destructive/20 max-w-4xl mx-auto" data-testid="lesson-error">
         <ActivityIcon className="h-12 w-12 text-destructive mb-4" />
         <h2 className="text-xl font-bold text-destructive">Failed to Load Lesson</h2>
       </div>
@@ -62,12 +62,12 @@ export default function LearningLessonDetail() {
 
   if (!context) {
     return (
-      <div className="flex h-full flex-col items-center justify-center text-center p-12 bg-card/50 rounded-xl border border-border/50">
+      <div className="flex h-[50vh] flex-col items-center justify-center text-center p-12 bg-card/50 rounded-xl border border-border/50 max-w-4xl mx-auto" data-testid="lesson-not-found">
         <FileArchive className="h-12 w-12 text-muted-foreground mb-4" />
         <h2 className="text-xl font-bold text-foreground">Lesson Not Found</h2>
-        <Link href="/learning" className="mt-4">
-          <Button variant="outline">Return to Learning</Button>
-        </Link>
+        <Button asChild variant="outline" className="mt-6 font-mono text-xs uppercase tracking-wider">
+          <Link href="/learning" data-testid="link-back-to-learning">Return to Learning</Link>
+        </Button>
       </div>
     );
   }
@@ -127,164 +127,157 @@ export default function LearningLessonDetail() {
     }
   };
 
+  // Find first incomplete activity
+  let foundIncomplete = false;
+
   return (
-    <div className="max-w-4xl mx-auto pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <Link href={`/learning/courses/${course.id}`} className="inline-flex items-center text-sm font-mono text-muted-foreground hover:text-primary transition-colors mb-8">
+    <div className="max-w-4xl mx-auto pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500" data-testid="lesson-detail-page">
+      <Link href={`/learning/courses/${course.id}`} className="inline-flex items-center text-xs font-mono font-bold tracking-wider text-muted-foreground hover:text-primary transition-colors mb-8" data-testid="link-back-to-course">
         <ChevronLeft className="h-4 w-4 mr-1" /> BACK TO COURSE
       </Link>
-      
-      <div className="mb-10">
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <Badge variant="outline" className="font-mono bg-primary/5 text-primary border-primary/20">
+
+      <div className="mb-12 pb-8 border-b border-border/50">
+        <div className="flex flex-wrap items-center gap-3 mb-5">
+          <Badge variant="outline" className="font-mono bg-primary/10 text-primary border-primary/20 px-3 py-1" data-testid="lesson-module-badge">
             M{module.sequence} • L{lesson.sequence}
           </Badge>
-          <Badge variant="secondary" className="uppercase text-[10px] tracking-wider font-mono">
+          <Badge variant="secondary" className="uppercase text-[10px] tracking-widest font-mono px-3 py-1 bg-muted/50" data-testid="lesson-duration-badge">
             {lesson.estimatedDurationMinutes} MIN
           </Badge>
         </div>
-        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground mb-4">
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground mb-6" data-testid="lesson-title">
           {lesson.title}
         </h1>
-        <p className="text-muted-foreground text-lg leading-relaxed">
+        <p className="text-muted-foreground text-lg leading-relaxed" data-testid="lesson-description">
           {lesson.description}
         </p>
-        <div className="mt-6 grid gap-3 border-y border-border/50 py-4 text-sm sm:grid-cols-3">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Learning progress</p>
-            <p className="mt-1 font-semibold text-foreground">Activity completion</p>
-          </div>
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Learning achievement</p>
-            <p className="mt-1 font-semibold text-foreground">Requires outcome verification</p>
-          </div>
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Capability readiness</p>
-            <p className="mt-1 font-semibold text-foreground">Evaluated separately</p>
-          </div>
-        </div>
       </div>
 
       {lesson.activities.length === 0 ? (
-        <div className="rounded-xl border border-border/50 bg-card/50 p-10 text-center">
-          <FileArchive className="mx-auto h-10 w-10 text-muted-foreground" />
-          <h2 className="mt-4 text-lg font-bold text-foreground">No activities published</h2>
-          <p className="mt-2 text-sm text-muted-foreground">This lesson does not have learning activities yet.</p>
+        <div className="rounded-2xl border border-border/50 bg-card/30 p-12 text-center" data-testid="lesson-empty">
+          <FileArchive className="mx-auto h-12 w-12 text-muted-foreground/50 mb-6" />
+          <h2 className="text-2xl font-bold text-foreground">No Activities Yet</h2>
+          <p className="mt-3 text-muted-foreground">This lesson's learning materials have not been published.</p>
         </div>
       ) : (
-      <div className="space-y-6 relative before:absolute before:inset-0 before:ml-[27px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-border/10 before:via-border/50 before:to-border/10">
+      <div className="space-y-6 relative before:absolute before:inset-0 before:ml-[27px] md:before:ml-[39px] before:h-full before:w-px before:bg-gradient-to-b before:from-border/10 before:via-border/50 before:to-transparent" data-testid="activity-list">
         {lesson.activities.map((activity, index) => {
           const isCompleted = isLearningCompleted(activity.currentState);
-          const isVerified = isOutcomeVerified(activity.currentState);
           const isInProgress = activity.currentState === 'IN_PROGRESS';
           const isNotStarted = activity.currentState === 'NOT_STARTED';
           const isLoading = transitionMutation.isPending && activeActivityId === activity.id;
 
+          const isCurrent = !isCompleted && !foundIncomplete;
+          if (isCurrent && activity.required) foundIncomplete = true;
+
           return (
-            <div key={activity.id} className="relative flex items-start md:justify-between group">
+            <div key={activity.id} className="relative flex items-start gap-4 md:gap-8 group" data-testid={`activity-${activity.id}`}>
               {/* Timeline dot */}
-              <div className="absolute left-0 md:left-1/2 md:-translate-x-1/2 flex items-center justify-center w-14 h-14 bg-background z-10">
+              <div className="relative z-10 flex-shrink-0 mt-1" data-testid={`activity-dot-${activity.id}`}>
                 <div className={`
-                  flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300
-                  ${isVerified ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : ''}
-                  ${isCompleted && !isVerified ? 'bg-primary/10 border-primary text-primary shadow-[0_0_15px_rgba(0,195,255,0.2)]' : ''}
-                  ${isInProgress ? 'bg-background border-primary text-primary ring-4 ring-primary/20' : ''}
-                  ${isNotStarted ? 'bg-muted/30 border-muted-foreground/30 text-muted-foreground' : ''}
+                  flex items-center justify-center w-14 h-14 md:w-20 md:h-20 rounded-full border-4 transition-all duration-500 bg-background
+                  ${isCompleted ? 'border-primary text-primary shadow-[0_0_20px_rgba(0,195,255,0.3)]' : ''}
+                  ${isInProgress ? 'border-primary/50 text-primary' : ''}
+                  ${isNotStarted ? 'border-border text-muted-foreground/50' : ''}
                 `}>
-                  {(isCompleted || isVerified) ? <CheckCircle2 className="w-5 h-5" /> : <span className="font-mono text-sm font-bold">{index + 1}</span>}
+                  {isCompleted ? (
+                    <CheckCircle2 className="w-6 h-6 md:w-8 md:h-8" />
+                  ) : isInProgress ? (
+                    <ActivityIcon className="w-5 h-5 md:w-6 md:h-6 animate-pulse" />
+                  ) : (
+                    <span className="font-mono text-sm md:text-lg font-bold">{index + 1}</span>
+                  )}
                 </div>
               </div>
 
               {/* Activity Card */}
-              <div className={`
-                w-full pl-20 md:w-[calc(50%-2.5rem)] md:pl-0 
-                ${index % 2 === 0 ? 'md:pr-10 md:text-right md:ml-0' : 'md:pl-10 md:mr-0 md:ml-auto'}
-              `}>
+              <div className="flex-1 min-w-0 py-1">
                 <div className={`
-                  p-6 rounded-2xl border transition-all duration-300
-                  ${isVerified ? 'bg-emerald-500/5 border-emerald-500/20' : ''}
-                  ${isCompleted && !isVerified ? 'bg-primary/5 border-primary/20' : ''}
+                  p-6 md:p-8 rounded-2xl border transition-all duration-300
+                  ${isCompleted ? 'bg-primary/5 border-primary/20' : ''}
                   ${isInProgress ? 'bg-card border-primary/50 shadow-[0_5px_30px_-15px_rgba(0,195,255,0.3)]' : ''}
-                  ${isNotStarted ? 'bg-card/50 border-border/50 hover:bg-card hover:border-border' : ''}
+                  ${isNotStarted ? 'bg-card/30 border-border/50 hover:bg-card hover:border-border' : ''}
                 `}>
-                  <div className={`flex items-center gap-3 mb-3 ${index % 2 === 0 ? 'md:justify-end' : ''}`}>
-                    <span className={`flex items-center justify-center w-8 h-8 rounded-lg ${
-                      isCompleted ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                    <span className={`flex items-center justify-center w-10 h-10 rounded-xl ${
+                      isCompleted ? 'bg-primary/20 text-primary' : isInProgress ? 'bg-primary/10 text-primary' : 'bg-muted/50 text-muted-foreground'
                     }`}>
                       {getActivityIcon(activity.type)}
                     </span>
-                    <Badge variant="outline" className="font-mono bg-background">
+                    <Badge variant="outline" className="font-mono bg-background border-border/50 text-xs px-3 py-1" data-testid={`activity-type-${activity.id}`}>
                       {activity.type}
                     </Badge>
                     {!activity.required && (
-                      <Badge variant="secondary" className="font-mono text-[10px] bg-muted/50">OPTIONAL</Badge>
+                      <Badge variant="secondary" className="font-mono text-[10px] tracking-widest bg-muted/30 text-muted-foreground" data-testid={`activity-optional-${activity.id}`}>OPTIONAL</Badge>
                     )}
+                    <span className="ml-auto text-xs font-mono font-medium text-muted-foreground flex items-center gap-1.5" data-testid={`activity-duration-${activity.id}`}>
+                      {activity.estimatedDurationMinutes} MIN
+                    </span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-foreground mb-2">{activity.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-6 line-clamp-3 md:line-clamp-none">
+                  <h2 className="text-2xl font-bold text-foreground mb-3" data-testid={`activity-title-${activity.id}`}>{activity.title}</h2>
+                  <p className="text-muted-foreground mb-8 leading-relaxed text-sm md:text-base" data-testid={`activity-description-${activity.id}`}>
                     {activity.description}
                   </p>
 
                   {/* Resources */}
                   {(isInProgress || isCompleted) && activity.resources && activity.resources.length > 0 && (
-                    <div className="mb-6 space-y-2 text-left">
-                      <p className="text-xs font-mono font-bold tracking-widest text-muted-foreground uppercase mb-3">Materials</p>
-                      {activity.resources.map(res => (
-                        <a 
-                          key={res.id} 
-                          href={res.uri || "#"} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-background/50 hover:bg-muted/50 hover:border-border transition-colors group/link"
-                        >
-                          <FileText className="w-4 h-4 text-primary/70 group-hover/link:text-primary" />
-                          <span className="text-sm font-medium flex-1 truncate">{res.title}</span>
-                          <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-50 group-hover/link:opacity-100" />
-                        </a>
-                      ))}
+                    <div className="mb-8 space-y-3" data-testid={`activity-resources-${activity.id}`}>
+                      <p className="text-[10px] font-mono font-bold tracking-[0.2em] text-muted-foreground uppercase flex items-center gap-2">
+                        <FileText className="w-3 h-3" /> Learning Materials
+                      </p>
+                      <div className="grid gap-2">
+                        {activity.resources.map(res => (
+                          <a
+                            key={res.id}
+                            href={res.uri || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-background/50 hover:bg-muted/30 hover:border-primary/30 transition-all group/link"
+                            data-testid={`activity-resource-link-${res.id}`}
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover/link:bg-primary group-hover/link:text-black transition-colors">
+                              <ExternalLink className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm font-semibold flex-1 truncate">{res.title}</span>
+                          </a>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {/* Action Button */}
-                  <div className={`flex ${index % 2 === 0 ? 'md:justify-end' : ''}`}>
+                  <div className="flex pt-2">
                     {isCompleted ? (
-                      <div className="space-y-3 rounded-lg border border-border/50 bg-background/60 px-4 py-3 text-left">
-                        <div className="flex items-center gap-2 text-xs font-bold text-primary">
-                          <CheckCircle2 className="w-4 h-4" /> LEARNING COMPLETE
+                      <div className="w-full flex items-center justify-between p-4 rounded-xl border border-primary/20 bg-primary/5" data-testid={`activity-completed-state-${activity.id}`}>
+                        <div className="flex items-center gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-primary" />
+                          <span className="font-mono text-sm font-bold text-primary tracking-wide">LEARNING COMPLETED</span>
                         </div>
-                        <div className={`text-[10px] font-mono font-bold tracking-wider ${isVerified ? 'text-emerald-400' : 'text-amber-400'}`}>
-                          OUTCOME {isVerified ? 'VERIFIED' : 'AWAITING VERIFICATION'}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{activity.nextAction.title}</p>
-                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{activity.nextAction.description}</p>
-                        </div>
-                        {activity.nextAction.href && (
-                          <Link href={activity.nextAction.href}>
-                            <Button size="sm" variant="secondary" className="mt-1 w-full font-mono text-[10px] font-bold uppercase tracking-wider">
-                              {activity.nextAction.action === "SUBMIT_EVIDENCE" ? "Open evidence" : activity.nextAction.action === "VIEW_READINESS" ? "View readiness" : "Open practice"}
-                              <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                            </Button>
-                          </Link>
-                        )}
                       </div>
                     ) : isInProgress ? (
                       <Button 
                         onClick={() => handleTransition(activity, 'LEARNING_COMPLETED')}
                         disabled={transitionMutation.isPending}
-                        className="w-full md:w-auto font-bold uppercase tracking-widest text-xs h-12 px-8 shadow-[0_0_20px_rgba(0,195,255,0.2)] hover:shadow-[0_0_30px_rgba(0,195,255,0.4)] transition-all"
+                        className="w-full md:w-auto font-bold uppercase tracking-widest text-xs h-14 px-10 shadow-[0_0_20px_rgba(0,195,255,0.2)] hover:shadow-[0_0_30px_rgba(0,195,255,0.4)] transition-all"
+                        data-testid={`btn-mark-complete-${activity.id}`}
                       >
-                        {isLoading ? <ActivityIcon className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                        Mark Complete
+                        {isLoading ? <ActivityIcon className="w-5 h-5 mr-3 animate-spin" /> : <CheckCircle2 className="w-5 h-5 mr-3" />}
+                        Mark as Completed
                       </Button>
                     ) : (
                       <Button 
                         onClick={() => handleTransition(activity, 'IN_PROGRESS')}
                         disabled={transitionMutation.isPending}
-                        variant="secondary"
-                        className="w-full md:w-auto font-bold uppercase tracking-widest text-xs h-12 px-8 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                        variant={isCurrent ? "default" : "secondary"}
+                        className="w-full md:w-auto font-bold uppercase tracking-widest text-xs h-14 px-10 transition-all"
+                        data-testid={`btn-start-activity-${activity.id}`}
                       >
-                        {isLoading ? <ActivityIcon className="w-4 h-4 mr-2 animate-spin" /> : <PlayCircle className="w-4 h-4 mr-2" />}
+                        {isLoading ? (
+                          <ActivityIcon className="w-5 h-5 mr-3 animate-spin" />
+                        ) : (
+                          <PlayCircle className="w-5 h-5 mr-3" />
+                        )}
                         Start Activity
                       </Button>
                     )}
@@ -295,6 +288,17 @@ export default function LearningLessonDetail() {
           );
         })}
       </div>
+      )}
+
+      {/* Return to Course Button when lesson is complete */}
+      {lesson.activities.length > 0 && lesson.activities.filter(a => a.required && !isLearningCompleted(a.currentState)).length === 0 && (
+        <div className="mt-16 flex justify-center animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <Button asChild variant="outline" className="font-mono text-sm font-bold uppercase tracking-widest h-14 px-10 border-primary/30 text-primary hover:bg-primary hover:text-black transition-all">
+            <Link href={`/learning/courses/${course.id}`} data-testid="link-lesson-finished-return">
+              <ChevronLeft className="w-5 h-5 mr-2" /> Return to Course
+            </Link>
+          </Button>
+        </div>
       )}
     </div>
   );
