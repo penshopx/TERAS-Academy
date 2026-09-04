@@ -1,15 +1,12 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useState } from "react";
 import { Sidebar } from "./sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu, Activity } from "lucide-react";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    document.documentElement.classList.add('dark');
-  }, []);
 
   return (
     <div className="flex h-[100dvh] w-full bg-background text-foreground overflow-hidden selection:bg-primary/30">
@@ -32,6 +29,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <div className="ml-3 font-bold tracking-tight text-primary flex items-center gap-2">
             <Activity className="w-5 h-5 drop-shadow-[0_0_8px_rgba(0,195,255,0.8)]" />
             TERAS
+          </div>
+          <div className="ml-auto">
+            <ThemeToggle compact />
           </div>
         </div>
 

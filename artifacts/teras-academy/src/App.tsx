@@ -10,6 +10,8 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { AppLayout } from '@/components/layout/app-layout';
+import { FloatingAssistants } from '@/components/floating-assistants';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 import Dashboard from '@/pages/dashboard';
 import Journey from '@/pages/journey';
@@ -628,6 +630,12 @@ function ClerkProviderWithRoutes() {
             <Route path="/" component={HomeRedirect} />
             <Route component={ProtectedWorkspace} />
           </Switch>
+          <Show when="signed-out">
+            <div className="fixed right-4 top-4 z-50 rounded-full border border-border bg-card shadow-lg">
+              <ThemeToggle compact />
+            </div>
+          </Show>
+          <FloatingAssistants />
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>
