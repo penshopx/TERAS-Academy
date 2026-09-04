@@ -1,0 +1,907 @@
+# TERAS Academy — Prompt #01
+
+## Positioning Compliance + LMS Domain Contract Audit
+
+### READ-ONLY AUDIT — DO NOT IMPLEMENT YET
+
+Anda bekerja pada codebase TERAS Academy yang sudah memiliki fondasi capability/readiness engine, learning plan, practice, evidence, feedback/review, remediation, reassessment, readiness, safety logic, Path A/B, dan Capability Passport.
+
+**Jangan rebuild aplikasi. Jangan mengganti arsitektur yang sudah ada secara destruktif.**
+
+Tujuan tahap ini adalah memahami codebase aktual dan menghasilkan **impact map + implementation contract** sebelum perubahan kode dilakukan.
+
+---
+
+# 1. POSITIONING TERAS YANG HARUS DIKUNCI
+
+TERAS Academy adalah:
+
+> **Capability Development Platform**
+
+dengan:
+
+> **LMS sebagai Core Learning Engine**
+
+Learning lifecycle:
+
+```text
+DIAGNOSTIC
+↓
+CAPABILITY GAP
+↓
+LEARNING PLAN
+↓
+LMS
+↓
+LEARN
+↓
+PRACTICE
+↓
+EVIDENCE
+↓
+FEEDBACK
+↓
+REMEDIATION
+↓
+REASSESSMENT
+↓
+READINESS
+↓
+CAPABILITY PASSPORT
+↓
+NEXT STAGE / OFFICIAL COMPETENCY PROCESS
+```
+
+Prinsip utama:
+
+```text
+Completion ≠ Capability ≠ Ready
+```
+
+TERAS menghasilkan **internal readiness recommendation**, bukan keputusan sertifikasi atau keputusan kompetensi resmi.
+
+TERAS **tidak boleh mengklaim** bahwa platform ini:
+
+* menerbitkan sertifikasi resmi;
+* menggantikan assessor resmi;
+* menetapkan keputusan kompetensi resmi;
+* menghasilkan official assessment record;
+* menetapkan seseorang sebagai "Competent" dalam konteks sertifikasi resmi.
+
+---
+
+# 2. TUGAS ANDA — READ ONLY
+
+Untuk tahap ini:
+
+**JANGAN mengubah source code, schema, database, API contract, UI, routing, atau configuration.**
+
+Lakukan audit terhadap codebase aktual.
+
+Periksa minimal:
+
+```text
+lib/db/src/schema/
+lib/api-spec/
+artifacts/api-server/src/routes/
+artifacts/teras-academy/src/
+```
+
+dan seluruh file lain yang secara langsung berkaitan dengan:
+
+* learning
+* course
+* pathway
+* module
+* lesson
+* activity
+* practice
+* evidence
+* feedback
+* remediation
+* reassessment
+* readiness
+* capability
+* passport
+* assessor
+* instructor
+* dashboard
+* role
+* authorization
+* safety
+* audit trail
+
+Gunakan codebase aktual sebagai source of truth.
+
+Jangan berasumsi model/entity sudah ada hanya karena konsepnya disebutkan dalam dokumentasi.
+
+---
+
+# 3. HASIL AUDIT YANG WAJIB
+
+Buat laporan dengan struktur berikut.
+
+## A. CURRENT ARCHITECTURE MAP
+
+Petakan entity/domain yang benar-benar sudah ada.
+
+Gunakan tabel:
+
+| Domain        | Existing Entity | File | Status                   | Catatan |
+| ------------- | --------------- | ---- | ------------------------ | ------- |
+| Program       | ...             | ...  | Existing/Partial/Missing | ...     |
+| Learning Path | ...             | ...  | ...                      | ...     |
+| Course        | ...             | ...  | ...                      | ...     |
+| Module        | ...             | ...  | ...                      | ...     |
+| Lesson        | ...             | ...  | ...                      | ...     |
+| Activity      | ...             | ...  | ...                      | ...     |
+| Practice      | ...             | ...  | ...                      | ...     |
+| Evidence      | ...             | ...  | ...                      | ...     |
+| Feedback      | ...             | ...  | ...                      | ...     |
+| Remediation   | ...             | ...  | ...                      | ...     |
+| Reassessment  | ...             | ...  | ...                      | ...     |
+| Readiness     | ...             | ...  | ...                      | ...     |
+| Passport      | ...             | ...  | ...                      | ...     |
+
+Bedakan dengan tegas:
+
+```text
+EXISTING
+PARTIAL
+MISSING
+DUPLICATE
+CONFLICTING
+```
+
+---
+
+# 4. LMS DOMAIN CONTRACT
+
+Bandingkan codebase aktual dengan target LMS berikut:
+
+```text
+LMS
+│
+├── Programs
+├── Learning Paths
+├── Courses
+├── Modules
+├── Lessons
+├── Learning Activities
+├── Content Resources
+├── Quizzes
+├── Assignments
+├── Live Sessions
+├── Workshop Attendance
+├── Activity Completion
+├── Learning Outcomes
+├── Outcome Verification
+├── Practice
+├── Evidence
+├── Feedback
+├── Remediation
+├── Reassessment
+├── Learning Records
+└── Readiness Transfer
+```
+
+Target hierarchy:
+
+```text
+Program
+  ↓
+Learning Path
+  ↓
+Course
+  ↓
+Module
+  ↓
+Lesson
+  ↓
+Learning Activity
+  ↓
+Learning Outcome
+```
+
+Kemudian:
+
+```text
+Learning Activity
+↓
+Activity Completion
+↓
+Outcome Verification
+↓
+Practice Requirement
+```
+
+Tentukan untuk setiap komponen:
+
+1. sudah ada atau belum;
+2. apakah entity/model sudah memadai;
+3. apakah perlu extension;
+4. apakah ada entity yang dapat digunakan kembali;
+5. apakah ada duplikasi;
+6. apakah penambahan entity baru berpotensi konflik dengan existing schema.
+
+---
+
+# 5. CENTRAL LEARNING STATE MACHINE
+
+Audit apakah state learning saat ini tersebar di frontend/backend atau sudah memiliki central transition logic.
+
+Target state machine:
+
+```text
+NOT_STARTED
+↓
+IN_PROGRESS
+↓
+LEARNING_COMPLETED
+↓
+OUTCOME_VERIFIED
+↓
+PRACTICE_REQUIRED
+↓
+PRACTICE_IN_PROGRESS
+↓
+EVIDENCE_SUBMITTED
+↓
+UNDER_REVIEW
+↓
+PASS → NEXT_STAGE
+
+UNDER_REVIEW
+↓
+REVISION_REQUIRED
+↓
+REMEDIATION
+↓
+RE-PRACTICE
+↓
+REASSESSMENT
+↓
+READY / NOT_READY
+```
+
+Cari:
+
+* status fields;
+* transition handlers;
+* route-level state changes;
+* frontend-only state decisions;
+* bypasses;
+* direct database status mutations;
+* `Mark Complete`;
+* `Mark Plan Complete`;
+* `Approve`;
+* `Pass`;
+* `Competent`;
+* readiness transitions.
+
+Tentukan apakah diperlukan:
+
+```text
+Central Learning Transition Service
+```
+
+dan jelaskan lokasi implementasi yang paling aman.
+
+---
+
+# 6. PRACTICE + EVIDENCE
+
+Audit kemampuan existing terhadap target:
+
+```text
+Practice
+├── Objective
+├── Procedure
+├── Tools
+├── Safety Requirements
+├── Steps
+├── Checklist
+├── Expected Output
+├── Evidence Requirements
+└── Evaluation Criteria
+```
+
+Practice lifecycle:
+
+```text
+Attempt
+↓
+Output
+↓
+Reflection
+↓
+Evidence
+↓
+Review
+```
+
+Evidence lifecycle:
+
+```text
+Submission
+↓
+Validation
+↓
+Review
+↓
+Feedback
+↓
+Accepted / Revision Required
+```
+
+Periksa apakah evidence sudah mendukung:
+
+* owner;
+* activity;
+* timestamp;
+* version;
+* reviewer;
+* status;
+* feedback;
+* audit trail;
+* revision history;
+* immutable original submission.
+
+---
+
+# 7. FEEDBACK → REMEDIATION
+
+Audit apakah existing system benar-benar mendukung:
+
+```text
+Review
+↓
+Feedback
+↓
+Required Action
+↓
+Remediation
+↓
+Re-practice
+↓
+New Evidence
+↓
+Review
+↓
+Reassessment
+```
+
+Cari secara khusus shortcut seperti:
+
+```text
+Mark Plan Complete
+```
+
+atau mekanisme lain yang memungkinkan remediation dianggap selesai tanpa seluruh required activity selesai.
+
+Jika ada:
+
+**JANGAN langsung memperbaikinya pada tahap ini.**
+
+Catat:
+
+* file;
+* function;
+* route;
+* UI action;
+* kondisi bypass;
+* dampak;
+* recommended fix.
+
+---
+
+# 8. REASSESSMENT
+
+Audit apakah reassessment sudah tersedia pada:
+
+* backend;
+* schema;
+* API;
+* evaluator/reviewer;
+* participant UX.
+
+Target minimum:
+
+```text
+Original Gap
+↓
+Remediation
+↓
+Re-practice
+↓
+New Evidence
+↓
+Reassessment
+↓
+Before/After Comparison
+↓
+Readiness Update
+```
+
+Pastikan reassessment tidak menjadi shortcut menuju readiness.
+
+---
+
+# 9. READINESS
+
+Audit existing readiness engine.
+
+Pastikan konsep target tetap:
+
+```text
+Learning Record
++
+Practice Record
++
+Evidence Record
++
+Feedback Record
++
+Remediation Record
++
+Reassessment Record
+↓
+READINESS ENGINE
+↓
+INTERNAL READINESS RECOMMENDATION
+```
+
+Target outputs:
+
+```text
+READY FOR NEXT STAGE
+READY WITH SUPPORT
+NEEDS STRENGTHENING
+NOT READY
+```
+
+Cari seluruh penggunaan:
+
+```text
+Competent
+Not Competent
+Official Decision
+Official Assessment
+Certification
+Official Capability
+```
+
+dan identifikasi semua lokasi yang berpotensi melanggar positioning TERAS.
+
+---
+
+# 10. CAPABILITY PASSPORT
+
+Audit Passport.
+
+Passport harus menjadi:
+
+> **Longitudinal Capability Record**
+
+bukan official certificate atau official competency record.
+
+Pastikan histori dapat menunjukkan hubungan:
+
+```text
+Gap Identified
+↓
+Learning
+↓
+Practice
+↓
+Evidence
+↓
+Feedback
+↓
+Remediation
+↓
+Re-practice
+↓
+Reassessment
+↓
+Readiness Change
+```
+
+Audit:
+
+* chronology;
+* causal linkage;
+* version history;
+* reassessment history;
+* persistence;
+* deletion/overwrite risk.
+
+---
+
+# 11. ROLE AUDIT
+
+Audit role yang benar-benar sudah tersedia.
+
+Bandingkan dengan target:
+
+```text
+Participant
+Instructor
+Practice Evaluator
+Readiness Reviewer
+Program / Academy Admin
+Content Manager
+Organization Admin
+Platform Admin
+Support / Operator
+```
+
+Untuk setiap role:
+
+* existing role;
+* permissions;
+* routes;
+* pages;
+* API authorization;
+* organization scope;
+* program scope;
+* ownership rules.
+
+Jangan membuat dashboard baru pada tahap ini.
+
+---
+
+# 12. DASHBOARD AUDIT
+
+Audit UI yang sudah ada.
+
+Target participant experience:
+
+```text
+MY JOURNEY
+
+Learn
+Practice
+Evidence
+Feedback
+Improve
+Reassess
+Readiness
+Capability Passport
+```
+
+UX harus menjawab:
+
+> "Apa yang harus saya lakukan berikutnya, dan mengapa?"
+
+Audit apakah participant dapat melihat:
+
+* current learning stage;
+* current module;
+* next action;
+* capability gap;
+* practice requirement;
+* evidence status;
+* feedback;
+* remediation;
+* reassessment;
+* readiness;
+* passport.
+
+Audit juga Instructor/Evaluator/Admin dashboard yang sudah ada.
+
+---
+
+# 13. POSITIONING REGRESSION SCAN
+
+Cari semua teks UI/API/documentation yang berpotensi menyatakan TERAS sebagai sistem sertifikasi atau assessor resmi.
+
+Minimal search:
+
+```text
+Competent
+Not competent
+Official decision
+Official assessment
+Official assessment record
+Official capability
+Verified Engine Record
+Certification
+Sertifikasi
+Kesiapan rilis
+Release readiness
+```
+
+Buat tabel:
+
+| File | Line | Current Text | Risk | Recommended Terminology |
+| ---- | ---: | ------------ | ---- | ----------------------- |
+
+Gunakan terminology aman:
+
+```text
+Sertifikasi TERAS Academy
+→ Program Pengembangan TERAS Academy
+
+Competent
+→ Ready for Next Stage / Recommended
+
+Not Competent
+→ Needs Reinforcement
+
+Official Decision
+→ Internal Readiness Recommendation
+
+Official Assessment Record
+→ Internal Evaluation Record
+
+Official Capability Record
+→ Longitudinal Capability Record
+
+Kesiapan Rilis
+→ Kesiapan Tahap Berikutnya
+```
+
+Jangan mengganti teks sekarang.
+
+---
+
+# 14. SAFETY AUDIT
+
+Pastikan existing safety engine tetap menjadi:
+
+> NON-COMPENSATORY HARD GATE
+
+Artinya critical safety failure:
+
+```text
+tidak boleh dikompensasi
+oleh nilai rata-rata
+```
+
+Audit apakah LMS baru berpotensi melewati safety gate.
+
+Jangan mengubah formula safety/readiness pada tahap ini.
+
+---
+
+# 15. PATH A / PATH B
+
+Audit seluruh mekanisme Path A/B.
+
+Pastikan LMS enhancement tidak:
+
+* mencampur evidence;
+* mencampur state;
+* mencampur readiness;
+* menghapus isolation;
+* membuat cross-path bypass.
+
+---
+
+# 16. REGRESSION GAP ANALYSIS
+
+Evaluasi keberadaan test untuk:
+
+### Critical
+
+```text
+Completed ≠ Capable ≠ Ready
+```
+
+```text
+Critical Safety Failure
+cannot be overridden by average score
+```
+
+```text
+Learning
+→ Practice
+→ Evidence
+→ Feedback
+→ Remediation
+→ Reassessment
+→ Readiness
+```
+
+```text
+Passport causal integrity
+```
+
+```text
+Evidence immutability
+```
+
+```text
+Path A/B isolation
+```
+
+### UX
+
+```text
+Mobile
+Keyboard
+Screen reader
+Focus traversal
+```
+
+Catat test yang:
+
+```text
+EXISTING
+PARTIAL
+MISSING
+```
+
+---
+
+# 17. OUTPUT UTAMA
+
+Setelah audit selesai, berikan **SATU IMPLEMENTATION BLUEPRINT** dengan struktur:
+
+```text
+TERAS LMS IMPLEMENTATION BLUEPRINT
+```
+
+Isi:
+
+## A. What already exists
+
+## B. What can be reused
+
+## C. What must be extended
+
+## D. What is genuinely missing
+
+## E. What must NOT be rebuilt
+
+## F. What must NOT be changed
+
+## G. Critical risks
+
+## H. Dependency order
+
+## I. Proposed implementation phases
+
+Gunakan urutan:
+
+```text
+PHASE 0
+Positioning Compliance + Regression Guard
+
+↓
+
+PHASE 1
+LMS Domain Contract
+
+↓
+
+PHASE 2
+LMS Foundation
+Course → Module → Lesson → Activity
+
+↓
+
+PHASE 3
+Learning → Practice → Evidence
+
+↓
+
+PHASE 4
+Feedback → Remediation → Reassessment
+
+↓
+
+PHASE 5
+Readiness Transfer
+
+↓
+
+PHASE 6
+Capability Passport
+
+↓
+
+PHASE 7
+Role-Based LMS Dashboards
+
+↓
+
+PHASE 8
+AI Learning Intelligence
+```
+
+---
+
+# 18. NON-NEGOTIABLE CONSTRAINTS
+
+Jangan:
+
+* rebuild TERAS dari nol;
+* membuat LMS terpisah dari capability engine;
+* membuat database baru yang menduplikasi existing entities;
+* menghapus existing data;
+* mengubah safety formula;
+* mengubah readiness formula tanpa explicit requirement;
+* mengubah Path A/B;
+* memindahkan state logic ke frontend;
+* membuat AI assessor;
+* membuat AI menentukan official competency;
+* membuat TERAS mengklaim sertifikasi resmi;
+* mengubah Passport secara destruktif;
+* menghapus audit trail;
+* membuat shortcut remediation;
+* menganggap completion sebagai capability;
+* menganggap capability otomatis sebagai readiness.
+
+Gunakan pendekatan:
+
+> **Additive Evolution, not Replacement.**
+
+---
+
+# 19. ACCEPTANCE CRITERIA UNTUK AUDIT INI
+
+Audit dianggap selesai hanya jika:
+
+1. seluruh existing learning-related entities telah dipetakan;
+2. seluruh existing routes/API terkait learning telah dipetakan;
+3. seluruh role dan authorization terkait telah dipetakan;
+4. seluruh dashboard/page terkait telah dipetakan;
+5. seluruh positioning regression telah ditemukan;
+6. state transition existing telah ditemukan;
+7. practice/evidence/remediation/reassessment flow telah ditemukan;
+8. readiness transfer telah dipetakan;
+9. Passport causal chain telah diaudit;
+10. safety hard gate telah diverifikasi;
+11. Path A/B isolation telah diverifikasi;
+12. regression-test gap telah didokumentasikan;
+13. tidak ada source code yang diubah.
+
+---
+
+# 20. FINAL RESPONSE FORMAT
+
+Pada akhir pekerjaan, tampilkan:
+
+```text
+AUDIT STATUS
+PASS / BLOCKED
+
+ARCHITECTURE STATUS
+...
+
+LMS FOUNDATION STATUS
+...
+
+CRITICAL POSITIONING RISKS
+...
+
+CRITICAL SAFETY RISKS
+...
+
+CRITICAL DATA / STATE RISKS
+...
+
+MISSING LMS COMPONENTS
+...
+
+REUSABLE EXISTING COMPONENTS
+...
+
+PROPOSED PHASE ORDER
+...
+
+FILES THAT WILL BE TOUCHED IN PHASE 1
+...
+
+FILES THAT MUST NOT BE TOUCHED
+...
+
+READY FOR PHASE 1 IMPLEMENTATION
+YES / NO
+```
+
+**Jangan melakukan implementasi Phase 1 pada pekerjaan ini.**
+
+Berhenti setelah audit dan blueprint selesai.

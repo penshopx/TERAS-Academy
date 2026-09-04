@@ -1,0 +1,790 @@
+Ya. Audit yang Anda berikan **mengonfirmasi baseline final yang kita kunci**, tetapi sekaligus menunjukkan bahwa kita harus mengubah cara memberikan instruksi ke Replit.
+
+Saya tidak menyarankan prompt Replit langsung berbunyi *“bangun LMS TERAS lengkap”*. Itu terlalu besar dan berisiko merusak fondasi yang sudah ada.
+
+## Keputusan final
+
+**TERAS tidak di-rebuild.**
+
+Kita melakukan **controlled evolution** dari:
+
+> Capability-Readiness Prototype
+
+menjadi:
+
+> **Capability Development Platform dengan LMS sebagai Core Learning Engine.**
+
+Dan urutannya harus mengikuti audit.
+
+---
+
+# TERAS LMS — FINAL IMPLEMENTATION ROADMAP
+
+```text
+PHASE 0
+POSITIONING + REGRESSION GUARD
+        ↓
+PHASE 1
+LMS DOMAIN CONTRACT
+        ↓
+PHASE 2
+LMS FOUNDATION
+        ↓
+PHASE 3
+LEARNING → PRACTICE → EVIDENCE
+        ↓
+PHASE 4
+FEEDBACK → REMEDIATION → REASSESSMENT
+        ↓
+PHASE 5
+READINESS TRANSFER
+        ↓
+PHASE 6
+CAPABILITY PASSPORT
+        ↓
+PHASE 7
+ROLE EXPANSION
+        ↓
+PHASE 8
+AI LEARNING INTELLIGENCE
+```
+
+---
+
+# PHASE 0 — HARUS DIDAHULUKAN
+
+Ini **bukan redesign**.
+
+Ini hardening.
+
+### 0.1 Normalisasi terminology
+
+Kita harus menghapus seluruh istilah yang memberikan kesan TERAS:
+
+* menerbitkan sertifikasi,
+* membuat keputusan kompetensi resmi,
+* memberikan otorisasi kerja,
+* menjamin kompetensi lapangan.
+
+Terminologi final:
+
+| Jangan gunakan             | Gunakan                           |
+| -------------------------- | --------------------------------- |
+| Sertifikasi TERAS          | Program Pengembangan TERAS        |
+| Competent                  | Ready for Next Stage              |
+| Not Competent              | Needs Reinforcement               |
+| Official Decision          | Internal Readiness Recommendation |
+| Official Assessment Record | Internal Evaluation Record        |
+| Official Capability Record | Longitudinal Capability Record    |
+| Kesiapan Rilis             | Kesiapan Tahap Berikutnya         |
+| Safety Cleared             | Safety Cleared for TERAS Practice |
+
+**Catatan penting:** istilah teknis domain yang memang merepresentasikan keputusan lembaga eksternal tetap dapat ditampilkan sebagai **referensi/hasil proses eksternal**, tetapi TERAS tidak boleh mengklaim sebagai pihak yang menerbitkannya.
+
+---
+
+# PHASE 1 — LMS DOMAIN CONTRACT
+
+Ini adalah pekerjaan **paling penting sebelum UI besar-besaran**.
+
+Kita tambahkan struktur formal:
+
+```text
+Program
+ └── Learning Path
+      └── Course
+           └── Module
+                └── Lesson
+                     └── Learning Activity
+                          └── Learning Outcome
+```
+
+Kemudian:
+
+```text
+Learning Activity
+        ↓
+Activity Completion
+        ↓
+Outcome Verification
+        ↓
+Practice Requirement
+```
+
+### Entitas minimal
+
+```text
+Course
+LearningPath
+Lesson
+LearningActivity
+ContentResource
+Quiz
+QuizQuestion
+QuizAnswer
+Assignment
+LiveSession
+WorkshopAttendance
+ActivityCompletion
+LearningOutcome
+OutcomeVerification
+LearningRecord
+```
+
+**Jangan membuat schema baru secara liar.**
+
+Replit harus:
+
+1. membaca schema existing,
+2. membaca API contract existing,
+3. mempertahankan compatibility,
+4. melakukan additive migration,
+5. tidak menghapus data lama,
+6. tidak mengubah safety/readiness logic yang sudah stabil kecuali diperlukan oleh contract baru.
+
+---
+
+# PHASE 2 — LEARNING ENGINE
+
+Barulah LMS benar-benar mulai terasa sebagai LMS.
+
+Peserta dapat:
+
+### Course
+
+```text
+Course
+ ↓
+Module
+ ↓
+Lesson
+ ↓
+Activity
+```
+
+Activity:
+
+* Reading
+* Video
+* Audio
+* Scenario
+* Quiz
+* Reflection
+* Assignment
+* Live session
+* Workshop
+
+Setiap aktivitas memiliki completion rule.
+
+Contoh:
+
+```text
+VIDEO
+
+Required:
+Watch ≥ 90%
+
+Status:
+IN_PROGRESS
+       ↓
+COMPLETED
+```
+
+Quiz:
+
+```text
+Quiz
+ ↓
+Attempt
+ ↓
+Score
+ ↓
+Pass/Retry
+```
+
+Tetapi **quiz pass tidak otomatis berarti capability pass**.
+
+---
+
+# PHASE 3 — LEARNING TO PERFORMANCE
+
+Ini bagian yang menjadi identitas TERAS.
+
+```text
+LEARN
+  ↓
+PRACTICE
+  ↓
+EVIDENCE
+```
+
+Practice harus diperkuat menjadi:
+
+```text
+Practice
+├── Objective
+├── Procedure
+├── Tools
+├── Safety Requirements
+├── Steps
+├── Checklist
+├── Expected Output
+├── Evidence Requirements
+└── Evaluation Criteria
+```
+
+Peserta melakukan practice.
+
+Kemudian:
+
+```text
+Attempt
+ ↓
+Output
+ ↓
+Reflection
+ ↓
+Evidence
+ ↓
+Review
+```
+
+---
+
+# PHASE 4 — FEEDBACK LOOP
+
+Kita harus menghilangkan konsep:
+
+> reviewer memberikan komentar lalu proses selesai.
+
+Menjadi:
+
+```text
+REVIEW
+ ↓
+FEEDBACK
+ ↓
+ACTION
+ ↓
+REMEDIATION
+ ↓
+RE-PRACTICE
+ ↓
+NEW EVIDENCE
+ ↓
+REVIEW
+```
+
+## Feedback Center peserta
+
+Ini wajib.
+
+Peserta membuka:
+
+> **My Feedback**
+
+dan langsung melihat:
+
+```text
+2 items require action
+
+Practice #03
+Safety procedure
+Needs revision
+
+Required:
+→ Review Lesson 2.3
+→ Repeat Scenario
+→ Repeat Practice
+→ Submit Evidence
+
+[START]
+```
+
+---
+
+# PHASE 5 — REMEDIATION ENFORCEMENT
+
+Ini salah satu bagian yang harus diperbaiki dari sistem sekarang.
+
+### `Mark Plan Complete`
+
+**tidak boleh lagi menjadi shortcut** apabila remediation memiliki required activities.
+
+Misalnya:
+
+```text
+REMEDIATION
+
+Required Activities
+
+✓ Lesson
+✓ Scenario
+✓ Practice
+○ Evidence
+○ Review
+○ Reassessment
+```
+
+Maka:
+
+> **Remediation status = IN_PROGRESS**
+
+bukan Complete.
+
+Completion hanya terjadi setelah requirement terpenuhi.
+
+---
+
+# PHASE 6 — CENTRAL LEARNING STATE MACHINE
+
+Saya menyarankan ini menjadi **single source of truth**.
+
+```text
+NOT_STARTED
+      ↓
+IN_PROGRESS
+      ↓
+LEARNING_COMPLETED
+      ↓
+OUTCOME_VERIFIED
+      ↓
+PRACTICE_REQUIRED
+      ↓
+PRACTICE_IN_PROGRESS
+      ↓
+EVIDENCE_SUBMITTED
+      ↓
+UNDER_REVIEW
+      ↓
+      ├── PASS
+      │    ↓
+      │   NEXT_STAGE
+      │
+      └── REVISION_REQUIRED
+               ↓
+          REMEDIATION
+               ↓
+          RE-PRACTICE
+               ↓
+          REASSESSMENT
+               ↓
+        ┌──────┴──────┐
+        ↓             ↓
+      READY       NOT_READY
+```
+
+Transition service wajib memvalidasi:
+
+* current state,
+* target state,
+* actor,
+* authorization,
+* ownership,
+* prerequisite,
+* evidence,
+* reason,
+* timestamp,
+* audit trail.
+
+**UI tidak boleh menentukan state secara bebas.**
+
+---
+
+# PHASE 7 — READINESS TRANSFER
+
+Ini sangat penting.
+
+LMS **tidak menjadi assessor resmi**.
+
+LMS menghasilkan:
+
+```text
+Learning Record
+Practice Record
+Evidence Record
+Feedback Record
+Remediation Record
+Reassessment Record
+```
+
+Kemudian:
+
+```text
+             LMS
+              ↓
+       READINESS INPUT
+              ↓
+       READINESS ENGINE
+              ↓
+   INTERNAL READINESS RECOMMENDATION
+```
+
+Output:
+
+```text
+READY FOR NEXT STAGE
+READY WITH SUPPORT
+NEEDS STRENGTHENING
+NOT READY
+```
+
+Dengan safety blocker tetap berlaku.
+
+---
+
+# PHASE 8 — CAPABILITY PASSPORT
+
+Passport menerima **longitudinal record**, bukan menggantikan record lama.
+
+Contoh:
+
+```text
+Capability Timeline
+
+Aug 2026
+Safety Procedure
+Gap Identified
+
+Aug 2026
+Remediation Started
+
+Sep 2026
+Practice Repeated
+
+Sep 2026
+Evidence Accepted
+
+Sep 2026
+Readiness Improved
+```
+
+Jadi Passport menjawab:
+
+> **Bagaimana capability berkembang dari waktu ke waktu?**
+
+bukan:
+
+> “Apakah TERAS menyatakan orang ini kompeten?”
+
+---
+
+# PHASE 9 — ROLE EXPANSION
+
+Setelah core learning engine stabil:
+
+### Participant
+
+```text
+Home
+My Journey
+Programs
+Learn
+Practice
+Evidence
+Feedback
+Remediation
+Readiness
+Passport
+```
+
+### Instructor
+
+```text
+Dashboard
+Programs
+Cohorts
+Participants
+Learning Monitor
+Practice
+Evidence Review
+Feedback
+Remediation
+Readiness
+Analytics
+```
+
+### Program Admin
+
+```text
+Programs
+Cohorts
+Enrollment
+Instructors
+Schedules
+Interventions
+Analytics
+```
+
+### Content Manager
+
+```text
+Courses
+Modules
+Lessons
+Activities
+Resources
+Quiz
+Practice
+Evidence Templates
+Remediation Mapping
+```
+
+### Organization Admin
+
+```text
+People
+Programs
+Learning
+Capability
+Gaps
+Readiness
+Reports
+```
+
+### Platform Admin
+
+```text
+Users
+Roles
+Organizations
+Permissions
+Workflow
+Safety
+Audit
+Notifications
+Integrations
+Configuration
+```
+
+---
+
+# PHASE 10 — AI
+
+**AI sengaja terakhir.**
+
+Karena kalau AI masuk terlalu awal, kita akan memiliki AI yang pintar tetapi tidak mempunyai **learning state dan learning context yang cukup kuat**.
+
+Setelah foundation stabil:
+
+```text
+LMS Data
+   ↓
+Learning Context
+   ↓
+AI Tutor
+   +
+AI Coach
+   +
+Recommendation Engine
+```
+
+AI Tutor:
+
+> membantu memahami.
+
+AI Coach:
+
+> membantu menentukan langkah belajar berikutnya.
+
+Recommendation Engine:
+
+> memilih aktivitas berdasarkan gap dan history.
+
+Tetapi:
+
+```text
+AI
+ ≠
+Official Assessor
+```
+
+dan:
+
+```text
+AI
+ ≠
+Competency Certification Authority
+```
+
+---
+
+# REGRESSION GATE YANG HARUS KITA TAMBAHKAN
+
+Sebelum setiap phase dianggap selesai, minimal harus lolos:
+
+### Safety
+
+```text
+Critical failure
+        ↓
+cannot be compensated
+by average score
+```
+
+### State
+
+```text
+Completed
+   ≠
+Capable
+   ≠
+Ready
+```
+
+### Path isolation
+
+```text
+Path A evidence
+   X
+Path B requirement
+```
+
+### Evidence
+
+```text
+Original Evidence
+       ↓
+Immutable
+       ↓
+Revision = new version
+```
+
+### Passport
+
+```text
+Old record
+   ↓
+NEVER DELETED
+```
+
+### Readiness
+
+```text
+LMS history
+   ↓
+Practice
+   ↓
+Evidence
+   ↓
+Feedback
+   ↓
+Remediation
+   ↓
+Reassessment
+   ↓
+Readiness
+```
+
+harus dapat dibuktikan secara automated test.
+
+### Positioning
+
+Automated regression juga harus mencegah string/UX yang kembali menyatakan:
+
+```text
+Certified by TERAS
+Official Competency Decision
+Official Capability Record
+Authorized to Work
+```
+
+---
+
+# Yang TIDAK BOLEH dilakukan Replit
+
+Ini harus masuk ke prompt.
+
+**Jangan:**
+
+* rewrite aplikasi dari nol;
+* mengganti schema existing tanpa migration;
+* menghapus data existing;
+* mengubah safety engine yang sudah bekerja;
+* mengubah readiness formula tanpa requirement eksplisit;
+* mengubah Path A/B behavior;
+* mengganti Passport architecture secara destruktif;
+* membuat duplicate domain model;
+* membuat state logic di frontend;
+* membuat evaluator TERAS menjadi official assessor;
+* menjadikan LMS completion sebagai competency decision;
+* memasukkan AI sebelum learning foundation stabil;
+* melakukan redesign visual besar yang tidak berkaitan dengan task.
+
+---
+
+# Dan saya akan mengubah strategi prompt Replit
+
+Bukan:
+
+> **“Build TERAS LMS.”**
+
+Tetapi:
+
+### Prompt 01
+
+**Audit & Positioning Hardening**
+
+### Prompt 02
+
+**LMS Domain Contract**
+
+### Prompt 03
+
+**Central Learning State Machine**
+
+### Prompt 04
+
+**LMS Foundation — Course/Lesson/Activity**
+
+### Prompt 05
+
+**Practice & Evidence Enhancement**
+
+### Prompt 06
+
+**Feedback & Remediation Loop**
+
+### Prompt 07
+
+**Reassessment & Readiness Transfer**
+
+### Prompt 08
+
+**Role-Based LMS Dashboards**
+
+### Prompt 09
+
+**Capability Passport Causal Integrity**
+
+### Prompt 10
+
+**Regression & Adversarial Testing**
+
+### Prompt 11
+
+**AI Tutor / Learning Coach**
+
+---
+
+## Jadi, sebelum coding berikutnya, baseline kita sekarang adalah:
+
+> **TERAS Academy = Capability Development Platform**
+>
+> **LMS = Core Learning Engine**
+>
+> **Learning = Learn → Practice → Prove → Improve → Reassess**
+>
+> **Readiness = internal development/readiness recommendation, bukan sertifikasi resmi**
+>
+> **Capability Passport = longitudinal record**
+>
+> **Safety = non-compensatory hard gate**
+>
+> **AI = learning assistant, bukan assessor**
+>
+> **Existing foundation = dipertahankan dan dikembangkan secara additive, bukan dibangun ulang.**
+
+Menurut saya **ini sudah cukup matang untuk dijadikan kontrak implementasi Replit**.
+
+Tahap berikutnya yang paling aman adalah membuat **Prompt Replit #01 — Positioning Compliance + LMS Domain Contract Audit**, dengan instruksi kepada Replit untuk **memeriksa kode/schema aktual terlebih dahulu, membuat impact map, tidak langsung mengubah kode, lalu memberikan rencana perubahan yang dapat diverifikasi**. Ini mencegah Replit “mengarang” struktur baru di atas struktur TERAS yang sudah ada.
