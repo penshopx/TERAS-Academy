@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import {
   contentResourcesTable,
   courseModulesTable,
+  courseVersionsTable,
   coursesTable,
   db,
   learningActivitiesTable,
@@ -29,16 +30,19 @@ import {
 } from "../lib/learning-transition";
 import { learnerContext } from "../lib/teras";
 import { RESOURCE_URI_ERROR, validateResourceUri } from "../lib/resource-uri";
+import { claimManagedObject } from "../lib/course-authoring";
 
 const router: IRouter = Router();
+export const learnerCourseAvailable = (course: { status: string; publishedVersionId: string | null }) =>
+  course.status !== "ARCHIVED" && Boolean(course.publishedVersionId);
 
 router.get("/learning/courses", async (req, res): Promise<void> => {
   const learnerId = await authorizeLearner(req, res);
   if (!learnerId) return;
   const context = await learnerContext(learnerId);
 
-  const [courses, courseModules, modules, lessons, activities, resources, outcomes, transitions, practiceTasks, recordLinks] = await Promise.all([
-    db.select().from(coursesTable).where(eq(coursesTable.pathwayId, context.pathway.id)),
+  const [courses, courseModules, modules, lessons, activities, resources, outcomes, transitions, practiceTasks, recordLinks, versions] = await Promise.all([
+    db.select().from(coursesTable).where(and(eq(coursesTable.pathwayId, context.pathway.id), ne(coursesTable.status, "ARCHIVED"))),
     db.select().from(courseModulesTable).where(eq(courseModulesTable.pathwayId, context.pathway.id)),
     db.select().from(modulesTable).where(eq(modulesTable.pathwayId, context.pathway.id)),
     db.select().from(lessonsTable).where(eq(lessonsTable.pathwayId, context.pathway.id)),
@@ -54,6 +58,7 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
       eq(learningRecordLinksTable.learnerId, learnerId),
       eq(learningRecordLinksTable.pathwayId, context.pathway.id),
     )),
+    db.select().from(courseVersionsTable),
   ]);
 
   const moduleById = new Map(modules.map(module => [module.id, module]));
@@ -73,7 +78,7 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
     }
   }
 
-  const response = courses
+  const response = courses.filter(learnerCourseAvailable)
     .sort((a, b) => a.sequence - b.sequence)
     .map(course => ({
       id: course.id,
@@ -136,6 +141,8 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
                         type: resource.type,
                         title: resource.title,
                         uri: resource.uri,
+                        objectPath: resource.objectPath,
+                        mimeType: resource.mimeType,
                         content: resource.content,
                         sequence: resource.sequence,
                       })),
@@ -148,6 +155,7 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
                         description: outcome.description,
                         verificationMethod: outcome.verificationMethod,
                         required: outcome.required,
+                        sequence: outcome.sequence,
                       })),
                     });
                   }),
@@ -156,7 +164,27 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
         }),
     }));
 
-  res.json(ListLearningCoursesResponse.parse(response));
+  // Learners are served the immutable version captured at publish time, never
+  // mutable draft rows. Transition state remains live and is keyed by stable
+  // activity IDs, preserving progress across subsequent authoring edits.
+  const versionById = new Map(versions.map(version => [version.id, version]));
+  const publishedResponse = response.map((mutableCourse) => {
+    const snapshot = mutableCourse.id && courses.find(course => course.id === mutableCourse.id)?.publishedVersionId
+      ? versionById.get(courses.find(course => course.id === mutableCourse.id)!.publishedVersionId!)?.snapshot
+      : undefined;
+    if (!snapshot || typeof snapshot !== "object") return mutableCourse;
+    const course = structuredClone(snapshot) as typeof mutableCourse;
+    for (const module of course.modules) for (const lesson of module.lessons) for (const activity of lesson.activities) {
+      const currentState = latestState.get(activity.id)?.state ?? "NOT_STARTED";
+      activity.currentState = currentState;
+      const task = practiceTasks.find(item => item.moduleId === module.moduleId);
+      const latestLink = recordLinks.filter(item => item.activityId === activity.id && item.practiceAttemptId)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+      activity.nextAction = learningNextAction(currentState, { activityId: activity.id, taskId: task?.id, practiceAttemptId: latestLink?.practiceAttemptId ?? undefined });
+    }
+    return course;
+  });
+  res.json(ListLearningCoursesResponse.parse(publishedResponse));
 });
 
 router.post("/learning/resources", async (req, res): Promise<void> => {
@@ -193,12 +221,20 @@ router.post("/learning/resources", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Learning activity not found" });
     return;
   }
+  try {
+    await claimManagedObject(parsed.data.objectPath ?? null, trainerId);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "Managed resource could not be claimed" });
+    return;
+  }
 
   const [resource] = await db
     .insert(contentResourcesTable)
     .values({
       ...parsed.data,
       uri: parsed.data.uri ?? null,
+      objectPath: parsed.data.objectPath ?? null,
+      mimeType: parsed.data.mimeType ?? null,
       content: parsed.data.content ?? null,
     })
     .returning();

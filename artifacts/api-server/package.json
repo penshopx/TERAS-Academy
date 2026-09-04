@@ -11,6 +11,7 @@
     "test:pathway-isolation": "NODE_ENV=test tsx ./src/pathway-isolation.integration.ts",
     "test:safety-blockers": "NODE_ENV=test tsx ./src/safety-blockers.integration.ts",
     "test:learning-transition": "NODE_ENV=test tsx ./src/learning-transition.integration.ts",
+    "test:course-authoring": "NODE_ENV=test tsx ./src/course-authoring.contract.test.ts",
     "test:identity-isolation": "NODE_ENV=test tsx ./src/identity-isolation.integration.ts",
     "test:learner-isolation": "NODE_ENV=test tsx ./src/learner-isolation.integration.ts",
     "test:admin-authorization": "NODE_ENV=test tsx ./src/admin-authorization.integration.ts",
@@ -24,15 +25,18 @@
   "dependencies": {
     "@clerk/express": "^2.1.65",
     "@clerk/shared": "^4.30.2",
+    "@google-cloud/storage": "^8.0.1",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "drizzle-orm": "catalog:",
     "express": "^5.2.1",
+    "google-auth-library": "^11.0.2",
     "http-proxy-middleware": "^4.2.0",
     "pino": "^9.14.0",
-    "pino-http": "^10.5.0"
+    "pino-http": "^10.5.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

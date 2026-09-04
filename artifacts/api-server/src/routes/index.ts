@@ -6,6 +6,8 @@ import assessorRouter from "./assessor";
 import trainerRouter from "./trainer";
 import learningRouter from "./learning";
 import adminRouter from "./admin";
+import courseAuthoringRouter from "./course-authoring";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -14,6 +16,8 @@ router.use(programsRouter);
 router.use(learnerRouter);
 router.use(assessorRouter);
 router.use(trainerRouter);
+router.use(courseAuthoringRouter);
+router.use(storageRouter);
 router.use(learningRouter);
 router.use(adminRouter);
 

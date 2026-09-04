@@ -24,6 +24,98 @@ export const LearningState = {
   NOT_READY: 'NOT_READY',
 } as const;
 
+export type CourseAuthoringEntity = typeof CourseAuthoringEntity[keyof typeof CourseAuthoringEntity];
+
+
+export const CourseAuthoringEntity = {
+  COURSE: 'COURSE',
+  COURSE_MODULE: 'COURSE_MODULE',
+  LESSON: 'LESSON',
+  ACTIVITY: 'ACTIVITY',
+  OUTCOME: 'OUTCOME',
+  RESOURCE: 'RESOURCE',
+} as const;
+
+export type ManagedResourceUploadRequestContentType = typeof ManagedResourceUploadRequestContentType[keyof typeof ManagedResourceUploadRequestContentType];
+
+
+export const ManagedResourceUploadRequestContentType = {
+  'application/pdf': 'application/pdf',
+  'application/vndopenxmlformats-officedocumentwordprocessingmldocument': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword': 'application/msword',
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+  'video/mp4': 'video/mp4',
+  'video/webm': 'video/webm',
+} as const;
+
+export interface ManagedResourceUploadRequest {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     * @pattern ^[^/\\]+$
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 104857600
+     */
+  size: number;
+  contentType: ManagedResourceUploadRequestContentType;
+}
+
+export interface ManagedResourceUploadResponse {
+  uploadURL: string;
+  /** @pattern ^/objects/uploads/ */
+  objectPath: string;
+  metadata: ManagedResourceUploadRequest;
+}
+
+export type CourseAuthoringAction = typeof CourseAuthoringAction[keyof typeof CourseAuthoringAction];
+
+
+export const CourseAuthoringAction = {
+  CREATE: 'CREATE',
+  UPDATE: 'UPDATE',
+  REORDER: 'REORDER',
+  DUPLICATE: 'DUPLICATE',
+  ARCHIVE: 'ARCHIVE',
+} as const;
+
+export type CourseAuthoringCommandData = { [key: string]: unknown };
+
+export interface CourseAuthoringCommand {
+  action: CourseAuthoringAction;
+  entity: CourseAuthoringEntity;
+  /** @minLength 1 */
+  id?: string;
+  /** @minLength 1 */
+  courseId: string;
+  data?: CourseAuthoringCommandData;
+}
+
+export interface CourseAuthoringCommandResult {
+  id: string;
+  entity: CourseAuthoringEntity;
+  action: CourseAuthoringAction;
+  status: string;
+}
+
+export interface CourseValidationIssue {
+  code: string;
+  message: string;
+  /** @nullable */
+  entityId: string | null;
+}
+
+export interface CourseValidationReport {
+  courseId: string;
+  valid: boolean;
+  errors: CourseValidationIssue[];
+  warnings: CourseValidationIssue[];
+}
+
 export type LearningActivityType = typeof LearningActivityType[keyof typeof LearningActivityType];
 
 
@@ -40,73 +132,6 @@ export const LearningActivityType = {
   REFLECTION: 'REFLECTION',
   PRACTICE_PREPARATION: 'PRACTICE_PREPARATION',
 } as const;
-
-export type LearningResourceType = typeof LearningResourceType[keyof typeof LearningResourceType];
-
-
-export const LearningResourceType = {
-  PDF: 'PDF',
-  VIDEO: 'VIDEO',
-  AUDIO: 'AUDIO',
-  DOCUMENT: 'DOCUMENT',
-  LINK: 'LINK',
-  IMAGE: 'IMAGE',
-  TEXT: 'TEXT',
-} as const;
-
-export interface LearningResource {
-  id: string;
-  type: LearningResourceType;
-  title: string;
-  /** @nullable */
-  uri: string | null;
-  /** @nullable */
-  content: string | null;
-  sequence: number;
-}
-
-export type LearningResourceInputType = typeof LearningResourceInputType[keyof typeof LearningResourceInputType];
-
-
-export const LearningResourceInputType = {
-  PDF: 'PDF',
-  VIDEO: 'VIDEO',
-  AUDIO: 'AUDIO',
-  DOCUMENT: 'DOCUMENT',
-  LINK: 'LINK',
-  IMAGE: 'IMAGE',
-  TEXT: 'TEXT',
-} as const;
-
-export interface LearningResourceInput {
-  /** @minLength 1 */
-  id: string;
-  /** @minLength 1 */
-  activityId: string;
-  type: LearningResourceInputType;
-  /** @minLength 1 */
-  title: string;
-  /**
-     * Absolute external address using the http or https protocol.
-     * @nullable
-     * @pattern ^https?://
-     */
-  uri?: string | null;
-  /** @nullable */
-  content?: string | null;
-  /** @minimum 1 */
-  sequence: number;
-}
-
-export interface LearningOutcome {
-  id: string;
-  activityId: string;
-  /** @nullable */
-  capabilityModuleId: string | null;
-  description: string;
-  verificationMethod: string;
-  required: boolean;
-}
 
 export type LearningNextActionAction = typeof LearningNextActionAction[keyof typeof LearningNextActionAction];
 
@@ -129,6 +154,48 @@ export interface LearningNextAction {
   description: string;
   /** @nullable */
   href: string | null;
+}
+
+export type LearningResourceType = typeof LearningResourceType[keyof typeof LearningResourceType];
+
+
+export const LearningResourceType = {
+  PDF: 'PDF',
+  VIDEO: 'VIDEO',
+  AUDIO: 'AUDIO',
+  DOCUMENT: 'DOCUMENT',
+  LINK: 'LINK',
+  IMAGE: 'IMAGE',
+  TEXT: 'TEXT',
+} as const;
+
+export interface LearningResource {
+  id: string;
+  type: LearningResourceType;
+  title: string;
+  /** @nullable */
+  uri: string | null;
+  /**
+     * Managed App Storage object path. File bytes and base64 are never accepted.
+     * @nullable
+     * @pattern ^/objects/
+     */
+  objectPath: string | null;
+  /** @nullable */
+  mimeType: string | null;
+  /** @nullable */
+  content: string | null;
+  sequence: number;
+}
+
+export interface LearningOutcome {
+  id: string;
+  activityId: string;
+  /** @nullable */
+  capabilityModuleId: string | null;
+  description: string;
+  verificationMethod: string;
+  required: boolean;
 }
 
 export interface LearningActivity {
@@ -179,6 +246,80 @@ export interface LearningCourse {
   status: string;
   sequence: number;
   modules: LearningCourseModule[];
+}
+
+export interface CourseAuthoringPreview {
+  course: LearningCourse;
+  validation: CourseValidationReport;
+}
+
+export type CourseVersionLifecycle = typeof CourseVersionLifecycle[keyof typeof CourseVersionLifecycle];
+
+
+export const CourseVersionLifecycle = {
+  PUBLISHED: 'PUBLISHED',
+} as const;
+
+export interface CourseVersion {
+  id: string;
+  courseId: string;
+  version: number;
+  lifecycle: CourseVersionLifecycle;
+  publishedAt: string;
+}
+
+export type CourseAuthoringAuditEventDetails = { [key: string]: unknown };
+
+export interface CourseAuthoringAuditEvent {
+  id: string;
+  courseId: string;
+  /** @nullable */
+  versionId: string | null;
+  action: string;
+  actorId: string;
+  details: CourseAuthoringAuditEventDetails;
+  createdAt: string;
+}
+
+export type LearningResourceInputType = typeof LearningResourceInputType[keyof typeof LearningResourceInputType];
+
+
+export const LearningResourceInputType = {
+  PDF: 'PDF',
+  VIDEO: 'VIDEO',
+  AUDIO: 'AUDIO',
+  DOCUMENT: 'DOCUMENT',
+  LINK: 'LINK',
+  IMAGE: 'IMAGE',
+  TEXT: 'TEXT',
+} as const;
+
+export interface LearningResourceInput {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  activityId: string;
+  type: LearningResourceInputType;
+  /** @minLength 1 */
+  title: string;
+  /**
+     * Absolute external address using the http or https protocol.
+     * @nullable
+     * @pattern ^https?://
+     */
+  uri?: string | null;
+  /**
+     * App Storage path returned by the presigned upload flow; never bytes or base64.
+     * @nullable
+     * @pattern ^/objects/
+     */
+  objectPath?: string | null;
+  /** @nullable */
+  mimeType?: string | null;
+  /** @nullable */
+  content?: string | null;
+  /** @minimum 1 */
+  sequence: number;
 }
 
 export interface LearningTransitionReferences {
@@ -1001,4 +1142,3 @@ export type CompleteRemediation409 = {
   error: CompleteRemediation409Error;
   message: string;
 };
-

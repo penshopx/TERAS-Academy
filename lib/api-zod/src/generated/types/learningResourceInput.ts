@@ -21,6 +21,14 @@ export interface LearningResourceInput {
      * @pattern ^https?://
      */
   uri?: string | null;
+  /**
+     * App Storage path returned by the presigned upload flow; never bytes or base64.
+     * @nullable
+     * @pattern ^/objects/
+     */
+  objectPath?: string | null;
+  /** @nullable */
+  mimeType?: string | null;
   /** @nullable */
   content?: string | null;
   /** @minimum 1 */

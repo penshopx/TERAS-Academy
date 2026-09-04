@@ -165,3 +165,46 @@ test("renders relative and malformed resource URIs as unavailable", () => {
     assert.doesNotMatch(renderToStaticMarkup(status), /href=/);
   }
 });
+test("uses managed storage objectPath to construct secure URL", () => {
+  const managedResource = {
+    ...resource,
+    uri: null,
+    objectPath: "/objects/managed-file.pdf",
+    mimeType: "application/pdf"
+  };
+
+  const link = LearningResourceLink({ activityId: "activity-4", resource: managedResource });
+
+  assert.equal(link.type, "a");
+  assert.equal(link.props.href, "/api/storage/objects/managed-file.pdf");
+});
+
+test("prevents duplicate /objects path segments", () => {
+  // if objectPath already starts with /objects/, just prepend /api/storage
+  // verify we don't accidentally do /api/storage/objects/objects/
+  const managedResource = {
+    ...resource,
+    uri: null,
+    objectPath: "/objects/some-file.pdf"
+  };
+  const link = LearningResourceLink({ activityId: "activity-4", resource: managedResource });
+  assert.equal(link.props.href, "/api/storage/objects/some-file.pdf");
+});
+
+test("renders TEXT type inline accessibly without generating a link", () => {
+  const textResource = {
+    ...resource,
+    type: "TEXT",
+    content: "Here is some raw content",
+    uri: null,
+    objectPath: null
+  };
+
+  const status = LearningResourceLink({ activityId: "activity-4", resource: textResource });
+  const markup = renderToStaticMarkup(status);
+
+  assert.equal(status.type, "div");
+  assert.doesNotMatch(markup, /<a\b/);
+  assert.match(markup, /Here is some raw content/);
+  assert.match(markup, /data-testid="activity-resource-text-resource-5"/);
+});

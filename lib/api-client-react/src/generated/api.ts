@@ -44,6 +44,13 @@ import type {
   CapabilityPassport,
   CompleteRemediation409,
   ConflictResponse,
+  CourseAuthoringAuditEvent,
+  CourseAuthoringCommand,
+  CourseAuthoringCommandResult,
+  CourseAuthoringPreview,
+  CourseValidationReport,
+  CourseVersion,
+  ErrorResponse,
   EvidenceInput,
   EvidenceRecord,
   ForbiddenResponse,
@@ -58,6 +65,8 @@ import type {
   LearningTransitionInput,
   LearningTransitionRejection,
   LearningTransitionResult,
+  ManagedResourceUploadRequest,
+  ManagedResourceUploadResponse,
   ModuleDetail,
   NotFoundResponse,
   PathwaySelectionInput,
@@ -2288,6 +2297,671 @@ export const useTransitionLearningState = <TError = ErrorType<BadRequestResponse
       > => {
       return useMutation(getTransitionLearningStateMutationOptions(options));
     }
+
+export const getApplyCourseAuthoringCommandUrl = () => {
+
+
+
+
+  return `/api/trainer/authoring/commands`
+}
+
+/**
+ * Trainer-only draft authoring command. It never rewrites learner progress events.
+ * @summary Create, edit, reorder, duplicate, or archive one course authoring entity
+ */
+export const applyCourseAuthoringCommand = async (courseAuthoringCommand: CourseAuthoringCommand, options?: Parameters<typeof customFetch>[1]): Promise<CourseAuthoringCommandResult> => {
+
+  return customFetch<CourseAuthoringCommandResult>(getApplyCourseAuthoringCommandUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(courseAuthoringCommand)
+  }
+);}
+
+
+
+
+
+export const getApplyCourseAuthoringCommandMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyCourseAuthoringCommand>>, TError,{data: BodyType<CourseAuthoringCommand>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof applyCourseAuthoringCommand>>, TError,{data: BodyType<CourseAuthoringCommand>}, TContext> => {
+
+const mutationKey = ['applyCourseAuthoringCommand'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applyCourseAuthoringCommand>>, {data: BodyType<CourseAuthoringCommand>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  applyCourseAuthoringCommand(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplyCourseAuthoringCommandMutationResult = NonNullable<Awaited<ReturnType<typeof applyCourseAuthoringCommand>>>
+    export type ApplyCourseAuthoringCommandMutationBody = BodyType<CourseAuthoringCommand>
+    export type ApplyCourseAuthoringCommandMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Create, edit, reorder, duplicate, or archive one course authoring entity
+ */
+export const useApplyCourseAuthoringCommand = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyCourseAuthoringCommand>>, TError,{data: BodyType<CourseAuthoringCommand>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof applyCourseAuthoringCommand>>,
+        TError,
+        {data: BodyType<CourseAuthoringCommand>},
+        TContext
+      > => {
+      return useMutation(getApplyCourseAuthoringCommandMutationOptions(options));
+    }
+
+export const getListAuthoredCoursesUrl = () => {
+
+
+
+
+  return `/api/trainer/authoring/courses`
+}
+
+/**
+ * @summary List all trainer-authorable courses including drafts and archived courses
+ */
+export const listAuthoredCourses = async ( options?: Parameters<typeof customFetch>[1]): Promise<LearningCourse[]> => {
+
+  return customFetch<LearningCourse[]>(getListAuthoredCoursesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAuthoredCoursesQueryKey = () => {
+    return [
+    `/api/trainer/authoring/courses`
+    ] as const;
+    }
+
+
+export const getListAuthoredCoursesQueryOptions = <TData = Awaited<ReturnType<typeof listAuthoredCourses>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuthoredCourses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAuthoredCoursesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuthoredCourses>>> = ({ signal }) => listAuthoredCourses({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAuthoredCourses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAuthoredCoursesQueryResult = NonNullable<Awaited<ReturnType<typeof listAuthoredCourses>>>
+export type ListAuthoredCoursesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all trainer-authorable courses including drafts and archived courses
+ */
+
+export function useListAuthoredCourses<TData = Awaited<ReturnType<typeof listAuthoredCourses>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuthoredCourses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAuthoredCoursesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRequestManagedResourceUploadUrlUrl = () => {
+
+
+
+
+  return `/api/storage/uploads/request-url`
+}
+
+/**
+ * The request carries metadata only. File bytes are uploaded directly to App Storage and stored as an objectPath.
+ * @summary Request a presigned URL for a trainer-managed learning resource
+ */
+export const requestManagedResourceUploadUrl = async (managedResourceUploadRequest: ManagedResourceUploadRequest, options?: Parameters<typeof customFetch>[1]): Promise<ManagedResourceUploadResponse> => {
+
+  return customFetch<ManagedResourceUploadResponse>(getRequestManagedResourceUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(managedResourceUploadRequest)
+  }
+);}
+
+
+
+
+
+export const getRequestManagedResourceUploadUrlMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestManagedResourceUploadUrl>>, TError,{data: BodyType<ManagedResourceUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestManagedResourceUploadUrl>>, TError,{data: BodyType<ManagedResourceUploadRequest>}, TContext> => {
+
+const mutationKey = ['requestManagedResourceUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestManagedResourceUploadUrl>>, {data: BodyType<ManagedResourceUploadRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestManagedResourceUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestManagedResourceUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestManagedResourceUploadUrl>>>
+    export type RequestManagedResourceUploadUrlMutationBody = BodyType<ManagedResourceUploadRequest>
+    export type RequestManagedResourceUploadUrlMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse>
+
+    /**
+ * @summary Request a presigned URL for a trainer-managed learning resource
+ */
+export const useRequestManagedResourceUploadUrl = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestManagedResourceUploadUrl>>, TError,{data: BodyType<ManagedResourceUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestManagedResourceUploadUrl>>,
+        TError,
+        {data: BodyType<ManagedResourceUploadRequest>},
+        TContext
+      > => {
+      return useMutation(getRequestManagedResourceUploadUrlMutationOptions(options));
+    }
+
+export const getGetManagedResourceObjectUrl = (objectPath: string,) => {
+
+
+
+
+  return `/api/storage/objects/${objectPath}`
+}
+
+/**
+ * @summary Serve a protected managed learning resource
+ */
+export const getManagedResourceObject = async (objectPath: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetManagedResourceObjectUrl(objectPath),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetManagedResourceObjectQueryKey = (objectPath: string,) => {
+    return [
+    `/api/storage/objects/${objectPath}`
+    ] as const;
+    }
+
+
+export const getGetManagedResourceObjectQueryOptions = <TData = Awaited<ReturnType<typeof getManagedResourceObject>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(objectPath: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getManagedResourceObject>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetManagedResourceObjectQueryKey(objectPath);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getManagedResourceObject>>> = ({ signal }) => getManagedResourceObject(objectPath, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: objectPath !== null && objectPath !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getManagedResourceObject>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetManagedResourceObjectQueryResult = NonNullable<Awaited<ReturnType<typeof getManagedResourceObject>>>
+export type GetManagedResourceObjectQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Serve a protected managed learning resource
+ */
+
+export function useGetManagedResourceObject<TData = Awaited<ReturnType<typeof getManagedResourceObject>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ objectPath: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getManagedResourceObject>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetManagedResourceObjectQueryOptions(objectPath,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPreviewAuthoredCourseUrl = (courseId: string,) => {
+
+
+
+
+  return `/api/trainer/authoring/courses/${courseId}/preview`
+}
+
+/**
+ * @summary Preview the current draft course hierarchy
+ */
+export const previewAuthoredCourse = async (courseId: string, options?: Parameters<typeof customFetch>[1]): Promise<CourseAuthoringPreview> => {
+
+  return customFetch<CourseAuthoringPreview>(getPreviewAuthoredCourseUrl(courseId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviewAuthoredCourseQueryKey = (courseId: string,) => {
+    return [
+    `/api/trainer/authoring/courses/${courseId}/preview`
+    ] as const;
+    }
+
+
+export const getPreviewAuthoredCourseQueryOptions = <TData = Awaited<ReturnType<typeof previewAuthoredCourse>>, TError = ErrorType<NotFoundResponse>>(courseId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previewAuthoredCourse>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPreviewAuthoredCourseQueryKey(courseId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previewAuthoredCourse>>> = ({ signal }) => previewAuthoredCourse(courseId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: courseId !== null && courseId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previewAuthoredCourse>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type PreviewAuthoredCourseQueryResult = NonNullable<Awaited<ReturnType<typeof previewAuthoredCourse>>>
+export type PreviewAuthoredCourseQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Preview the current draft course hierarchy
+ */
+
+export function usePreviewAuthoredCourse<TData = Awaited<ReturnType<typeof previewAuthoredCourse>>, TError = ErrorType<NotFoundResponse>>(
+ courseId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previewAuthoredCourse>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getPreviewAuthoredCourseQueryOptions(courseId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getValidateAuthoredCourseUrl = (courseId: string,) => {
+
+
+
+
+  return `/api/trainer/authoring/courses/${courseId}/validation`
+}
+
+/**
+ * @summary Validate course outcomes, required activities, practice and readiness mapping
+ */
+export const validateAuthoredCourse = async (courseId: string, options?: Parameters<typeof customFetch>[1]): Promise<CourseValidationReport> => {
+
+  return customFetch<CourseValidationReport>(getValidateAuthoredCourseUrl(courseId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getValidateAuthoredCourseQueryKey = (courseId: string,) => {
+    return [
+    `/api/trainer/authoring/courses/${courseId}/validation`
+    ] as const;
+    }
+
+
+export const getValidateAuthoredCourseQueryOptions = <TData = Awaited<ReturnType<typeof validateAuthoredCourse>>, TError = ErrorType<NotFoundResponse>>(courseId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof validateAuthoredCourse>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getValidateAuthoredCourseQueryKey(courseId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof validateAuthoredCourse>>> = ({ signal }) => validateAuthoredCourse(courseId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: courseId !== null && courseId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof validateAuthoredCourse>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ValidateAuthoredCourseQueryResult = NonNullable<Awaited<ReturnType<typeof validateAuthoredCourse>>>
+export type ValidateAuthoredCourseQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Validate course outcomes, required activities, practice and readiness mapping
+ */
+
+export function useValidateAuthoredCourse<TData = Awaited<ReturnType<typeof validateAuthoredCourse>>, TError = ErrorType<NotFoundResponse>>(
+ courseId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof validateAuthoredCourse>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getValidateAuthoredCourseQueryOptions(courseId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPublishAuthoredCourseUrl = (courseId: string,) => {
+
+
+
+
+  return `/api/trainer/authoring/courses/${courseId}/publish`
+}
+
+/**
+ * @summary Publish a validated immutable course version
+ */
+export const publishAuthoredCourse = async (courseId: string, options?: Parameters<typeof customFetch>[1]): Promise<CourseVersion> => {
+
+  return customFetch<CourseVersion>(getPublishAuthoredCourseUrl(courseId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPublishAuthoredCourseMutationOptions = <TError = ErrorType<BadRequestResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishAuthoredCourse>>, TError,{courseId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishAuthoredCourse>>, TError,{courseId: string}, TContext> => {
+
+const mutationKey = ['publishAuthoredCourse'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishAuthoredCourse>>, {courseId: string}> = (props) => {
+          const {courseId} = props ?? {};
+
+          return  publishAuthoredCourse(courseId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishAuthoredCourseMutationResult = NonNullable<Awaited<ReturnType<typeof publishAuthoredCourse>>>
+
+    export type PublishAuthoredCourseMutationError = ErrorType<BadRequestResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Publish a validated immutable course version
+ */
+export const usePublishAuthoredCourse = <TError = ErrorType<BadRequestResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishAuthoredCourse>>, TError,{courseId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof publishAuthoredCourse>>,
+        TError,
+        {courseId: string},
+        TContext
+      > => {
+      return useMutation(getPublishAuthoredCourseMutationOptions(options));
+    }
+
+export const getListAuthoredCourseVersionsUrl = (courseId: string,) => {
+
+
+
+
+  return `/api/trainer/authoring/courses/${courseId}/versions`
+}
+
+export const listAuthoredCourseVersions = async (courseId: string, options?: Parameters<typeof customFetch>[1]): Promise<CourseVersion[]> => {
+
+  return customFetch<CourseVersion[]>(getListAuthoredCourseVersionsUrl(courseId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAuthoredCourseVersionsQueryKey = (courseId: string,) => {
+    return [
+    `/api/trainer/authoring/courses/${courseId}/versions`
+    ] as const;
+    }
+
+
+export const getListAuthoredCourseVersionsQueryOptions = <TData = Awaited<ReturnType<typeof listAuthoredCourseVersions>>, TError = ErrorType<unknown>>(courseId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuthoredCourseVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAuthoredCourseVersionsQueryKey(courseId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuthoredCourseVersions>>> = ({ signal }) => listAuthoredCourseVersions(courseId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: courseId !== null && courseId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAuthoredCourseVersions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAuthoredCourseVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof listAuthoredCourseVersions>>>
+export type ListAuthoredCourseVersionsQueryError = ErrorType<unknown>
+
+
+
+export function useListAuthoredCourseVersions<TData = Awaited<ReturnType<typeof listAuthoredCourseVersions>>, TError = ErrorType<unknown>>(
+ courseId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuthoredCourseVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAuthoredCourseVersionsQueryOptions(courseId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCourseAuthoringAuditUrl = (courseId: string,) => {
+
+
+
+
+  return `/api/trainer/authoring/courses/${courseId}/audit`
+}
+
+export const listCourseAuthoringAudit = async (courseId: string, options?: Parameters<typeof customFetch>[1]): Promise<CourseAuthoringAuditEvent[]> => {
+
+  return customFetch<CourseAuthoringAuditEvent[]>(getListCourseAuthoringAuditUrl(courseId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCourseAuthoringAuditQueryKey = (courseId: string,) => {
+    return [
+    `/api/trainer/authoring/courses/${courseId}/audit`
+    ] as const;
+    }
+
+
+export const getListCourseAuthoringAuditQueryOptions = <TData = Awaited<ReturnType<typeof listCourseAuthoringAudit>>, TError = ErrorType<unknown>>(courseId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCourseAuthoringAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCourseAuthoringAuditQueryKey(courseId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCourseAuthoringAudit>>> = ({ signal }) => listCourseAuthoringAudit(courseId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: courseId !== null && courseId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCourseAuthoringAudit>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCourseAuthoringAuditQueryResult = NonNullable<Awaited<ReturnType<typeof listCourseAuthoringAudit>>>
+export type ListCourseAuthoringAuditQueryError = ErrorType<unknown>
+
+
+
+export function useListCourseAuthoringAudit<TData = Awaited<ReturnType<typeof listCourseAuthoringAudit>>, TError = ErrorType<unknown>>(
+ courseId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCourseAuthoringAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCourseAuthoringAuditQueryOptions(courseId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListAdminUsersUrl = () => {
 

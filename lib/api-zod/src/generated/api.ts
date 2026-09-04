@@ -1009,6 +1009,7 @@ export const listLearningCoursesResponseModulesItemLessonsItemEstimatedDurationM
 
 export const listLearningCoursesResponseModulesItemLessonsItemActivitiesItemEstimatedDurationMinutesMin = 0;
 
+export const listLearningCoursesResponseModulesItemLessonsItemActivitiesItemResourcesItemObjectPathRegExp = new RegExp('^/objects');
 
 
 export const ListLearningCoursesResponseItem = zod.object({
@@ -1056,6 +1057,8 @@ export const ListLearningCoursesResponseItem = zod.object({
   "type": zod.enum(['PDF', 'VIDEO', 'AUDIO', 'DOCUMENT', 'LINK', 'IMAGE', 'TEXT']),
   "title": zod.string(),
   "uri": zod.string().nullable(),
+  "objectPath": zod.string().regex(listLearningCoursesResponseModulesItemLessonsItemActivitiesItemResourcesItemObjectPathRegExp).nullable().describe('Managed App Storage object path. File bytes and base64 are never accepted.'),
+  "mimeType": zod.string().nullable(),
   "content": zod.string().nullable(),
   "sequence": zod.int()
 })),
@@ -1082,6 +1085,7 @@ export const ListLearningCoursesResponse = zod.array(ListLearningCoursesResponse
 
 
 export const createLearningResourceBodyUriRegExp = new RegExp('^https?:/');
+export const createLearningResourceBodyObjectPathRegExp = new RegExp('^/objects');
 
 
 
@@ -1091,15 +1095,22 @@ export const CreateLearningResourceBody = zod.object({
   "type": zod.enum(['PDF', 'VIDEO', 'AUDIO', 'DOCUMENT', 'LINK', 'IMAGE', 'TEXT']),
   "title": zod.string().min(1),
   "uri": zod.url().regex(createLearningResourceBodyUriRegExp).nullish().describe('Absolute external address using the http or https protocol.'),
+  "objectPath": zod.string().regex(createLearningResourceBodyObjectPathRegExp).nullish().describe('App Storage path returned by the presigned upload flow; never bytes or base64.'),
+  "mimeType": zod.string().nullish(),
   "content": zod.string().nullish(),
   "sequence": zod.int().min(1)
 })
+
+export const createLearningResourceResponseObjectPathRegExp = new RegExp('^/objects');
+
 
 export const CreateLearningResourceResponse = zod.object({
   "id": zod.string(),
   "type": zod.enum(['PDF', 'VIDEO', 'AUDIO', 'DOCUMENT', 'LINK', 'IMAGE', 'TEXT']),
   "title": zod.string(),
   "uri": zod.string().nullable(),
+  "objectPath": zod.string().regex(createLearningResourceResponseObjectPathRegExp).nullable().describe('Managed App Storage object path. File bytes and base64 are never accepted.'),
+  "mimeType": zod.string().nullable(),
   "content": zod.string().nullable(),
   "sequence": zod.int()
 })
@@ -1148,6 +1159,316 @@ export const TransitionLearningStateResponse = zod.object({
   "idempotent": zod.boolean(),
   "recordedAt": zod.coerce.date()
 })
+
+
+/**
+ * Trainer-only draft authoring command. It never rewrites learner progress events.
+ * @summary Create, edit, reorder, duplicate, or archive one course authoring entity
+ */
+
+
+
+
+export const ApplyCourseAuthoringCommandBody = zod.object({
+  "action": zod.enum(['CREATE', 'UPDATE', 'REORDER', 'DUPLICATE', 'ARCHIVE']),
+  "entity": zod.enum(['COURSE', 'COURSE_MODULE', 'LESSON', 'ACTIVITY', 'OUTCOME', 'RESOURCE']),
+  "id": zod.string().min(1).optional(),
+  "courseId": zod.string().min(1),
+  "data": zod.record(zod.string(), zod.unknown()).optional()
+})
+
+export const ApplyCourseAuthoringCommandResponse = zod.object({
+  "id": zod.string(),
+  "entity": zod.enum(['COURSE', 'COURSE_MODULE', 'LESSON', 'ACTIVITY', 'OUTCOME', 'RESOURCE']),
+  "action": zod.enum(['CREATE', 'UPDATE', 'REORDER', 'DUPLICATE', 'ARCHIVE']),
+  "status": zod.string()
+})
+
+
+/**
+ * @summary List all trainer-authorable courses including drafts and archived courses
+ */
+export const listAuthoredCoursesResponseModulesItemLessonsItemEstimatedDurationMinutesMin = 0;
+
+export const listAuthoredCoursesResponseModulesItemLessonsItemActivitiesItemEstimatedDurationMinutesMin = 0;
+
+export const listAuthoredCoursesResponseModulesItemLessonsItemActivitiesItemResourcesItemObjectPathRegExp = new RegExp('^/objects');
+
+
+export const ListAuthoredCoursesResponseItem = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "pathwayId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.string(),
+  "sequence": zod.int(),
+  "modules": zod.array(zod.object({
+  "id": zod.string(),
+  "moduleId": zod.string(),
+  "moduleCode": zod.string(),
+  "moduleName": zod.string(),
+  "sequence": zod.int(),
+  "lessons": zod.array(zod.object({
+  "id": zod.string(),
+  "moduleId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "sequence": zod.int(),
+  "status": zod.string(),
+  "estimatedDurationMinutes": zod.int().min(listAuthoredCoursesResponseModulesItemLessonsItemEstimatedDurationMinutesMin),
+  "activities": zod.array(zod.object({
+  "id": zod.string(),
+  "lessonId": zod.string(),
+  "pathwayId": zod.string(),
+  "type": zod.enum(['READING', 'VIDEO', 'AUDIO', 'INTERACTIVE', 'QUIZ', 'ASSIGNMENT', 'DISCUSSION', 'LIVE_SESSION', 'WORKSHOP', 'REFLECTION', 'PRACTICE_PREPARATION']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "sequence": zod.int(),
+  "required": zod.boolean(),
+  "estimatedDurationMinutes": zod.int().min(listAuthoredCoursesResponseModulesItemLessonsItemActivitiesItemEstimatedDurationMinutesMin),
+  "status": zod.string(),
+  "currentState": zod.enum(['NOT_STARTED', 'IN_PROGRESS', 'LEARNING_COMPLETED', 'OUTCOME_VERIFIED', 'PRACTICE_REQUIRED', 'PRACTICE_IN_PROGRESS', 'EVIDENCE_SUBMITTED', 'UNDER_REVIEW', 'REVISION_REQUIRED', 'REMEDIATION', 'REASSESSMENT', 'READY', 'NOT_READY']),
+  "nextAction": zod.object({
+  "action": zod.enum(['START_ACTIVITY', 'COMPLETE_ACTIVITY', 'WAIT_FOR_VERIFICATION', 'WAIT_FOR_PRACTICE', 'START_PRACTICE', 'SUBMIT_EVIDENCE', 'WAIT_FOR_REVIEW', 'FOLLOW_FEEDBACK', 'VIEW_READINESS']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "href": zod.string().nullable()
+}),
+  "resources": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['PDF', 'VIDEO', 'AUDIO', 'DOCUMENT', 'LINK', 'IMAGE', 'TEXT']),
+  "title": zod.string(),
+  "uri": zod.string().nullable(),
+  "objectPath": zod.string().regex(listAuthoredCoursesResponseModulesItemLessonsItemActivitiesItemResourcesItemObjectPathRegExp).nullable().describe('Managed App Storage object path. File bytes and base64 are never accepted.'),
+  "mimeType": zod.string().nullable(),
+  "content": zod.string().nullable(),
+  "sequence": zod.int()
+})),
+  "outcomes": zod.array(zod.object({
+  "id": zod.string(),
+  "activityId": zod.string(),
+  "capabilityModuleId": zod.string().nullable(),
+  "description": zod.string(),
+  "verificationMethod": zod.string(),
+  "required": zod.boolean()
+}))
+}))
+}))
+}))
+})
+export const ListAuthoredCoursesResponse = zod.array(ListAuthoredCoursesResponseItem)
+
+
+/**
+ * The request carries metadata only. File bytes are uploaded directly to App Storage and stored as an objectPath.
+ * @summary Request a presigned URL for a trainer-managed learning resource
+ */
+export const requestManagedResourceUploadUrlBodyNameMax = 180;
+
+
+export const requestManagedResourceUploadUrlBodyNameRegExp = new RegExp('^[^/\\\\]+$');
+export const requestManagedResourceUploadUrlBodySizeMax = 104857600;
+
+
+
+export const RequestManagedResourceUploadUrlBody = zod.object({
+  "name": zod.string().min(1).max(requestManagedResourceUploadUrlBodyNameMax).regex(requestManagedResourceUploadUrlBodyNameRegExp),
+  "size": zod.int().min(1).max(requestManagedResourceUploadUrlBodySizeMax),
+  "contentType": zod.enum(['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'])
+})
+
+export const requestManagedResourceUploadUrlResponseObjectPathRegExp = new RegExp('^/objects/uploads');
+export const requestManagedResourceUploadUrlResponseMetadataNameMax = 180;
+
+
+export const requestManagedResourceUploadUrlResponseMetadataNameRegExp = new RegExp('^[^/\\\\]+$');
+export const requestManagedResourceUploadUrlResponseMetadataSizeMax = 104857600;
+
+
+
+export const RequestManagedResourceUploadUrlResponse = zod.object({
+  "uploadURL": zod.url(),
+  "objectPath": zod.string().regex(requestManagedResourceUploadUrlResponseObjectPathRegExp),
+  "metadata": zod.object({
+  "name": zod.string().min(1).max(requestManagedResourceUploadUrlResponseMetadataNameMax).regex(requestManagedResourceUploadUrlResponseMetadataNameRegExp),
+  "size": zod.int().min(1).max(requestManagedResourceUploadUrlResponseMetadataSizeMax),
+  "contentType": zod.enum(['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'])
+})
+})
+
+
+/**
+ * @summary Serve a protected managed learning resource
+ */
+export const GetManagedResourceObjectParams = zod.object({
+  "objectPath": zod.coerce.string()
+})
+
+export const GetManagedResourceObjectResponse = zod.unknown()
+
+
+/**
+ * @summary Preview the current draft course hierarchy
+ */
+export const PreviewAuthoredCourseParams = zod.object({
+  "courseId": zod.coerce.string()
+})
+
+export const previewAuthoredCourseResponseCourseModulesItemLessonsItemEstimatedDurationMinutesMin = 0;
+
+export const previewAuthoredCourseResponseCourseModulesItemLessonsItemActivitiesItemEstimatedDurationMinutesMin = 0;
+
+export const previewAuthoredCourseResponseCourseModulesItemLessonsItemActivitiesItemResourcesItemObjectPathRegExp = new RegExp('^/objects');
+
+
+export const PreviewAuthoredCourseResponse = zod.object({
+  "course": zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "pathwayId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.string(),
+  "sequence": zod.int(),
+  "modules": zod.array(zod.object({
+  "id": zod.string(),
+  "moduleId": zod.string(),
+  "moduleCode": zod.string(),
+  "moduleName": zod.string(),
+  "sequence": zod.int(),
+  "lessons": zod.array(zod.object({
+  "id": zod.string(),
+  "moduleId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "sequence": zod.int(),
+  "status": zod.string(),
+  "estimatedDurationMinutes": zod.int().min(previewAuthoredCourseResponseCourseModulesItemLessonsItemEstimatedDurationMinutesMin),
+  "activities": zod.array(zod.object({
+  "id": zod.string(),
+  "lessonId": zod.string(),
+  "pathwayId": zod.string(),
+  "type": zod.enum(['READING', 'VIDEO', 'AUDIO', 'INTERACTIVE', 'QUIZ', 'ASSIGNMENT', 'DISCUSSION', 'LIVE_SESSION', 'WORKSHOP', 'REFLECTION', 'PRACTICE_PREPARATION']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "sequence": zod.int(),
+  "required": zod.boolean(),
+  "estimatedDurationMinutes": zod.int().min(previewAuthoredCourseResponseCourseModulesItemLessonsItemActivitiesItemEstimatedDurationMinutesMin),
+  "status": zod.string(),
+  "currentState": zod.enum(['NOT_STARTED', 'IN_PROGRESS', 'LEARNING_COMPLETED', 'OUTCOME_VERIFIED', 'PRACTICE_REQUIRED', 'PRACTICE_IN_PROGRESS', 'EVIDENCE_SUBMITTED', 'UNDER_REVIEW', 'REVISION_REQUIRED', 'REMEDIATION', 'REASSESSMENT', 'READY', 'NOT_READY']),
+  "nextAction": zod.object({
+  "action": zod.enum(['START_ACTIVITY', 'COMPLETE_ACTIVITY', 'WAIT_FOR_VERIFICATION', 'WAIT_FOR_PRACTICE', 'START_PRACTICE', 'SUBMIT_EVIDENCE', 'WAIT_FOR_REVIEW', 'FOLLOW_FEEDBACK', 'VIEW_READINESS']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "href": zod.string().nullable()
+}),
+  "resources": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['PDF', 'VIDEO', 'AUDIO', 'DOCUMENT', 'LINK', 'IMAGE', 'TEXT']),
+  "title": zod.string(),
+  "uri": zod.string().nullable(),
+  "objectPath": zod.string().regex(previewAuthoredCourseResponseCourseModulesItemLessonsItemActivitiesItemResourcesItemObjectPathRegExp).nullable().describe('Managed App Storage object path. File bytes and base64 are never accepted.'),
+  "mimeType": zod.string().nullable(),
+  "content": zod.string().nullable(),
+  "sequence": zod.int()
+})),
+  "outcomes": zod.array(zod.object({
+  "id": zod.string(),
+  "activityId": zod.string(),
+  "capabilityModuleId": zod.string().nullable(),
+  "description": zod.string(),
+  "verificationMethod": zod.string(),
+  "required": zod.boolean()
+}))
+}))
+}))
+}))
+}),
+  "validation": zod.object({
+  "courseId": zod.string(),
+  "valid": zod.boolean(),
+  "errors": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string(),
+  "entityId": zod.string().nullable()
+})),
+  "warnings": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string(),
+  "entityId": zod.string().nullable()
+}))
+})
+})
+
+
+/**
+ * @summary Validate course outcomes, required activities, practice and readiness mapping
+ */
+export const ValidateAuthoredCourseParams = zod.object({
+  "courseId": zod.coerce.string()
+})
+
+export const ValidateAuthoredCourseResponse = zod.object({
+  "courseId": zod.string(),
+  "valid": zod.boolean(),
+  "errors": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string(),
+  "entityId": zod.string().nullable()
+})),
+  "warnings": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string(),
+  "entityId": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Publish a validated immutable course version
+ */
+export const PublishAuthoredCourseParams = zod.object({
+  "courseId": zod.coerce.string()
+})
+
+export const PublishAuthoredCourseResponse = zod.object({
+  "id": zod.string(),
+  "courseId": zod.string(),
+  "version": zod.int(),
+  "lifecycle": zod.enum(['PUBLISHED']),
+  "publishedAt": zod.coerce.date()
+})
+
+
+export const ListAuthoredCourseVersionsParams = zod.object({
+  "courseId": zod.coerce.string()
+})
+
+export const ListAuthoredCourseVersionsResponseItem = zod.object({
+  "id": zod.string(),
+  "courseId": zod.string(),
+  "version": zod.int(),
+  "lifecycle": zod.enum(['PUBLISHED']),
+  "publishedAt": zod.coerce.date()
+})
+export const ListAuthoredCourseVersionsResponse = zod.array(ListAuthoredCourseVersionsResponseItem)
+
+
+export const ListCourseAuthoringAuditParams = zod.object({
+  "courseId": zod.coerce.string()
+})
+
+export const ListCourseAuthoringAuditResponseItem = zod.object({
+  "id": zod.string(),
+  "courseId": zod.string(),
+  "versionId": zod.string().nullable(),
+  "action": zod.string(),
+  "actorId": zod.string(),
+  "details": zod.record(zod.string(), zod.unknown()),
+  "createdAt": zod.coerce.date()
+})
+export const ListCourseAuthoringAuditResponse = zod.array(ListCourseAuthoringAuditResponseItem)
 
 
 export const ListAdminUsersResponseItem = zod.object({
@@ -1469,5 +1790,3 @@ export const ListAdminAuditEventsResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const ListAdminAuditEventsResponse = zod.array(ListAdminAuditEventsResponseItem)
-
-

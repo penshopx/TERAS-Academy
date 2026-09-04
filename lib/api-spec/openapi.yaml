@@ -22,6 +22,8 @@ tags:
     description: LMS learning-layer contracts and centralized transitions
   - name: admin
     description: Authorized operational administration; Clerk remains the identity boundary
+  - name: storage
+    description: Clerk-protected managed learning resource uploads and serving
 paths:
   /healthz:
     get:
@@ -573,6 +575,105 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningTransitionRejection"
+  /trainer/authoring/commands:
+    post:
+      operationId: applyCourseAuthoringCommand
+      tags: [trainer]
+      summary: Create, edit, reorder, duplicate, or archive one course authoring entity
+      description: Trainer-only draft authoring command. It never rewrites learner progress events.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CourseAuthoringCommand" }
+      responses:
+        "200":
+          description: Authoring entity updated
+          content: { application/json: { schema: { $ref: "#/components/schemas/CourseAuthoringCommandResult" } } }
+        "201":
+          description: Authoring entity created or duplicated
+          content: { application/json: { schema: { $ref: "#/components/schemas/CourseAuthoringCommandResult" } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /trainer/authoring/courses:
+    get:
+      operationId: listAuthoredCourses
+      tags: [trainer]
+      summary: List all trainer-authorable courses including drafts and archived courses
+      responses:
+        "200": { description: Authoring courses, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LearningCourse" } } } } }
+  /storage/uploads/request-url:
+    post:
+      operationId: requestManagedResourceUploadUrl
+      tags: [storage]
+      summary: Request a presigned URL for a trainer-managed learning resource
+      description: The request carries metadata only. File bytes are uploaded directly to App Storage and stored as an objectPath.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ManagedResourceUploadRequest" } } }
+      responses:
+        "200": { description: Presigned URL issued, content: { application/json: { schema: { $ref: "#/components/schemas/ManagedResourceUploadResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { description: Storage signing failed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getManagedResourceObject
+      tags: [storage]
+      summary: Serve a protected managed learning resource
+      parameters: [{ name: objectPath, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Protected object stream, content: { "*/*": { schema: { type: string, format: binary } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /trainer/authoring/courses/{courseId}/preview:
+    get:
+      operationId: previewAuthoredCourse
+      tags: [trainer]
+      summary: Preview the current draft course hierarchy
+      parameters: [{ $ref: "#/components/parameters/CourseId" }]
+      responses:
+        "200": { description: Draft preview, content: { application/json: { schema: { $ref: "#/components/schemas/CourseAuthoringPreview" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /trainer/authoring/courses/{courseId}/validation:
+    get:
+      operationId: validateAuthoredCourse
+      tags: [trainer]
+      summary: Validate course outcomes, required activities, practice and readiness mapping
+      parameters: [{ $ref: "#/components/parameters/CourseId" }]
+      responses:
+        "200": { description: Validation report, content: { application/json: { schema: { $ref: "#/components/schemas/CourseValidationReport" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /trainer/authoring/courses/{courseId}/publish:
+    post:
+      operationId: publishAuthoredCourse
+      tags: [trainer]
+      summary: Publish a validated immutable course version
+      parameters: [{ $ref: "#/components/parameters/CourseId" }]
+      responses:
+        "201": { description: Immutable version published, content: { application/json: { schema: { $ref: "#/components/schemas/CourseVersion" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /trainer/authoring/courses/{courseId}/versions:
+    get:
+      operationId: listAuthoredCourseVersions
+      tags: [trainer]
+      parameters: [{ $ref: "#/components/parameters/CourseId" }]
+      responses:
+        "200": { description: Immutable publish history, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CourseVersion" } } } } }
+  /trainer/authoring/courses/{courseId}/audit:
+    get:
+      operationId: listCourseAuthoringAudit
+      tags: [trainer]
+      parameters: [{ $ref: "#/components/parameters/CourseId" }]
+      responses:
+        "200": { description: Append-only authoring history, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CourseAuthoringAuditEvent" } } } } }
   /admin/users:
     get:
       operationId: listAdminUsers
@@ -1397,7 +1498,8 @@ x-pathway-selection-components:
         description: { type: string }
         verificationMethod: { type: string }
         required: { type: boolean }
-      required: [id, activityId, capabilityModuleId, description, verificationMethod, required]
+        sequence: { type: integer, minimum: 1 }
+      required: [id, activityId, capabilityModuleId, description, verificationMethod, required, sequence]
     LegacyVerboseLearningActivity:
       type: object
       properties:
@@ -1714,6 +1816,7 @@ components:
     PathwayId: { name: pathwayId, in: path, required: true, schema: { type: string } }
     CohortId: { name: cohortId, in: path, required: true, schema: { type: string } }
     EnrollmentId: { name: enrollmentId, in: path, required: true, schema: { type: string } }
+    CourseId: { name: courseId, in: path, required: true, schema: { type: string } }
     ProgramId:
       name: programId
       in: path
@@ -1790,6 +1893,88 @@ components:
     LearningState:
       type: string
       enum: [NOT_STARTED, IN_PROGRESS, LEARNING_COMPLETED, OUTCOME_VERIFIED, PRACTICE_REQUIRED, PRACTICE_IN_PROGRESS, EVIDENCE_SUBMITTED, UNDER_REVIEW, REVISION_REQUIRED, REMEDIATION, REASSESSMENT, READY, NOT_READY]
+    CourseAuthoringEntity:
+      type: string
+      enum: [COURSE, COURSE_MODULE, LESSON, ACTIVITY, OUTCOME, RESOURCE]
+    ManagedResourceUploadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 180, pattern: "^[^/\\\\]+$" }
+        size: { type: integer, minimum: 1, maximum: 104857600 }
+        contentType:
+          type: string
+          enum: [application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/msword, image/jpeg, image/png, image/webp, video/mp4, video/webm]
+      required: [name, size, contentType]
+    ManagedResourceUploadResponse:
+      type: object
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string, pattern: "^/objects/uploads/" }
+        metadata: { $ref: "#/components/schemas/ManagedResourceUploadRequest" }
+      required: [uploadURL, objectPath, metadata]
+    CourseAuthoringAction:
+      type: string
+      enum: [CREATE, UPDATE, REORDER, DUPLICATE, ARCHIVE]
+    CourseAuthoringCommand:
+      type: object
+      additionalProperties: false
+      properties:
+        action: { $ref: "#/components/schemas/CourseAuthoringAction" }
+        entity: { $ref: "#/components/schemas/CourseAuthoringEntity" }
+        id: { type: string, minLength: 1 }
+        courseId: { type: string, minLength: 1 }
+        data: { type: object, additionalProperties: true }
+      required: [action, entity, courseId]
+    CourseAuthoringCommandResult:
+      type: object
+      properties:
+        id: { type: string }
+        entity: { $ref: "#/components/schemas/CourseAuthoringEntity" }
+        action: { $ref: "#/components/schemas/CourseAuthoringAction" }
+        status: { type: string }
+      required: [id, entity, action, status]
+    CourseValidationIssue:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        entityId: { type: ["string", "null"] }
+      required: [code, message, entityId]
+    CourseValidationReport:
+      type: object
+      properties:
+        courseId: { type: string }
+        valid: { type: boolean }
+        errors: { type: array, items: { $ref: "#/components/schemas/CourseValidationIssue" } }
+        warnings: { type: array, items: { $ref: "#/components/schemas/CourseValidationIssue" } }
+      required: [courseId, valid, errors, warnings]
+    CourseAuthoringPreview:
+      type: object
+      properties:
+        course: { $ref: "#/components/schemas/LearningCourse" }
+        validation: { $ref: "#/components/schemas/CourseValidationReport" }
+      required: [course, validation]
+    CourseVersion:
+      type: object
+      properties:
+        id: { type: string }
+        courseId: { type: string }
+        version: { type: integer }
+        lifecycle: { type: string, enum: [PUBLISHED] }
+        publishedAt: { type: string, format: date-time }
+      required: [id, courseId, version, lifecycle, publishedAt]
+    CourseAuthoringAuditEvent:
+      type: object
+      properties:
+        id: { type: string }
+        courseId: { type: string }
+        versionId: { type: ["string", "null"] }
+        action: { type: string }
+        actorId: { type: string }
+        details: { type: object, additionalProperties: true }
+        createdAt: { type: string, format: date-time }
+      required: [id, courseId, versionId, action, actorId, details, createdAt]
     LearningActivityType:
       type: string
       enum: [READING, VIDEO, AUDIO, INTERACTIVE, QUIZ, ASSIGNMENT, DISCUSSION, LIVE_SESSION, WORKSHOP, REFLECTION, PRACTICE_PREPARATION]
@@ -1800,9 +1985,14 @@ components:
         type: { type: string, enum: [PDF, VIDEO, AUDIO, DOCUMENT, LINK, IMAGE, TEXT] }
         title: { type: string }
         uri: { type: ["string", "null"] }
+        objectPath:
+          type: ["string", "null"]
+          pattern: "^/objects/"
+          description: Managed App Storage object path. File bytes and base64 are never accepted.
+        mimeType: { type: ["string", "null"] }
         content: { type: ["string", "null"] }
         sequence: { type: integer }
-      required: [id, type, title, uri, content, sequence]
+      required: [id, type, title, uri, objectPath, mimeType, content, sequence]
     LearningResourceInput:
       type: object
       additionalProperties: false
@@ -1816,6 +2006,11 @@ components:
           format: uri
           pattern: "^https?://"
           description: Absolute external address using the http or https protocol.
+        objectPath:
+          type: ["string", "null"]
+          pattern: "^/objects/"
+          description: App Storage path returned by the presigned upload flow; never bytes or base64.
+        mimeType: { type: ["string", "null"] }
         content: { type: ["string", "null"] }
         sequence: { type: integer, minimum: 1 }
       required: [id, activityId, type, title, sequence]

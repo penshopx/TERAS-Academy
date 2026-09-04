@@ -13,6 +13,14 @@ export interface LearningResource {
   title: string;
   /** @nullable */
   uri: string | null;
+  /**
+     * Managed App Storage object path. File bytes and base64 are never accepted.
+     * @nullable
+     * @pattern ^/objects/
+     */
+  objectPath: string | null;
+  /** @nullable */
+  mimeType: string | null;
   /** @nullable */
   content: string | null;
   sequence: number;

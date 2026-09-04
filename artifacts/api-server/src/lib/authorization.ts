@@ -65,17 +65,36 @@ export async function authorizeWorkspaceRole(req: Request, res: Response, role: 
   const identity = integrationIdentity(req);
   if (identity) {
     if (identity.userId && identity.role === role) {
-      const context = await learnerContext();
-      return role === "trainer" ? context.enrollment.trainerId : context.enrollment.assessorId;
+      const [assignedPerson] = await db.select({ personId: peopleTable.id }).from(peopleTable)
+        .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+        .where(and(
+          eq(peopleTable.clerkUserId, identity.userId),
+          eq(peopleTable.status, "active"),
+          eq(personRolesTable.role, role),
+        ))
+        .limit(1);
+      if (assignedPerson) return assignedPerson.personId;
+      // In-process test identities are server-injected and cannot be supplied
+      // by an HTTP client. Keep the seeded fixture fallback test-only.
+      if (process.env.NODE_ENV === "test") {
+        const context = await learnerContext();
+        return role === "trainer" ? context.enrollment.trainerId : context.enrollment.assessorId;
+      }
     }
     res.status(identity.userId ? 403 : 401).json({ error: "You are not authorized for this action" });
     return null;
   }
   const { userId } = getAuth(req);
-  const configuredUserId = role === "trainer" ? process.env.CLERK_TRAINER_USER_ID : process.env.CLERK_ASSESSOR_USER_ID;
-  if (userId && configuredUserId && userId === configuredUserId) {
-    const context = await learnerContext();
-    return role === "trainer" ? context.enrollment.trainerId : context.enrollment.assessorId;
+  if (userId) {
+    const [assignedPerson] = await db.select({ personId: peopleTable.id }).from(peopleTable)
+      .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+      .where(and(
+        eq(peopleTable.clerkUserId, userId),
+        eq(peopleTable.status, "active"),
+        eq(personRolesTable.role, role),
+      ))
+      .limit(1);
+    if (assignedPerson) return assignedPerson.personId;
   }
   if (!userId && allowsDemoAccess()) {
     const context = await learnerContext();
@@ -149,14 +168,25 @@ export async function authorizeLearningActor(req: Request, res: Response): Promi
     const context = await learnerContext();
     return { id: context.learner.id, role: "learner" };
   }
-  const context = await learnerContext();
-  if (userId && userId === process.env.CLERK_TRAINER_USER_ID && context.enrollment.trainerId) {
-    return { id: context.enrollment.trainerId, role: "trainer" };
-  }
-  if (userId && userId === process.env.CLERK_ASSESSOR_USER_ID && context.enrollment.assessorId) {
-    return { id: context.enrollment.assessorId, role: "assessor" };
-  }
   if (userId) {
+    const [workspaceActor] = await db.select({
+      personId: peopleTable.id,
+      role: personRolesTable.role,
+    }).from(peopleTable)
+      .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+      .where(and(
+        eq(peopleTable.clerkUserId, userId),
+        eq(peopleTable.status, "active"),
+        sql`${personRolesTable.role} IN ('trainer', 'assessor')`,
+      ))
+      .limit(1);
+    if (workspaceActor) {
+      return {
+        id: workspaceActor.personId,
+        role: workspaceActor.role as WorkspaceRole,
+      };
+    }
+
     const clerkUser = await clerkClient.users.getUser(userId);
     const primaryEmail = clerkUser.emailAddresses.find(
       (email) => email.id === clerkUser.primaryEmailAddressId,

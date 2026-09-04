@@ -5,7 +5,7 @@
   "scripts": {
     "validate": "node ./check-duplicate-schemas.mjs",
     "test": "node --test ./check-duplicate-schemas.test.mjs",
-    "codegen": "pnpm run validate && orval --config ./orval.config.ts && pnpm -w run typecheck:libs"
+    "codegen": "pnpm run validate && orval --config ./orval.config.ts && node ./normalize-generated-eof.mjs && pnpm -w run typecheck:libs"
   },
   "devDependencies": {
     "orval": "^8.23.0"

@@ -47,6 +47,8 @@ export const coursesTable = pgTable("teras_courses", {
   status: text("status").notNull().default("DRAFT"),
   sequence: integer("sequence").notNull(),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  /** Points at an immutable aggregate snapshot; learner events always retain activity IDs. */
+  publishedVersionId: text("published_version_id"),
   ...catalogueAudit,
 }, table => [
   foreignKey({
@@ -65,6 +67,7 @@ export const courseModulesTable = pgTable("teras_course_modules", {
   programId: text("program_id").notNull().references(() => programsTable.id),
   pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id),
   sequence: integer("sequence").notNull(),
+  status: text("status").notNull().default("DRAFT"),
   ...catalogueAudit,
 }, table => [
   uniqueIndex("teras_course_modules_course_module_unique").on(table.courseId, table.moduleId),
@@ -112,8 +115,12 @@ export const contentResourcesTable = pgTable("teras_content_resources", {
   type: text("type").notNull(),
   title: text("title").notNull(),
   uri: text("uri"),
+  /** App Storage object entity path, never file bytes or base64. */
+  objectPath: text("object_path"),
+  mimeType: text("mime_type"),
   content: text("content"),
   sequence: integer("sequence").notNull(),
+  status: text("status").notNull().default("DRAFT"),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
   ...catalogueAudit,
 }, table => [
@@ -123,6 +130,46 @@ export const contentResourcesTable = pgTable("teras_content_resources", {
   ),
   uniqueIndex("teras_content_resources_activity_sequence_unique").on(table.activityId, table.sequence),
 ]);
+
+/** Immutable published course aggregate. Old versions intentionally remain addressable for audit/progress. */
+export const courseVersionsTable = pgTable("teras_course_versions", {
+  id: text("id").primaryKey(),
+  courseId: text("course_id").notNull().references(() => coursesTable.id),
+  version: integer("version").notNull(),
+  lifecycle: text("lifecycle").notNull().default("PUBLISHED"),
+  snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+  validationReport: jsonb("validation_report").$type<Record<string, unknown>>().notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
+  publishedBy: text("published_by").notNull(),
+}, table => [
+  uniqueIndex("teras_course_versions_course_version_unique").on(table.courseId, table.version),
+  index("teras_course_versions_course_published_idx").on(table.courseId, table.publishedAt),
+]);
+
+/** Append-only authoring history; no learner event is mutated by authoring operations. */
+export const courseAuthoringAuditTable = pgTable("teras_course_authoring_audit", {
+  id: text("id").primaryKey(),
+  courseId: text("course_id").notNull().references(() => coursesTable.id),
+  versionId: text("version_id").references(() => courseVersionsTable.id),
+  action: text("action").notNull(),
+  actorId: text("actor_id").notNull(),
+  details: jsonb("details").$type<Record<string, unknown>>().notNull().default({}),
+  ...eventAudit,
+}, table => [
+  index("teras_course_authoring_audit_course_created_idx").on(table.courseId, table.createdAt),
+]);
+
+/** Short-lived server-issued claim prevents one trainer attaching another trainer's upload. */
+export const managedResourceUploadsTable = pgTable("teras_managed_resource_uploads", {
+  objectPath: text("object_path").primaryKey(),
+  trainerId: text("trainer_id").notNull().references(() => peopleTable.id),
+  name: text("name").notNull(),
+  size: integer("size").notNull(),
+  mimeType: text("mime_type").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+  ...eventAudit,
+}, table => [index("teras_managed_resource_uploads_expiry_idx").on(table.expiresAt)]);
 
 export const contentResourceUriAuditTable = pgTable("teras_content_resource_uri_audit", {
   id: text("id").primaryKey(),
@@ -145,9 +192,12 @@ export const learningOutcomesTable = pgTable("teras_learning_outcomes", {
   description: text("description").notNull(),
   verificationMethod: text("verification_method").notNull(),
   required: boolean("required").notNull().default(true),
+  sequence: integer("sequence").notNull().default(1),
+  status: text("status").notNull().default("DRAFT"),
   ...catalogueAudit,
 }, table => [
   uniqueIndex("teras_learning_outcomes_activity_description_unique").on(table.activityId, table.description),
+  uniqueIndex("teras_learning_outcomes_activity_sequence_unique").on(table.activityId, table.sequence),
 ]);
 
 export const activityCompletionEventsTable = pgTable("teras_activity_completion_events", {

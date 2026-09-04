@@ -17,6 +17,9 @@ type LearningResourceLinkProps = {
     title: string;
     type: string;
     uri?: string | null;
+    objectPath?: string | null;
+    mimeType?: string | null;
+    content?: string | null;
   };
 };
 
@@ -32,7 +35,40 @@ function isSupportedResourceUri(uri: string | null | undefined): uri is string {
 }
 
 export function LearningResourceLink({ activityId, resource }: LearningResourceLinkProps) {
-  if (!isSupportedResourceUri(resource.uri)) {
+  // If it's type TEXT, render it inline accessibly
+  if (resource.type === "TEXT") {
+    return (
+      <div
+        className="p-4 rounded-xl border border-border/50 bg-background/50 space-y-2"
+        data-testid={`activity-resource-text-${resource.id}`}
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            <FileText className="w-4 h-4" />
+          </div>
+          <span className="text-sm font-semibold">{resource.title}</span>
+        </div>
+        {resource.content ? (
+          <div className="text-sm text-muted-foreground whitespace-pre-wrap font-mono p-4 bg-muted/20 rounded-md border border-border/30">
+            {resource.content}
+          </div>
+        ) : (
+          <span className="text-xs font-medium text-muted-foreground">Content not available</span>
+        )}
+      </div>
+    );
+  }
+
+  // Determine the active URI
+  let resolvedUri: string | null = null;
+
+  if (resource.objectPath) {
+    resolvedUri = `/api/storage${resource.objectPath}`;
+  } else if (isSupportedResourceUri(resource.uri)) {
+    resolvedUri = resource.uri;
+  }
+
+  if (!resolvedUri) {
     return (
       <div
         className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-muted/20 text-muted-foreground"
@@ -49,7 +85,7 @@ export function LearningResourceLink({ activityId, resource }: LearningResourceL
 
   return (
     <a
-      href={resource.uri}
+      href={resolvedUri}
       onClick={() => trackResourceOpened({
         activityId,
         resourceId: resource.id,
@@ -61,9 +97,14 @@ export function LearningResourceLink({ activityId, resource }: LearningResourceL
       data-testid={`activity-resource-link-${resource.id}`}
     >
       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover/link:bg-primary group-hover/link:text-black transition-colors">
-        <ExternalLink className="w-4 h-4" />
+        {resource.objectPath ? <FileArchive className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
       </div>
-      <span className="text-sm font-semibold flex-1 truncate">{resource.title}</span>
+      <div className="flex flex-col flex-1 truncate">
+        <span className="text-sm font-semibold truncate">{resource.title}</span>
+        {resource.mimeType && (
+          <span className="text-[10px] font-mono text-muted-foreground uppercase">{resource.mimeType}</span>
+        )}
+      </div>
     </a>
   );
 }
