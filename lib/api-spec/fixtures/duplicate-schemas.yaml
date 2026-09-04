@@ -1,0 +1,13 @@
+openapi: 3.1.0
+info:
+  title: Fixture
+  version: 1.0.0
+paths: {}
+x-extra-components:
+  schemas:
+    JourneyStep:
+      type: object
+components:
+  schemas:
+    "JourneyStep":
+      type: object
