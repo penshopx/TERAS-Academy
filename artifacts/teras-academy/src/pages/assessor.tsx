@@ -165,7 +165,7 @@ export default function AssessorDesk() {
                   {c.critical && <Badge variant="destructive" className="shrink-0">Critical</Badge>}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-2">
-                  <Select value={scores[c.id]?.toString()} onValueChange={value => setScores(current => ({ ...current, [c.id]: Number(value) }))}>
+                  <Select value={scores[c.id]?.toString() ?? ""} onValueChange={value => setScores(current => ({ ...current, [c.id]: Number(value) }))}>
                     <SelectTrigger aria-label={`Score for ${c.code} — ${c.label}`} data-testid={`criterion-score-${c.id}`}>
                       <SelectValue placeholder="Score 0–3" />
                     </SelectTrigger>
