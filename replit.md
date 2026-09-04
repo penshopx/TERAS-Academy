@@ -11,6 +11,7 @@ TERAS Academy is a capability-development platform with an LMS as its core learn
 - `pnpm run smoke:app-storage` — run the disposable real-sidecar App Storage smoke check
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
+- Scheduled App Storage alert env: `TERAS_APP_STORAGE_ALERT_WEBHOOK_URL` — secret HTTPS webhook for the team's operational channel. The receiver gets only the run ID, failed stage, FAIL status, and an explicit `releaseApproval: false`; successful runs send nothing.
 
 ## Stack
 
@@ -55,7 +56,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-- The native Replit scheduled job `App Storage weekday smoke` runs `pnpm run smoke:app-storage` each weekday at 16:00 UTC with a 180-second timeout, alongside the unchanged autoscale deployment. Its PASS/FAIL output is operational early warning only and never constitutes release approval.
+- The native Replit scheduled job `App Storage weekday smoke` runs `pnpm run smoke:app-storage` each weekday at 16:00 UTC with a 180-second timeout, alongside the unchanged autoscale deployment. Its failures notify the webhook configured in `TERAS_APP_STORAGE_ALERT_WEBHOOK_URL`; PASS runs do not notify. This operational early warning never constitutes release approval.
 
 ## Pointers
 
