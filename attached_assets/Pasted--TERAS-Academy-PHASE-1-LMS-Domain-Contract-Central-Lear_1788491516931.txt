@@ -1,0 +1,1531 @@
+# TERAS Academy — PHASE 1
+
+## LMS Domain Contract + Central Learning Transition Contract
+
+### TASK #24 — KUNCI STRUKTUR LMS TANPA MENGUBAH ENGINE TERAS YANG STABIL
+
+Phase 0 telah selesai dengan status:
+
+```text
+PASS
+```
+
+dan seluruh regression guard utama telah lulus.
+
+Sekarang implementasikan **PHASE 1 ONLY**.
+
+Tujuan Phase 1 bukan membangun seluruh LMS dan bukan membuat dashboard.
+
+Tujuan Phase 1 adalah:
+
+> **Mengunci domain model LMS, hubungan LMS dengan capability engine existing, serta central learning transition contract yang akan menjadi fondasi seluruh learning lifecycle TERAS.**
+
+Gunakan prinsip:
+
+```text
+ADDITIVE EVOLUTION
++
+REUSE EXISTING ENGINE
++
+CENTRALIZED STATE TRANSITION
++
+APPEND-ORIENTED HISTORY
+```
+
+---
+
+# 1. NON-NEGOTIABLE ARCHITECTURE
+
+Jangan rebuild:
+
+* Program
+* Pathway
+* Module
+* Enrollment
+* Practice engine
+* Evidence engine
+* Gap engine
+* Remediation engine
+* Assessment attempt history
+* Safety engine
+* Readiness engine
+* Passport projection
+* Path A/B isolation
+* Authentication foundation
+
+LMS baru harus menjadi **learning layer di atas engine existing**.
+
+Target:
+
+```text
+                    TERAS CAPABILITY ENGINE
+                             ↑
+                             │
+                    READINESS / PASSPORT
+                             ↑
+                    LEARNING TRANSFER
+                             ↑
+┌──────────────────────────────────────────────────────┐
+│                 LMS CORE LEARNING ENGINE             │
+│                                                      │
+│ Program → Pathway → Course → Module → Lesson        │
+│                              ↓                       │
+│                         Activity                     │
+│                              ↓                       │
+│                         Outcome                      │
+└──────────────────────────────────────────────────────┘
+```
+
+Jangan membuat LMS sebagai sistem yang berdiri sendiri.
+
+---
+
+# 2. TARGET DOMAIN HIERARCHY
+
+Canonical hierarchy:
+
+```text
+Program
+    ↓
+Learning Path
+    ↓
+Course
+    ↓
+Module
+    ↓
+Lesson
+    ↓
+Learning Activity
+    ↓
+Learning Outcome
+```
+
+Kemudian:
+
+```text
+Learning Activity
+    ↓
+Activity Completion
+    ↓
+Outcome Verification
+    ↓
+Practice Requirement
+```
+
+Dan:
+
+```text
+Practice
+    ↓
+Evidence
+    ↓
+Feedback
+    ↓
+Remediation
+    ↓
+Reassessment
+    ↓
+Readiness Transfer
+```
+
+---
+
+# 3. EXISTING ENTITY MAPPING
+
+Gunakan existing entities sebagai anchor.
+
+| Existing                     | LMS role                          |
+| ---------------------------- | --------------------------------- |
+| `programsTable`              | Program                           |
+| `pathwaysTable`              | Learning Path                     |
+| `modulesTable`               | Module                            |
+| Existing enrollment          | Enrollment                        |
+| Existing practice task       | Practice                          |
+| Existing evidence            | Evidence                          |
+| Existing review              | Review / Feedback                 |
+| Existing gap                 | Capability Gap                    |
+| Existing remediation         | Remediation                       |
+| Existing assessment attempts | Reassessment / Evaluation history |
+| Existing readiness           | Readiness                         |
+| Existing passport            | Longitudinal Capability Record    |
+
+**Jangan membuat duplicate version dari entity di atas.**
+
+---
+
+# 4. NEW LMS ENTITIES
+
+Tambahkan hanya entity yang memang missing.
+
+Minimum target:
+
+```text id="p6nj3f"
+coursesTable
+lessonsTable
+learningActivitiesTable
+contentResourcesTable
+learningOutcomesTable
+activityCompletionEventsTable
+outcomeVerificationEventsTable
+learningRecordLinksTable
+reassessmentLinksTable
+readinessTransferEventsTable
+```
+
+Namun sebelum membuat semuanya:
+
+### VALIDATE EACH ENTITY
+
+Untuk setiap entity jawab:
+
+1. Mengapa entity diperlukan?
+2. Apakah existing entity dapat digunakan?
+3. Apakah entity merupakan state store atau event/history?
+4. Siapa owner-nya?
+5. Apa foreign key utamanya?
+6. Apa lifecycle-nya?
+7. Apakah append-only?
+8. Apakah dapat diubah?
+9. Apa authorization boundary-nya?
+10. Apa hubungan dengan capability engine?
+
+Jika entity tidak memiliki fungsi yang jelas:
+
+**Jangan dibuat.**
+
+---
+
+# 5. COURSE
+
+Course adalah container pembelajaran formal di dalam Learning Path.
+
+Minimal concept:
+
+```text
+Course
+├── id
+├── pathwayId
+├── title
+├── description
+├── status
+├── order
+├── metadata
+├── createdAt
+├── updatedAt
+```
+
+Course harus:
+
+* pathway-aware;
+* organization-aware jika architecture existing mendukung;
+* tidak mengubah module lama;
+* dapat memiliki banyak module.
+
+Relationship:
+
+```text
+Pathway
+  ↓
+Course
+  ↓
+Module
+```
+
+---
+
+# 6. COURSE → EXISTING MODULE COMPATIBILITY
+
+Ini sangat penting.
+
+Existing `modulesTable` sudah menjadi capability/module anchor.
+
+Jangan mengganti definisinya.
+
+Jika perlu relationship:
+
+```text
+Course
+  ↓
+CourseModule
+  ↓
+Existing Module
+```
+
+atau equivalent additive relation.
+
+Tujuannya agar:
+
+```text
+Course
+→ existing Module
+→ existing Capability
+→ existing Practice
+→ existing Evidence
+```
+
+tetap terhubung.
+
+Jangan membuat `newModulesTable`.
+
+---
+
+# 7. LESSON
+
+Buat formal lesson entity.
+
+Minimal:
+
+```text
+Lesson
+├── id
+├── courseId / moduleId
+├── title
+├── description
+├── sequence
+├── status
+├── estimatedDuration
+├── metadata
+├── createdAt
+├── updatedAt
+```
+
+Lesson harus dapat memiliki banyak activities.
+
+```text
+Lesson
+   ↓
+LearningActivity[]
+```
+
+Existing `modulesTable.theory` tetap dipertahankan.
+
+Jangan langsung menghapus atau memigrasikan data theory lama.
+
+Jika diperlukan:
+
+```text
+legacy theory
+↓
+compatibility representation
+```
+
+---
+
+# 8. LEARNING ACTIVITY
+
+Learning Activity adalah unit tindakan belajar.
+
+Jangan samakan dengan Practice Task.
+
+Practice Task existing tetap menjadi practice domain.
+
+Learning Activity dapat memiliki type:
+
+```text
+READING
+VIDEO
+AUDIO
+INTERACTIVE
+QUIZ
+ASSIGNMENT
+DISCUSSION
+LIVE_SESSION
+WORKSHOP
+REFLECTION
+PRACTICE_PREPARATION
+```
+
+Jangan menambahkan type tanpa kebutuhan domain.
+
+Minimal:
+
+```text
+LearningActivity
+├── id
+├── lessonId
+├── type
+├── title
+├── description
+├── sequence
+├── required
+├── estimatedDuration
+├── status
+├── metadata
+├── createdAt
+├── updatedAt
+```
+
+Activity harus dapat:
+
+```text
+activity
+→ outcome
+→ completion
+→ verification
+→ practice requirement
+```
+
+---
+
+# 9. CONTENT RESOURCE
+
+Content Resource adalah resource yang dikonsumsi activity.
+
+Contoh:
+
+```text
+PDF
+VIDEO
+AUDIO
+DOCUMENT
+LINK
+IMAGE
+TEXT
+```
+
+Minimal relationship:
+
+```text
+LearningActivity
+      ↓
+ContentResource[]
+```
+
+Content resource bukan evidence.
+
+Bedakan:
+
+```text
+Content Resource
+= material provided by TERAS
+
+Evidence
+= proof produced by learner
+```
+
+Jangan mencampur keduanya.
+
+---
+
+# 10. LEARNING OUTCOME
+
+Learning Outcome harus menjadi target hasil belajar.
+
+Jangan menjadikan completion sebagai outcome verification.
+
+Minimal:
+
+```text
+LearningOutcome
+├── id
+├── activityId / lessonId / moduleId
+├── capabilityId (nullable jika existing capability tersedia)
+├── description
+├── verificationMethod
+├── required
+├── createdAt
+├── updatedAt
+```
+
+Relationship:
+
+```text
+Learning Activity
+↓
+Learning Outcome
+```
+
+Outcome dapat terkait capability existing.
+
+Namun:
+
+```text
+Outcome
+≠
+Capability proven
+```
+
+Outcome hanya mendefinisikan target pembelajaran.
+
+---
+
+# 11. ACTIVITY COMPLETION EVENT
+
+Completion harus menjadi event/history.
+
+Minimal:
+
+```text
+ActivityCompletionEvent
+├── id
+├── activityId
+├── learnerId
+├── enrollmentId
+├── pathwayId
+├── completedAt
+├── actor
+├── metadata
+```
+
+Jika diperlukan status:
+
+```text
+STARTED
+COMPLETED
+REOPENED
+```
+
+tetapi jangan membuat status yang tidak diperlukan.
+
+Critical principle:
+
+```text
+Activity Completed
+≠
+Outcome Verified
+≠
+Capability
+≠
+Readiness
+```
+
+Completion event tidak boleh langsung mengubah readiness.
+
+---
+
+# 12. OUTCOME VERIFICATION EVENT
+
+Outcome verification harus terpisah dari completion.
+
+Minimal:
+
+```text
+OutcomeVerificationEvent
+├── id
+├── outcomeId
+├── learnerId
+├── activityId
+├── verifierId
+├── result
+├── evidenceReference
+├── verifiedAt
+├── reason
+```
+
+Result harus menggunakan terminology yang tidak mengklaim official competency.
+
+Contoh:
+
+```text
+VERIFIED
+NOT_VERIFIED
+```
+
+atau equivalent.
+
+Jangan menggunakan:
+
+```text
+COMPETENT
+NOT_COMPETENT
+```
+
+sebagai LMS outcome semantics.
+
+---
+
+# 13. LEARNING RECORD LINKS
+
+Jangan membuat giant `LearningRecord` table yang menggantikan seluruh existing history.
+
+Gunakan linkage/read model.
+
+Tujuannya menghubungkan:
+
+```text
+Learning
+Practice
+Evidence
+Feedback
+Remediation
+Reassessment
+Readiness
+```
+
+Contoh causal graph:
+
+```text
+Learning Activity
+      ↓
+Practice Requirement
+      ↓
+Practice Attempt
+      ↓
+Evidence
+      ↓
+Review
+      ↓
+Feedback
+      ↓
+Remediation
+      ↓
+Re-practice
+      ↓
+New Evidence
+      ↓
+Reassessment
+      ↓
+Readiness Transfer
+```
+
+`learningRecordLinksTable` harus berfungsi sebagai linkage, bukan duplicate source-of-truth.
+
+---
+
+# 14. REASSESSMENT LINK
+
+Existing assessment attempt history harus dipertahankan.
+
+Tambahkan explicit causal linkage:
+
+```text
+Original Gap
+     ↓
+Remediation
+     ↓
+Practice Attempt
+     ↓
+Evidence
+     ↓
+Reassessment Attempt
+```
+
+`reassessmentLinksTable` minimal harus mampu menjawab:
+
+```text
+reassessment
+→ original gap
+→ remediation
+→ practice attempt
+→ evidence
+→ previous assessment/evaluation
+```
+
+Jangan membuat assessment attempt replacement.
+
+---
+
+# 15. READINESS TRANSFER EVENT
+
+Readiness transfer harus menjadi boundary antara LMS dan readiness engine.
+
+Target:
+
+```text
+LMS Records
+   ↓
+Readiness Transfer
+   ↓
+Existing Readiness Engine
+```
+
+`readinessTransferEventsTable` harus mencatat:
+
+```text
+id
+learnerId
+pathwayId
+sourceContext
+learningRecordReferences
+practiceReferences
+evidenceReferences
+feedbackReferences
+remediationReferences
+reassessmentReferences
+transferredAt
+triggeredBy
+```
+
+Jangan menyalin seluruh data ke readiness.
+
+Transfer record harus menjadi **explicit causal boundary**.
+
+---
+
+# 16. CENTRAL LEARNING STATE MACHINE
+
+Sekarang buat **central transition contract**.
+
+Lokasi:
+
+```text
+artifacts/api-server/src/lib/
+```
+
+Boleh menggunakan:
+
+```text
+learning-transition.ts
+```
+
+atau nama equivalent yang konsisten dengan architecture existing.
+
+Frontend tidak boleh menentukan state.
+
+---
+
+# 17. CANONICAL LEARNING STATES
+
+Gunakan state minimum:
+
+```text
+NOT_STARTED
+IN_PROGRESS
+LEARNING_COMPLETED
+OUTCOME_VERIFIED
+PRACTICE_REQUIRED
+PRACTICE_IN_PROGRESS
+EVIDENCE_SUBMITTED
+UNDER_REVIEW
+REVISION_REQUIRED
+REMEDIATION
+REASSESSMENT
+READY
+NOT_READY
+```
+
+Tetapi sebelum implementasi final:
+
+**verifikasi apakah seluruh state benar-benar diperlukan pada domain existing.**
+
+Jangan membuat state hanya karena daftar terlihat lengkap.
+
+---
+
+# 18. VALID TRANSITIONS
+
+Minimal valid flow:
+
+```text
+NOT_STARTED
+→ IN_PROGRESS
+
+IN_PROGRESS
+→ LEARNING_COMPLETED
+
+LEARNING_COMPLETED
+→ OUTCOME_VERIFIED
+
+OUTCOME_VERIFIED
+→ PRACTICE_REQUIRED
+
+PRACTICE_REQUIRED
+→ PRACTICE_IN_PROGRESS
+
+PRACTICE_IN_PROGRESS
+→ EVIDENCE_SUBMITTED
+
+EVIDENCE_SUBMITTED
+→ UNDER_REVIEW
+
+UNDER_REVIEW
+→ REVISION_REQUIRED
+
+REVISION_REQUIRED
+→ REMEDIATION
+
+UNDER_REVIEW
+→ NEXT_STAGE / READY
+```
+
+Untuk remediation:
+
+```text
+REMEDIATION
+→ PRACTICE_IN_PROGRESS
+
+PRACTICE_IN_PROGRESS
+→ EVIDENCE_SUBMITTED
+
+EVIDENCE_SUBMITTED
+→ UNDER_REVIEW
+
+UNDER_REVIEW
+→ REASSESSMENT
+
+REASSESSMENT
+→ READY
+REASSESSMENT
+→ NOT_READY
+```
+
+**Jangan gunakan state transition yang otomatis melompati required prerequisite.**
+
+---
+
+# 19. NEXT_STAGE
+
+Jika state:
+
+```text
+READY
+```
+
+maknanya:
+
+> internal TERAS readiness untuk tahap berikutnya.
+
+Bukan:
+
+> official competency decision.
+
+Gunakan terminology:
+
+```text
+READY FOR NEXT STAGE
+```
+
+bukan:
+
+```text
+COMPETENT
+```
+
+---
+
+# 20. TRANSITION CONTRACT
+
+Central transition service minimal harus menerima:
+
+```text
+currentState
+targetState
+actor
+learnerId
+pathwayId
+programId
+entityReference
+reason
+```
+
+dan melakukan validasi:
+
+```text
+1. current state valid
+2. target transition valid
+3. actor authorized
+4. learner ownership valid
+5. pathway isolation valid
+6. prerequisite valid
+7. evidence requirement valid
+8. safety requirement valid
+9. causal reference valid
+10. audit event generated
+```
+
+Tidak boleh ada frontend route yang langsung menentukan state final.
+
+---
+
+# 21. TRANSITION RESULT
+
+Service harus menghasilkan structured result, misalnya:
+
+```text
+SUCCESS
+```
+
+atau:
+
+```text
+REJECTED
+```
+
+dengan reason code.
+
+Contoh:
+
+```text
+INVALID_TRANSITION
+UNAUTHORIZED_ACTOR
+PATHWAY_MISMATCH
+PREREQUISITE_NOT_MET
+EVIDENCE_REQUIRED
+REVIEW_REQUIRED
+REASSESSMENT_REQUIRED
+SAFETY_BLOCKED
+```
+
+Gunakan terminology yang konsisten dengan existing error architecture.
+
+---
+
+# 22. IDEMPOTENCY
+
+Transition harus aman terhadap duplicate request.
+
+Contoh:
+
+```text
+POST complete
+POST complete
+```
+
+tidak boleh menghasilkan dua state transitions yang salah.
+
+Gunakan existing transaction/idempotency pattern bila tersedia.
+
+Jangan membuat mechanism baru jika existing pattern dapat digunakan.
+
+---
+
+# 23. CONCURRENCY
+
+Perhatikan dua request bersamaan:
+
+```text
+Request A → completion
+Request B → remediation completion
+```
+
+atau:
+
+```text
+Request A → evidence submit
+Request B → review
+```
+
+Transition service harus memvalidasi current state secara transactional sehingga stale state tidak dapat menghasilkan invalid transition.
+
+Tambahkan minimal regression test untuk concurrency-sensitive transitions jika architecture test memungkinkan.
+
+---
+
+# 24. EVENT OWNERSHIP
+
+Tetapkan ownership.
+
+Contoh:
+
+```text
+Learning Activity
+→ LMS
+
+Practice
+→ Existing Practice Engine
+
+Evidence
+→ Existing Evidence Engine
+
+Review / Feedback
+→ Existing Review Engine
+
+Remediation
+→ Existing Remediation Engine
+
+Reassessment
+→ Existing Assessment Engine
+
+Readiness
+→ Existing Readiness Engine
+
+Passport
+→ Existing Passport Projection
+```
+
+LMS tidak boleh mengambil alih ownership domain-domain tersebut.
+
+---
+
+# 25. PATH A / PATH B
+
+Semua new LMS records yang pathway-scoped harus memiliki atau memperoleh pathway context yang dapat diverifikasi.
+
+Target:
+
+```text
+Course
+Lesson
+Activity
+Completion
+Outcome Verification
+Learning Record Link
+Reassessment Link
+Readiness Transfer
+```
+
+tidak boleh menyebabkan cross-path contamination.
+
+Tambahkan test:
+
+```text
+Path A learner
+cannot use Path B learning record
+```
+
+dan sebaliknya.
+
+---
+
+# 26. AUTHORIZATION
+
+Phase 1 belum membangun organization-scoped RBAC penuh.
+
+Namun setiap new endpoint/transition harus menggunakan existing authorization foundation.
+
+Minimum boundary:
+
+```text
+learner owns record
++
+pathway matches
++
+actor permitted
+```
+
+Jangan membuat:
+
+```text
+if frontend role === ...
+```
+
+sebagai security mechanism.
+
+Authorization harus terjadi di server.
+
+---
+
+# 27. API CONTRACT
+
+Update:
+
+```text
+lib/api-spec/openapi.yaml
+```
+
+sebagai canonical contract.
+
+Setelah itu:
+
+```text
+regenerate Zod
+regenerate API client
+```
+
+Jangan mengedit generated files secara manual.
+
+Pastikan:
+
+```text
+OpenAPI
+→ Zod
+→ API Client
+```
+
+tetap konsisten.
+
+---
+
+# 28. DATABASE MIGRATION
+
+Migration harus additive.
+
+Allowed:
+
+```text
+CREATE TABLE
+ADD COLUMN
+ADD INDEX
+ADD FOREIGN KEY
+```
+
+Tidak boleh:
+
+```text
+DROP TABLE
+DROP COLUMN
+DELETE DATA
+RESET DATABASE
+```
+
+Tidak ada data migration besar pada Phase 1 kecuali benar-benar diperlukan untuk foreign key compatibility dan aman dibuktikan.
+
+---
+
+# 29. INDEXING
+
+Tambahkan index berdasarkan query pattern nyata.
+
+Minimal pertimbangkan:
+
+```text
+learnerId
+pathwayId
+programId
+courseId
+lessonId
+activityId
+createdAt
+```
+
+Jangan membuat index berlebihan tanpa query justification.
+
+---
+
+# 30. AUDIT TRAIL
+
+Semua state transition baru harus dapat dilacak:
+
+```text
+who
+what
+from
+to
+when
+why
+entity
+pathway
+```
+
+History tidak boleh di-overwrite.
+
+---
+
+# 31. TEST CONTRACT
+
+Tambahkan tests untuk:
+
+## Valid transitions
+
+```text
+NOT_STARTED → IN_PROGRESS
+IN_PROGRESS → LEARNING_COMPLETED
+LEARNING_COMPLETED → OUTCOME_VERIFIED
+OUTCOME_VERIFIED → PRACTICE_REQUIRED
+PRACTICE_REQUIRED → PRACTICE_IN_PROGRESS
+PRACTICE_IN_PROGRESS → EVIDENCE_SUBMITTED
+EVIDENCE_SUBMITTED → UNDER_REVIEW
+UNDER_REVIEW → REVISION_REQUIRED
+REVISION_REQUIRED → REMEDIATION
+REMEDIATION → PRACTICE_IN_PROGRESS
+UNDER_REVIEW → REASSESSMENT
+REASSESSMENT → READY
+REASSESSMENT → NOT_READY
+```
+
+## Invalid transitions
+
+Minimal:
+
+```text
+NOT_STARTED → READY
+NOT_STARTED → REASSESSMENT
+IN_PROGRESS → READY
+LEARNING_COMPLETED → READY
+PRACTICE_REQUIRED → READY
+EVIDENCE_SUBMITTED → READY
+REVISION_REQUIRED → READY
+REMEDIATION → READY
+```
+
+Semua harus ditolak.
+
+---
+
+# 32. SEMANTIC REGRESSION
+
+Pastikan:
+
+```text
+Activity completion
+≠
+Outcome verification
+```
+
+```text
+Outcome verification
+≠
+Capability
+```
+
+```text
+Capability
+≠
+Readiness
+```
+
+```text
+Readiness
+≠
+Official certification
+```
+
+Buat regression tests eksplisit.
+
+---
+
+# 33. SAFETY BOUNDARY
+
+Central transition service tidak boleh bypass existing safety engine.
+
+Jika existing readiness engine mengatakan:
+
+```text
+BLOCKED
+```
+
+transition menuju:
+
+```text
+READY
+```
+
+harus ditolak.
+
+Jangan membuat duplicate safety formula di transition service.
+
+Gunakan existing safety/readiness engine sebagai authority.
+
+---
+
+# 34. LEGACY COMPATIBILITY
+
+Legacy:
+
+```text
+Competent
+Not competent
+```
+
+tetap dipertahankan jika diperlukan oleh existing API/database.
+
+Tetapi domain LMS baru tidak boleh menggunakan terminology tersebut sebagai canonical LMS state.
+
+Gunakan:
+
+```text
+READY
+NOT_READY
+```
+
+atau canonical readiness recommendation mapping.
+
+---
+
+# 35. NO UI IMPLEMENTATION
+
+Phase 1 tidak membangun:
+
+* Participant dashboard baru.
+* Instructor dashboard baru.
+* Admin dashboard.
+* Course player.
+* Lesson player.
+* Content authoring UI.
+* Quiz UI.
+* Evidence UI redesign.
+* Passport redesign.
+
+Jika diperlukan UI placeholder hanya untuk test contract, jangan membuat production UX.
+
+UI akan masuk Phase berikutnya.
+
+---
+
+# 36. NO AI
+
+Jangan implement:
+
+* AI Tutor
+* AI Coach
+* Recommendation AI
+* AI Assessor
+
+AI masuk Phase 8.
+
+---
+
+# 37. NO READINESS FORMULA CHANGE
+
+Jangan mengubah:
+
+```text
+artifacts/api-server/src/lib/safety.ts
+```
+
+dan existing readiness formula.
+
+Phase 1 hanya membangun:
+
+```text
+explicit transfer boundary
+```
+
+bukan readiness calculation baru.
+
+---
+
+# 38. NO PASSPORT REWRITE
+
+Passport tetap:
+
+> Longitudinal Capability Record
+
+Phase 1 hanya memastikan LMS record dapat menjadi causal source yang nantinya dapat diproyeksikan.
+
+Jangan redesign Passport.
+
+---
+
+# 39. IMPLEMENTATION ORDER
+
+Kerjakan dalam urutan:
+
+```text
+STEP 1
+Inspect existing schema + events
+
+↓
+
+STEP 2
+Finalize entity relationships
+
+↓
+
+STEP 3
+Additive database schema
+
+↓
+
+STEP 4
+Migration
+
+↓
+
+STEP 5
+OpenAPI contract
+
+↓
+
+STEP 6
+Generate Zod/client
+
+↓
+
+STEP 7
+Central transition service
+
+↓
+
+STEP 8
+Transition tests
+
+↓
+
+STEP 9
+Pathway isolation tests
+
+↓
+
+STEP 10
+Authorization tests
+
+↓
+
+STEP 11
+Build/typecheck/regression
+```
+
+Jika pada STEP 2 ditemukan entity duplicate/conflict:
+
+**STOP dan laporkan sebelum migration.**
+
+---
+
+# 40. ACCEPTANCE CRITERIA
+
+Phase 1 PASS jika:
+
+### Domain
+
+* [ ] Course formal tersedia.
+* [ ] Lesson formal tersedia.
+* [ ] Learning Activity formal tersedia.
+* [ ] Learning Outcome formal tersedia.
+* [ ] Content Resource formal tersedia jika dibutuhkan.
+* [ ] Existing Module tetap menjadi anchor.
+* [ ] Existing Practice tetap menjadi engine practice.
+* [ ] Existing Evidence tetap menjadi engine evidence.
+
+### State
+
+* [ ] Central transition service tersedia.
+* [ ] Frontend bukan owner state transition.
+* [ ] Valid transitions pass.
+* [ ] Invalid transitions rejected.
+* [ ] No prerequisite bypass.
+
+### Causality
+
+* [ ] Learning dapat dikaitkan dengan practice.
+* [ ] Practice dapat dikaitkan dengan evidence.
+* [ ] Evidence dapat dikaitkan dengan review/feedback.
+* [ ] Feedback dapat dikaitkan dengan remediation.
+* [ ] Remediation dapat dikaitkan dengan re-practice.
+* [ ] Re-practice dapat dikaitkan dengan new evidence.
+* [ ] New evidence dapat dikaitkan dengan reassessment.
+* [ ] Reassessment dapat dikaitkan dengan readiness transfer.
+
+### Safety
+
+* [ ] Existing safety formula unchanged.
+* [ ] Critical blocker tetap enforced.
+
+### Pathway
+
+* [ ] Path A/B isolation tetap pass.
+* [ ] New LMS records tidak cross-path.
+
+### Authorization
+
+* [ ] Unauthorized transition ditolak.
+* [ ] Unauthorized mutation tidak menghasilkan event.
+
+### Data
+
+* [ ] No destructive migration.
+* [ ] Existing historical records preserved.
+* [ ] Event history append-oriented.
+
+### API
+
+* [ ] OpenAPI valid.
+* [ ] Generated clients regenerated.
+* [ ] Zod generated.
+* [ ] No unexplained breaking API changes.
+
+### Quality
+
+* [ ] Existing tests pass.
+* [ ] New tests pass.
+* [ ] Typecheck pass.
+* [ ] Build pass.
+
+---
+
+# 41. FINAL REPORT
+
+Setelah selesai, tampilkan:
+
+```text
+TERAS ACADEMY — PHASE 1 REPORT
+
+STATUS:
+PASS / BLOCKED
+
+DOMAIN CONTRACT:
+PASS / BLOCKED
+
+NEW ENTITIES:
+...
+
+EXISTING ENTITIES REUSED:
+...
+
+CENTRAL TRANSITION SERVICE:
+PASS / BLOCKED
+
+VALID TRANSITIONS:
+X passed
+
+INVALID TRANSITIONS:
+X passed
+
+CAUSAL LINKAGE:
+PASS / BLOCKED
+
+PATH A/B:
+PASS / BLOCKED
+
+AUTHORIZATION:
+PASS / BLOCKED
+
+SAFETY:
+UNCHANGED / CHANGED
+
+READINESS FORMULA:
+UNCHANGED / CHANGED
+
+PASSPORT:
+UNCHANGED / CHANGED
+
+DATABASE:
+ADDITIVE / DESTRUCTIVE
+
+API:
+...
+
+MIGRATION:
+...
+
+FILES CHANGED:
+...
+
+FILES ADDED:
+...
+
+FILES DELETED:
+...
+
+TESTS:
+X passed
+Y failed
+
+TYPECHECK:
+PASS / FAIL
+
+BUILD:
+PASS / FAIL
+
+UNRESOLVED RISKS:
+...
+
+READY FOR PHASE 2:
+YES / NO
+```
+
+---
+
+# FINAL STOP CONDITION
+
+Jika menemukan:
+
+* duplicate entity;
+* conflicting schema;
+* existing state yang tidak kompatibel;
+* migration berisiko;
+* safety bypass;
+* Path A/B contamination;
+* authorization gap;
+* breaking API contract;
+* ambiguity tentang ownership;
+
+**STOP sebelum melakukan perubahan yang berisiko dan laporkan konflik tersebut.**
+
+Jangan menyelesaikan konflik dengan asumsi.
+
+Prinsip akhir:
+
+```text
+TERAS EXISTING ENGINE
+        +
+FORMAL LMS LEARNING LAYER
+        +
+CENTRAL TRANSITION CONTRACT
+        +
+CAUSAL EVENT LINKAGE
+        =
+TERAS LMS FOUNDATION
+```
+
+**Implementasikan Phase 1 saja. Jangan masuk Phase 2.**

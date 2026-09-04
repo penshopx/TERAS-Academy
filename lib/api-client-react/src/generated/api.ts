@@ -34,7 +34,11 @@ import type {
   HealthStatus,
   JourneyStep,
   LearnerDashboard,
+  LearningCourse,
   LearningPlanItem,
+  LearningTransitionInput,
+  LearningTransitionRejection,
+  LearningTransitionResult,
   ModuleDetail,
   NotFoundResponse,
   PathwaySelectionInput,
@@ -2043,5 +2047,153 @@ export const useSubmitAssessmentDecision = <TError = ErrorType<BadRequestRespons
         TContext
       > => {
       return useMutation(getSubmitAssessmentDecisionMutationOptions(options));
+    }
+
+export const getListLearningCoursesUrl = () => {
+
+
+
+
+  return `/api/learning/courses`
+}
+
+/**
+ * @summary List the formal LMS hierarchy for the active learner pathway
+ */
+export const listLearningCourses = async ( options?: Parameters<typeof customFetch>[1]): Promise<LearningCourse[]> => {
+
+  return customFetch<LearningCourse[]>(getListLearningCoursesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLearningCoursesQueryKey = () => {
+    return [
+    `/api/learning/courses`
+    ] as const;
+    }
+
+
+export const getListLearningCoursesQueryOptions = <TData = Awaited<ReturnType<typeof listLearningCourses>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLearningCourses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLearningCoursesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLearningCourses>>> = ({ signal }) => listLearningCourses({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLearningCourses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLearningCoursesQueryResult = NonNullable<Awaited<ReturnType<typeof listLearningCourses>>>
+export type ListLearningCoursesQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary List the formal LMS hierarchy for the active learner pathway
+ */
+
+export function useListLearningCourses<TData = Awaited<ReturnType<typeof listLearningCourses>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLearningCourses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLearningCoursesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getTransitionLearningStateUrl = () => {
+
+
+
+
+  return `/api/learning/transitions`
+}
+
+/**
+ * @summary Apply one authorized, prerequisite-aware learning state transition
+ */
+export const transitionLearningState = async (learningTransitionInput: LearningTransitionInput, options?: Parameters<typeof customFetch>[1]): Promise<LearningTransitionResult> => {
+
+  return customFetch<LearningTransitionResult>(getTransitionLearningStateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(learningTransitionInput)
+  }
+);}
+
+
+
+
+
+export const getTransitionLearningStateMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | LearningTransitionRejection>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transitionLearningState>>, TError,{data: BodyType<LearningTransitionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof transitionLearningState>>, TError,{data: BodyType<LearningTransitionInput>}, TContext> => {
+
+const mutationKey = ['transitionLearningState'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof transitionLearningState>>, {data: BodyType<LearningTransitionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  transitionLearningState(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TransitionLearningStateMutationResult = NonNullable<Awaited<ReturnType<typeof transitionLearningState>>>
+    export type TransitionLearningStateMutationBody = BodyType<LearningTransitionInput>
+    export type TransitionLearningStateMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | LearningTransitionRejection>
+
+    /**
+ * @summary Apply one authorized, prerequisite-aware learning state transition
+ */
+export const useTransitionLearningState = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | LearningTransitionRejection>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transitionLearningState>>, TError,{data: BodyType<LearningTransitionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof transitionLearningState>>,
+        TError,
+        {data: BodyType<LearningTransitionInput>},
+        TContext
+      > => {
+      return useMutation(getTransitionLearningStateMutationOptions(options));
     }
 

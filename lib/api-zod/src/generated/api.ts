@@ -966,3 +966,114 @@ export const SubmitAssessmentDecisionResponse = zod.object({
 })
 
 
+/**
+ * @summary List the formal LMS hierarchy for the active learner pathway
+ */
+export const listLearningCoursesResponseModulesItemLessonsItemEstimatedDurationMinutesMin = 0;
+
+export const listLearningCoursesResponseModulesItemLessonsItemActivitiesItemEstimatedDurationMinutesMin = 0;
+
+
+
+export const ListLearningCoursesResponseItem = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "pathwayId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.string(),
+  "sequence": zod.int(),
+  "modules": zod.array(zod.object({
+  "id": zod.string(),
+  "moduleId": zod.string(),
+  "moduleCode": zod.string(),
+  "moduleName": zod.string(),
+  "sequence": zod.int(),
+  "lessons": zod.array(zod.object({
+  "id": zod.string(),
+  "moduleId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "sequence": zod.int(),
+  "status": zod.string(),
+  "estimatedDurationMinutes": zod.int().min(listLearningCoursesResponseModulesItemLessonsItemEstimatedDurationMinutesMin),
+  "activities": zod.array(zod.object({
+  "id": zod.string(),
+  "lessonId": zod.string(),
+  "pathwayId": zod.string(),
+  "type": zod.enum(['READING', 'VIDEO', 'AUDIO', 'INTERACTIVE', 'QUIZ', 'ASSIGNMENT', 'DISCUSSION', 'LIVE_SESSION', 'WORKSHOP', 'REFLECTION', 'PRACTICE_PREPARATION']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "sequence": zod.int(),
+  "required": zod.boolean(),
+  "estimatedDurationMinutes": zod.int().min(listLearningCoursesResponseModulesItemLessonsItemActivitiesItemEstimatedDurationMinutesMin),
+  "status": zod.string(),
+  "currentState": zod.enum(['NOT_STARTED', 'IN_PROGRESS', 'LEARNING_COMPLETED', 'OUTCOME_VERIFIED', 'PRACTICE_REQUIRED', 'PRACTICE_IN_PROGRESS', 'EVIDENCE_SUBMITTED', 'UNDER_REVIEW', 'REVISION_REQUIRED', 'REMEDIATION', 'REASSESSMENT', 'READY', 'NOT_READY']),
+  "resources": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['PDF', 'VIDEO', 'AUDIO', 'DOCUMENT', 'LINK', 'IMAGE', 'TEXT']),
+  "title": zod.string(),
+  "uri": zod.string().nullable(),
+  "content": zod.string().nullable(),
+  "sequence": zod.int()
+})),
+  "outcomes": zod.array(zod.object({
+  "id": zod.string(),
+  "activityId": zod.string(),
+  "capabilityModuleId": zod.string().nullable(),
+  "description": zod.string(),
+  "verificationMethod": zod.string(),
+  "required": zod.boolean()
+}))
+}))
+}))
+}))
+})
+export const ListLearningCoursesResponse = zod.array(ListLearningCoursesResponseItem)
+
+
+/**
+ * @summary Apply one authorized, prerequisite-aware learning state transition
+ */
+
+
+export const transitionLearningStateBodyIdempotencyKeyMin = 8;
+export const transitionLearningStateBodyIdempotencyKeyMax = 160;
+
+
+
+export const TransitionLearningStateBody = zod.object({
+  "currentState": zod.enum(['NOT_STARTED', 'IN_PROGRESS', 'LEARNING_COMPLETED', 'OUTCOME_VERIFIED', 'PRACTICE_REQUIRED', 'PRACTICE_IN_PROGRESS', 'EVIDENCE_SUBMITTED', 'UNDER_REVIEW', 'REVISION_REQUIRED', 'REMEDIATION', 'REASSESSMENT', 'READY', 'NOT_READY']),
+  "targetState": zod.enum(['NOT_STARTED', 'IN_PROGRESS', 'LEARNING_COMPLETED', 'OUTCOME_VERIFIED', 'PRACTICE_REQUIRED', 'PRACTICE_IN_PROGRESS', 'EVIDENCE_SUBMITTED', 'UNDER_REVIEW', 'REVISION_REQUIRED', 'REMEDIATION', 'REASSESSMENT', 'READY', 'NOT_READY']),
+  "learnerId": zod.string(),
+  "pathwayId": zod.string(),
+  "programId": zod.string(),
+  "activityId": zod.string(),
+  "entityReference": zod.string().min(1),
+  "reason": zod.string().min(1),
+  "idempotencyKey": zod.string().min(transitionLearningStateBodyIdempotencyKeyMin).max(transitionLearningStateBodyIdempotencyKeyMax),
+  "references": zod.object({
+  "outcomeId": zod.string().optional(),
+  "practiceAttemptId": zod.string().optional(),
+  "evidenceId": zod.string().optional(),
+  "evidenceReviewId": zod.string().optional(),
+  "gapId": zod.string().optional(),
+  "remediationPlanId": zod.string().optional(),
+  "reassessmentAttemptId": zod.string().optional(),
+  "previousAssessmentAttemptId": zod.string().optional()
+}).optional()
+})
+
+export const TransitionLearningStateResponse = zod.object({
+  "status": zod.enum(['SUCCESS']),
+  "eventId": zod.string(),
+  "activityId": zod.string(),
+  "learnerId": zod.string(),
+  "pathwayId": zod.string(),
+  "fromState": zod.enum(['NOT_STARTED', 'IN_PROGRESS', 'LEARNING_COMPLETED', 'OUTCOME_VERIFIED', 'PRACTICE_REQUIRED', 'PRACTICE_IN_PROGRESS', 'EVIDENCE_SUBMITTED', 'UNDER_REVIEW', 'REVISION_REQUIRED', 'REMEDIATION', 'REASSESSMENT', 'READY', 'NOT_READY']),
+  "toState": zod.enum(['NOT_STARTED', 'IN_PROGRESS', 'LEARNING_COMPLETED', 'OUTCOME_VERIFIED', 'PRACTICE_REQUIRED', 'PRACTICE_IN_PROGRESS', 'EVIDENCE_SUBMITTED', 'UNDER_REVIEW', 'REVISION_REQUIRED', 'REMEDIATION', 'REASSESSMENT', 'READY', 'NOT_READY']),
+  "idempotent": zod.boolean(),
+  "recordedAt": zod.coerce.date()
+})
+
+

@@ -5,6 +5,206 @@
  * TERAS Academy capability development API
  * OpenAPI spec version: 0.1.0
  */
+export type LearningState = typeof LearningState[keyof typeof LearningState];
+
+
+export const LearningState = {
+  NOT_STARTED: 'NOT_STARTED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  LEARNING_COMPLETED: 'LEARNING_COMPLETED',
+  OUTCOME_VERIFIED: 'OUTCOME_VERIFIED',
+  PRACTICE_REQUIRED: 'PRACTICE_REQUIRED',
+  PRACTICE_IN_PROGRESS: 'PRACTICE_IN_PROGRESS',
+  EVIDENCE_SUBMITTED: 'EVIDENCE_SUBMITTED',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  REVISION_REQUIRED: 'REVISION_REQUIRED',
+  REMEDIATION: 'REMEDIATION',
+  REASSESSMENT: 'REASSESSMENT',
+  READY: 'READY',
+  NOT_READY: 'NOT_READY',
+} as const;
+
+export type LearningActivityType = typeof LearningActivityType[keyof typeof LearningActivityType];
+
+
+export const LearningActivityType = {
+  READING: 'READING',
+  VIDEO: 'VIDEO',
+  AUDIO: 'AUDIO',
+  INTERACTIVE: 'INTERACTIVE',
+  QUIZ: 'QUIZ',
+  ASSIGNMENT: 'ASSIGNMENT',
+  DISCUSSION: 'DISCUSSION',
+  LIVE_SESSION: 'LIVE_SESSION',
+  WORKSHOP: 'WORKSHOP',
+  REFLECTION: 'REFLECTION',
+  PRACTICE_PREPARATION: 'PRACTICE_PREPARATION',
+} as const;
+
+export type LearningResourceType = typeof LearningResourceType[keyof typeof LearningResourceType];
+
+
+export const LearningResourceType = {
+  PDF: 'PDF',
+  VIDEO: 'VIDEO',
+  AUDIO: 'AUDIO',
+  DOCUMENT: 'DOCUMENT',
+  LINK: 'LINK',
+  IMAGE: 'IMAGE',
+  TEXT: 'TEXT',
+} as const;
+
+export interface LearningResource {
+  id: string;
+  type: LearningResourceType;
+  title: string;
+  /** @nullable */
+  uri: string | null;
+  /** @nullable */
+  content: string | null;
+  sequence: number;
+}
+
+export interface LearningOutcome {
+  id: string;
+  activityId: string;
+  /** @nullable */
+  capabilityModuleId: string | null;
+  description: string;
+  verificationMethod: string;
+  required: boolean;
+}
+
+export interface LearningActivity {
+  id: string;
+  lessonId: string;
+  pathwayId: string;
+  type: LearningActivityType;
+  title: string;
+  description: string;
+  sequence: number;
+  required: boolean;
+  /** @minimum 0 */
+  estimatedDurationMinutes: number;
+  status: string;
+  currentState: LearningState;
+  resources: LearningResource[];
+  outcomes: LearningOutcome[];
+}
+
+export interface LearningLesson {
+  id: string;
+  moduleId: string;
+  title: string;
+  description: string;
+  sequence: number;
+  status: string;
+  /** @minimum 0 */
+  estimatedDurationMinutes: number;
+  activities: LearningActivity[];
+}
+
+export interface LearningCourseModule {
+  id: string;
+  moduleId: string;
+  moduleCode: string;
+  moduleName: string;
+  sequence: number;
+  lessons: LearningLesson[];
+}
+
+export interface LearningCourse {
+  id: string;
+  programId: string;
+  pathwayId: string;
+  title: string;
+  description: string;
+  status: string;
+  sequence: number;
+  modules: LearningCourseModule[];
+}
+
+export interface LearningTransitionReferences {
+  outcomeId?: string;
+  practiceAttemptId?: string;
+  evidenceId?: string;
+  evidenceReviewId?: string;
+  gapId?: string;
+  remediationPlanId?: string;
+  reassessmentAttemptId?: string;
+  previousAssessmentAttemptId?: string;
+}
+
+export interface LearningTransitionInput {
+  currentState: LearningState;
+  targetState: LearningState;
+  learnerId: string;
+  pathwayId: string;
+  programId: string;
+  activityId: string;
+  /** @minLength 1 */
+  entityReference: string;
+  /** @minLength 1 */
+  reason: string;
+  /**
+     * @minLength 8
+     * @maxLength 160
+     */
+  idempotencyKey: string;
+  references?: LearningTransitionReferences;
+}
+
+export type LearningTransitionResultStatus = typeof LearningTransitionResultStatus[keyof typeof LearningTransitionResultStatus];
+
+
+export const LearningTransitionResultStatus = {
+  SUCCESS: 'SUCCESS',
+} as const;
+
+export interface LearningTransitionResult {
+  status: LearningTransitionResultStatus;
+  eventId: string;
+  activityId: string;
+  learnerId: string;
+  pathwayId: string;
+  fromState: LearningState;
+  toState: LearningState;
+  idempotent: boolean;
+  recordedAt: string;
+}
+
+export type LearningTransitionReason = typeof LearningTransitionReason[keyof typeof LearningTransitionReason];
+
+
+export const LearningTransitionReason = {
+  INVALID_TRANSITION: 'INVALID_TRANSITION',
+  STALE_CURRENT_STATE: 'STALE_CURRENT_STATE',
+  UNAUTHORIZED_ACTOR: 'UNAUTHORIZED_ACTOR',
+  LEARNER_MISMATCH: 'LEARNER_MISMATCH',
+  PATHWAY_MISMATCH: 'PATHWAY_MISMATCH',
+  PROGRAM_MISMATCH: 'PROGRAM_MISMATCH',
+  PREREQUISITE_NOT_MET: 'PREREQUISITE_NOT_MET',
+  EVIDENCE_REQUIRED: 'EVIDENCE_REQUIRED',
+  REVIEW_REQUIRED: 'REVIEW_REQUIRED',
+  REASSESSMENT_REQUIRED: 'REASSESSMENT_REQUIRED',
+  SAFETY_BLOCKED: 'SAFETY_BLOCKED',
+  CAUSAL_REFERENCE_INVALID: 'CAUSAL_REFERENCE_INVALID',
+} as const;
+
+export type LearningTransitionRejectionStatus = typeof LearningTransitionRejectionStatus[keyof typeof LearningTransitionRejectionStatus];
+
+
+export const LearningTransitionRejectionStatus = {
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface LearningTransitionRejection {
+  status: LearningTransitionRejectionStatus;
+  reason: LearningTransitionReason;
+  message: string;
+  currentState: LearningState;
+}
+
 export interface HealthStatus {
   status: string;
 }

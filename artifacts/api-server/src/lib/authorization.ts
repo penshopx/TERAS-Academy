@@ -3,6 +3,8 @@ import type { Request, Response } from "express";
 import { learnerContext } from "./teras";
 
 type WorkspaceRole = "trainer" | "assessor";
+export type LearningActorRole = WorkspaceRole | "learner";
+export type LearningActor = { id: string; role: LearningActorRole };
 export type TestAuthorizationIdentity = {
   userId: string | null;
   role: WorkspaceRole | "learner" | null;
@@ -74,5 +76,45 @@ export async function authorizeLearner(req: Request, res: Response): Promise<str
   }
   req.log.warn({ userId: userId ?? null }, "Unauthorized learner mutation");
   res.status(userId ? 403 : 401).json({ error: "You are not authorized for this learner" });
+  return null;
+}
+
+export async function authorizeLearningActor(req: Request, res: Response): Promise<LearningActor | null> {
+  const identity = integrationIdentity(req);
+  if (identity) {
+    if (!identity.userId || !identity.role) {
+      res.status(identity.userId ? 403 : 401).json({ error: "You are not authorized for this learning transition" });
+      return null;
+    }
+    const context = await learnerContext();
+    if (identity.role === "learner") return { id: context.learner.id, role: "learner" };
+    if (identity.role === "trainer" && context.enrollment.trainerId) return { id: context.enrollment.trainerId, role: "trainer" };
+    if (identity.role === "assessor" && context.enrollment.assessorId) return { id: context.enrollment.assessorId, role: "assessor" };
+    res.status(403).json({ error: "You are not authorized for this learning transition" });
+    return null;
+  }
+
+  const { userId } = getAuth(req);
+  const context = await learnerContext();
+  if (!userId && process.env.NODE_ENV !== "production") {
+    return { id: context.learner.id, role: "learner" };
+  }
+  if (userId && userId === process.env.CLERK_TRAINER_USER_ID && context.enrollment.trainerId) {
+    return { id: context.enrollment.trainerId, role: "trainer" };
+  }
+  if (userId && userId === process.env.CLERK_ASSESSOR_USER_ID && context.enrollment.assessorId) {
+    return { id: context.enrollment.assessorId, role: "assessor" };
+  }
+  if (userId) {
+    const clerkUser = await clerkClient.users.getUser(userId);
+    const primaryEmail = clerkUser.emailAddresses.find(
+      (email) => email.id === clerkUser.primaryEmailAddressId,
+    )?.emailAddress;
+    if (context.learner.email && primaryEmail?.toLowerCase() === context.learner.email.toLowerCase()) {
+      return { id: context.learner.id, role: "learner" };
+    }
+  }
+  req.log.warn({ userId: userId ?? null }, "Unauthorized learning transition");
+  res.status(userId ? 403 : 401).json({ error: "You are not authorized for this learning transition" });
   return null;
 }

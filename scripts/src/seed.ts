@@ -1,4 +1,4 @@
-import { db, peopleTable, programsTable, pathwaysTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable } from "@workspace/db";
+import { db, peopleTable, programsTable, pathwaysTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable, coursesTable, courseModulesTable, lessonsTable, learningActivitiesTable, contentResourcesTable, learningOutcomesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const insert = async (table: any, values: any[]) => db.insert(table).values(values).onConflictDoNothing();
@@ -35,6 +35,30 @@ async function seed(): Promise<void> {
   ]);
   await db.update(pathwaysTable).set({type:"Operational",outcome:"Design, model, and assure residential PV systems"}).where(eq(pathwaysTable.id,"path-b"));
   await insert(modulesTable, [...modules, ...pathBModules].map(([id, pathwayId, code, name, capability], i) => ({id, programId:"solar-pv-tech", pathwayId, sequence:i < modules.length ? i+1 : i - modules.length + 1, code, name, capability, evidence:`${code} practical evidence`, learningOutcomes:[`Apply ${name.toLowerCase()} procedures`], theory:[`${name} guide`]})));
+  await insert(coursesTable, [
+    {id:"course-solar-installation",programId:"solar-pv-tech",pathwayId:"path-a",code:"SPV-INSTALL",title:"Solar PV Installation Learning Core",description:"Learning preparation linked to the existing installation capability pathway.",status:"PUBLISHED",sequence:1},
+    {id:"course-solar-design",programId:"solar-pv-tech",pathwayId:"path-b",code:"SPV-DESIGN",title:"Solar PV Design Learning Core",description:"Learning preparation linked to the existing design capability pathway.",status:"PUBLISHED",sequence:1},
+  ]);
+  await insert(courseModulesTable, [
+    {id:"course-module-m03",courseId:"course-solar-installation",moduleId:"m03",programId:"solar-pv-tech",pathwayId:"path-a",sequence:1},
+    {id:"course-module-b04",courseId:"course-solar-design",moduleId:"b04",programId:"solar-pv-tech",pathwayId:"path-b",sequence:1},
+  ]);
+  await insert(lessonsTable, [
+    {id:"lesson-m03-isolation",courseModuleId:"course-module-m03",programId:"solar-pv-tech",pathwayId:"path-a",title:"Safe isolation foundations",description:"Prepare for supervised safe isolation practice.",sequence:1,status:"PUBLISHED",estimatedDurationMinutes:25},
+    {id:"lesson-b04-protection",courseModuleId:"course-module-b04",programId:"solar-pv-tech",pathwayId:"path-b",title:"Electrical protection design",description:"Prepare a defensible protection design before practice.",sequence:1,status:"PUBLISHED",estimatedDurationMinutes:30},
+  ]);
+  await insert(learningActivitiesTable, [
+    {id:"activity-m03-safe-isolation",lessonId:"lesson-m03-isolation",programId:"solar-pv-tech",pathwayId:"path-a",type:"READING",title:"Safe isolation sequence",description:"Study the safe isolation and proving sequence before supervised practice.",sequence:1,required:true,estimatedDurationMinutes:15,status:"PUBLISHED"},
+    {id:"activity-b04-protection",lessonId:"lesson-b04-protection",programId:"solar-pv-tech",pathwayId:"path-b",type:"ASSIGNMENT",title:"Protection selection rationale",description:"Prepare the design rationale for protection selection.",sequence:1,required:true,estimatedDurationMinutes:20,status:"PUBLISHED"},
+  ]);
+  await insert(contentResourcesTable, [
+    {id:"resource-m03-isolation",activityId:"activity-m03-safe-isolation",type:"TEXT",title:"Safe isolation learning note",content:"Learning guidance only. Performance must still be practiced, evidenced, reviewed, and reassessed.",sequence:1},
+    {id:"resource-b04-protection",activityId:"activity-b04-protection",type:"TEXT",title:"Protection design learning note",content:"Learning guidance only. Design capability still requires traceable practice and evidence.",sequence:1},
+  ]);
+  await insert(learningOutcomesTable, [
+    {id:"outcome-m03-sequence",activityId:"activity-m03-safe-isolation",capabilityModuleId:"m03",description:"Explain the safe isolation and proving sequence.",verificationMethod:"TRAINER_REVIEW",required:true},
+    {id:"outcome-b04-protection",activityId:"activity-b04-protection",capabilityModuleId:"b04",description:"Explain and justify protection selection.",verificationMethod:"TRAINER_REVIEW",required:true},
+  ]);
   await insert(practiceTasksTable, [...modules, ...pathBModules].map(([id, pathwayId, code, name], i) => ({id:`task-${id}`,moduleId:id,title:`${name} ${pathwayId === "path-b" ? "design exercise" : "practical"}`,description:`Complete the ${name.toLowerCase()} supervised exercise.`,mode:i===2 || pathwayId === "path-b" ? "Workshop":"Guided practice",durationMinutes:pathwayId === "path-b" ? 60 : 45,output:pathwayId === "path-b" ? "Traceable design work record":"Supervisor-ready work record",safetyNote:id==="m03"?"Safe isolation procedure is mandatory.":null})));
   await insert(evidenceRequirementsTable, [...modules, ...pathBModules].map(([id, pathwayId, code, name]) => ({id:`req-${id}`,moduleId:id,code:`EV-${code}`,name:`${name} evidence`,description:`Traceable evidence for ${name}.`,allowedTypes:pathwayId === "path-b" ? ["Design brief","Calculation","Drawing","Report"] : ["Photo","Checklist","Report"]})));
   const assessmentGates: Record<string, string> = {m03:"G1",m07:"G2",b01:"B1",b02:"B2",b03:"B2",b04:"B2",b05:"B2",b06:"B2",b07:"B3",b08:"B4"};
