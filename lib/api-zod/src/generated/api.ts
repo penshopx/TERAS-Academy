@@ -1075,6 +1075,37 @@ export const ListLearningCoursesResponse = zod.array(ListLearningCoursesResponse
 
 
 /**
+ * Creates learning material; external resource addresses must be absolute HTTP(S) URLs.
+ * @summary Create a learning resource
+ */
+
+
+
+export const createLearningResourceBodyUriRegExp = new RegExp('^https?:/');
+
+
+
+export const CreateLearningResourceBody = zod.object({
+  "id": zod.string().min(1),
+  "activityId": zod.string().min(1),
+  "type": zod.enum(['PDF', 'VIDEO', 'AUDIO', 'DOCUMENT', 'LINK', 'IMAGE', 'TEXT']),
+  "title": zod.string().min(1),
+  "uri": zod.url().regex(createLearningResourceBodyUriRegExp).nullish().describe('Absolute external address using the http or https protocol.'),
+  "content": zod.string().nullish(),
+  "sequence": zod.int().min(1)
+})
+
+export const CreateLearningResourceResponse = zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['PDF', 'VIDEO', 'AUDIO', 'DOCUMENT', 'LINK', 'IMAGE', 'TEXT']),
+  "title": zod.string(),
+  "uri": zod.string().nullable(),
+  "content": zod.string().nullable(),
+  "sequence": zod.int()
+})
+
+
+/**
  * @summary Apply one authorized, prerequisite-aware learning state transition
  */
 

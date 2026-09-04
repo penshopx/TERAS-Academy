@@ -13,6 +13,7 @@
     "test:learning-transition": "NODE_ENV=test tsx ./src/learning-transition.integration.ts",
     "test:identity-isolation": "NODE_ENV=test tsx ./src/identity-isolation.integration.ts",
     "test:learner-isolation": "NODE_ENV=test tsx ./src/learner-isolation.integration.ts",
+    "test:resource-uri": "NODE_ENV=test tsx ./src/lib/resource-uri.test.ts",
     "setup:browser-idempotency": "playwright install chromium",
     "test:browser-idempotency": "NODE_ENV=test tsx ./src/browser-idempotency.integration.ts"
   },

@@ -44,6 +44,8 @@ export * from './learningNextActionAction';
 export * from './learningOutcome';
 export * from './learningPlanItem';
 export * from './learningResource';
+export * from './learningResourceInput';
+export * from './learningResourceInputType';
 export * from './learningResourceType';
 export * from './learningState';
 export * from './learningTransitionInput';

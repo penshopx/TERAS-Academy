@@ -36,6 +36,8 @@ import type {
   LearnerDashboard,
   LearningCourse,
   LearningPlanItem,
+  LearningResource,
+  LearningResourceInput,
   LearningTransitionInput,
   LearningTransitionRejection,
   LearningTransitionResult,
@@ -2125,6 +2127,78 @@ export function useListLearningCourses<TData = Awaited<ReturnType<typeof listLea
 
 
 
+
+export const getCreateLearningResourceUrl = () => {
+
+
+
+
+  return `/api/learning/resources`
+}
+
+/**
+ * Creates learning material; external resource addresses must be absolute HTTP(S) URLs.
+ * @summary Create a learning resource
+ */
+export const createLearningResource = async (learningResourceInput: LearningResourceInput, options?: Parameters<typeof customFetch>[1]): Promise<LearningResource> => {
+
+  return customFetch<LearningResource>(getCreateLearningResourceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(learningResourceInput)
+  }
+);}
+
+
+
+
+
+export const getCreateLearningResourceMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLearningResource>>, TError,{data: BodyType<LearningResourceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLearningResource>>, TError,{data: BodyType<LearningResourceInput>}, TContext> => {
+
+const mutationKey = ['createLearningResource'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLearningResource>>, {data: BodyType<LearningResourceInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createLearningResource(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLearningResourceMutationResult = NonNullable<Awaited<ReturnType<typeof createLearningResource>>>
+    export type CreateLearningResourceMutationBody = BodyType<LearningResourceInput>
+    export type CreateLearningResourceMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Create a learning resource
+ */
+export const useCreateLearningResource = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLearningResource>>, TError,{data: BodyType<LearningResourceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLearningResource>>,
+        TError,
+        {data: BodyType<LearningResourceInput>},
+        TContext
+      > => {
+      return useMutation(getCreateLearningResourceMutationOptions(options));
+    }
 
 export const getTransitionLearningStateUrl = () => {
 

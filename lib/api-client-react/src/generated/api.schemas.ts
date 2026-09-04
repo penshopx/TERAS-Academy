@@ -65,6 +65,39 @@ export interface LearningResource {
   sequence: number;
 }
 
+export type LearningResourceInputType = typeof LearningResourceInputType[keyof typeof LearningResourceInputType];
+
+
+export const LearningResourceInputType = {
+  PDF: 'PDF',
+  VIDEO: 'VIDEO',
+  AUDIO: 'AUDIO',
+  DOCUMENT: 'DOCUMENT',
+  LINK: 'LINK',
+  IMAGE: 'IMAGE',
+  TEXT: 'TEXT',
+} as const;
+
+export interface LearningResourceInput {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  activityId: string;
+  type: LearningResourceInputType;
+  /** @minLength 1 */
+  title: string;
+  /**
+     * Absolute external address using the http or https protocol.
+     * @nullable
+     * @pattern ^https?://
+     */
+  uri?: string | null;
+  /** @nullable */
+  content?: string | null;
+  /** @minimum 1 */
+  sequence: number;
+}
+
 export interface LearningOutcome {
   id: string;
   activityId: string;

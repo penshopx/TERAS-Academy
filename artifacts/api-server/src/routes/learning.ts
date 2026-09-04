@@ -14,11 +14,13 @@ import {
   practiceTasksTable,
 } from "@workspace/db";
 import {
+  CreateLearningResourceBody,
+  CreateLearningResourceResponse,
   ListLearningCoursesResponse,
   TransitionLearningStateBody,
   TransitionLearningStateResponse,
 } from "@workspace/api-zod";
-import { authorizeLearner, authorizeLearningActor } from "../lib/authorization";
+import { authorizeLearner, authorizeLearningActor, authorizeWorkspaceRole } from "../lib/authorization";
 import {
   transitionLearningState,
   learningNextAction,
@@ -26,6 +28,7 @@ import {
   type LearningTransitionCommand,
 } from "../lib/learning-transition";
 import { learnerContext } from "../lib/teras";
+import { RESOURCE_URI_ERROR, validateResourceUri } from "../lib/resource-uri";
 
 const router: IRouter = Router();
 
@@ -154,6 +157,57 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
     }));
 
   res.json(ListLearningCoursesResponse.parse(response));
+});
+
+router.post("/learning/resources", async (req, res): Promise<void> => {
+  const trainerId = await authorizeWorkspaceRole(req, res, "trainer");
+  if (!trainerId) return;
+
+  const requestedUri =
+    typeof req.body === "object" && req.body !== null && "uri" in req.body
+      ? (req.body as { uri?: unknown }).uri
+      : undefined;
+  if (typeof requestedUri === "string") {
+    try {
+      validateResourceUri(requestedUri);
+    } catch {
+      req.log.warn({ trainerId }, "Unsafe learning resource URI rejected");
+      res.status(400).json({ error: RESOURCE_URI_ERROR });
+      return;
+    }
+  }
+
+  const parsed = CreateLearningResourceBody.safeParse(req.body);
+  if (!parsed.success) {
+    req.log.warn({ errors: parsed.error.message, trainerId }, "Invalid learning resource request");
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [activity] = await db
+    .select({ id: learningActivitiesTable.id })
+    .from(learningActivitiesTable)
+    .where(eq(learningActivitiesTable.id, parsed.data.activityId))
+    .limit(1);
+  if (!activity) {
+    res.status(404).json({ error: "Learning activity not found" });
+    return;
+  }
+
+  const [resource] = await db
+    .insert(contentResourcesTable)
+    .values({
+      ...parsed.data,
+      uri: parsed.data.uri ?? null,
+      content: parsed.data.content ?? null,
+    })
+    .returning();
+
+  req.log.info(
+    { resourceId: resource.id, activityId: resource.activityId, trainerId },
+    "Learning resource created",
+  );
+  res.status(201).json(CreateLearningResourceResponse.parse(resource));
 });
 
 router.post("/learning/transitions", async (req, res): Promise<void> => {

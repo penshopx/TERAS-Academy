@@ -506,6 +506,33 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /learning/resources:
+    post:
+      operationId: createLearningResource
+      tags: [learning]
+      summary: Create a learning resource
+      description: Creates learning material; external resource addresses must be absolute HTTP(S) URLs.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LearningResourceInput"
+      responses:
+        "201":
+          description: Learning resource created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningResource"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /learning/transitions:
     post:
       operationId: transitionLearningState
@@ -1491,6 +1518,22 @@ components:
         content: { type: ["string", "null"] }
         sequence: { type: integer }
       required: [id, type, title, uri, content, sequence]
+    LearningResourceInput:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string, minLength: 1 }
+        activityId: { type: string, minLength: 1 }
+        type: { type: string, enum: [PDF, VIDEO, AUDIO, DOCUMENT, LINK, IMAGE, TEXT] }
+        title: { type: string, minLength: 1 }
+        uri:
+          type: ["string", "null"]
+          format: uri
+          pattern: "^https?://"
+          description: Absolute external address using the http or https protocol.
+        content: { type: ["string", "null"] }
+        sequence: { type: integer, minimum: 1 }
+      required: [id, activityId, type, title, sequence]
     LearningOutcome:
       type: object
       properties:
