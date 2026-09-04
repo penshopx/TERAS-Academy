@@ -111,6 +111,36 @@ if [ "$accepted_count" != "6" ]; then
   exit 1
 fi
 
+# Exercise the same policy corpus used by the application and audit classifier
+# through the installed CHECK constraint. A failure names the divergent layer,
+# case, and URI so CI points directly at policy drift.
+while IFS=$'\t' read -r case_id expected _ uri; do
+  [[ -z "$case_id" || "$case_id" == \#* ]] && continue
+
+  if [[ "$uri" == '\N' ]]; then
+    sql_value="NULL"
+  else
+    sql_value=":'corpus_uri'"
+  fi
+
+  if psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+    -v corpus_id="$case_id" -v corpus_uri="$uri" >/dev/null 2>&1 <<SQL
+INSERT INTO teras_content_resources (id, uri)
+VALUES ('corpus-' || :'corpus_id', $sql_value);
+SQL
+  then
+    actual="allow"
+  else
+    actual="reject"
+  fi
+
+  if [[ "$actual" != "$expected" ]]; then
+    printf 'database constraint mismatch for %s: URI %q expected %s but got %s\n' \
+      "$case_id" "$uri" "$expected" "$actual" >&2
+    exit 1
+  fi
+done < scripts/fixtures/resource-uri-policy-corpus.tsv
+
 # Match post-merge ordering on an isolated copy of an existing, unupgraded
 # database. Drizzle targets public explicitly, so a separate database is needed.
 unset PGOPTIONS

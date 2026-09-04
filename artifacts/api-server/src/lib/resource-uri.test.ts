@@ -1,34 +1,28 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { RESOURCE_URI_ERROR, validateResourceUri } from "./resource-uri.js";
 
-for (const uri of [
-  "http://example.com/material.pdf",
-  "https://academy.example.com/lesson?id=1#intro",
-  "http://192.0.2.10/material.pdf",
-  "https://[2001:db8::1]/lesson",
-  "https://[9999::1]/",
-]) {
-  assert.equal(validateResourceUri(uri), uri);
-}
-
-for (const uri of [
-  "javascript:alert(1)",
-  "data:text/html,<script>alert(1)</script>",
-  "ftp://example.com/material.pdf",
-  "/materials/lesson.pdf",
-  "materials/lesson.pdf",
-  "not a url",
-  "https://",
-  "https://example.com/has space",
-  "https://example.com:65536/material.pdf",
-  "https://[example]/x",
-  "https://%",
-  "https://999.1.1.1/x",
-]) {
-  assert.throws(() => validateResourceUri(uri), {
-    message: RESOURCE_URI_ERROR,
+const corpus = readFileSync(
+  new URL("../../../../scripts/fixtures/resource-uri-policy-corpus.tsv", import.meta.url),
+  "utf8",
+)
+  .split("\n")
+  .filter(line => line && !line.startsWith("#"))
+  .map(line => {
+    const [id, expected, , ...uriParts] = line.split("\t");
+    return { id, expected, uri: uriParts.join("\t") === "\\N" ? null : uriParts.join("\t") };
   });
+
+for (const { id, expected, uri } of corpus) {
+  if (expected === "allow") {
+    assert.equal(validateResourceUri(uri), uri, `application mismatch for ${id}: ${String(uri)}`);
+  } else {
+    assert.throws(
+      () => validateResourceUri(uri),
+      { message: RESOURCE_URI_ERROR },
+      `application mismatch for ${id}: ${String(uri)}`,
+    );
+  }
 }
 
-assert.equal(validateResourceUri(null), null);
 assert.equal(validateResourceUri(undefined), undefined);

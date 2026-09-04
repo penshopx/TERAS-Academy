@@ -28,6 +28,8 @@ TERAS_MIGRATION_ACTOR=post-merge-upgrade \
   bash scripts/apply-resource-uri-upgrade.sh
 pnpm --filter @workspace/scripts run seed:demo
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/schema-check.sql
+pnpm --filter @workspace/api-server run test:resource-uri
+pnpm --filter @workspace/scripts run test:resource-uri-audit
 pnpm --filter @workspace/scripts run test:resource-uri-upgrade
 pnpm --filter @workspace/scripts run test:deployment-hardening
 pnpm --filter @workspace/scripts run test:safety

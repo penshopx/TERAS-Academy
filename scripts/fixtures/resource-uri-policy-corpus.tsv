@@ -1,0 +1,23 @@
+# id	expected	classification	uri
+null	allow	NULL	\N
+http	allow	SAFE	http://example.com/material.pdf
+https	allow	SAFE	https://academy.example.com/lesson?id=1#intro
+ipv4	allow	SAFE	http://192.0.2.10/material.pdf
+ipv6	allow	SAFE	https://[2001:db8::1]/lesson
+ipv6-high-hextet	allow	SAFE	https://[9999::1]/
+encoded-path	allow	SAFE	https://example.com/material%20guide.pdf
+encoded-query	allow	SAFE	https://example.com/search?q=%2Flesson
+javascript	reject	UNSAFE_PROTOCOL	javascript:alert(1)
+data	reject	UNSAFE_PROTOCOL	data:text/html,<script>alert(1)</script>
+ftp	reject	UNSAFE_PROTOCOL	ftp://example.com/material.pdf
+relative-root	reject	RELATIVE_URI	/materials/lesson.pdf
+relative-path	reject	RELATIVE_URI	materials/lesson.pdf
+empty	reject	MALFORMED_URI	
+whitespace-only	reject	MALFORMED_URI	   
+malformed-text	reject	MALFORMED_URI	not a url
+missing-host	reject	MALFORMED_URI	https://
+embedded-space	reject	MALFORMED_URI	https://example.com/has space
+invalid-port	reject	MALFORMED_URI	https://example.com:65536/material.pdf
+invalid-ipv6	reject	MALFORMED_URI	https://[example]/x
+invalid-encoding-host	reject	MALFORMED_URI	https://%
+invalid-ipv4	reject	MALFORMED_URI	https://999.1.1.1/x

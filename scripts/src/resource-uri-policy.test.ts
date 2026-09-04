@@ -1,41 +1,26 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { auditResourceUris, type ResourceUriRecord } from "./resource-uri-audit.js";
 import { classifyUnsafeResourceUri } from "./resource-uri-policy.js";
 
-for (const uri of [
-  "http://example.com/material.pdf",
-  "https://academy.example.com/lesson?id=1#intro",
-  "http://192.0.2.10/material.pdf",
-  "https://[2001:db8::1]/lesson",
-  "https://[9999::1]/",
-]) {
-  assert.equal(classifyUnsafeResourceUri(uri), null);
-}
+const corpus = readFileSync(
+  new URL("../fixtures/resource-uri-policy-corpus.tsv", import.meta.url),
+  "utf8",
+)
+  .split("\n")
+  .filter(line => line && !line.startsWith("#"))
+  .map(line => {
+    const [id, , classification, ...uriParts] = line.split("\t");
+    return { id, classification, uri: uriParts.join("\t") };
+  });
 
-for (const uri of [
-  "javascript:alert(1)",
-  "data:text/html,<script>alert(1)</script>",
-  "ftp://example.com/material.pdf",
-]) {
-  assert.equal(classifyUnsafeResourceUri(uri), "UNSAFE_PROTOCOL");
-}
-
-for (const uri of ["/materials/lesson.pdf", "materials/lesson.pdf"]) {
-  assert.equal(classifyUnsafeResourceUri(uri), "RELATIVE_URI");
-}
-
-for (const uri of [
-  "",
-  "   ",
-  "not a url",
-  "https://",
-  "https://example.com/has space",
-  "https://example.com:65536/material.pdf",
-  "https://[example]/x",
-  "https://%",
-  "https://999.1.1.1/x",
-]) {
-  assert.equal(classifyUnsafeResourceUri(uri), "MALFORMED_URI");
+for (const { id, classification, uri } of corpus) {
+  if (classification === "NULL") continue;
+  assert.equal(
+    classifyUnsafeResourceUri(uri),
+    classification === "SAFE" ? null : classification,
+    `audit classifier mismatch for ${id}: ${uri}`,
+  );
 }
 
 const resources: ResourceUriRecord[] = [
