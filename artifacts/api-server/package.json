@@ -15,6 +15,7 @@
     "test:learner-isolation": "NODE_ENV=test tsx ./src/learner-isolation.integration.ts",
     "test:resource-uri": "NODE_ENV=test tsx ./src/lib/resource-uri.test.ts",
     "test:browser-idempotency-guard": "tsx ./src/browser-idempotency-guard.test.ts",
+    "test:browser-idempotency-workflow-contract": "tsx ./src/browser-idempotency-workflow-contract.test.ts",
     "setup:browser-idempotency": "playwright install --with-deps chromium",
     "test:browser-idempotency": "NODE_ENV=test tsx ./src/browser-idempotency.integration.ts"
   },

@@ -44,6 +44,9 @@ jobs:
       - name: Verify database safety guard
         run: pnpm --filter @workspace/api-server run test:browser-idempotency-guard
 
+      - name: Verify browser job requires database guard
+        run: pnpm --filter @workspace/api-server run test:browser-idempotency-workflow-contract
+
   browser-idempotency:
     name: Browser idempotency
     needs: browser-idempotency-guard
