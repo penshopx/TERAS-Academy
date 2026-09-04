@@ -5,12 +5,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import {
   getListAuthoredCourseVersionsQueryKey,
   getListCourseAuthoringAuditQueryKey,
   type CourseVersion,
 } from "@workspace/api-client-react";
 import {
+  HistoryRefreshWarning,
   PublishedVersionHistory,
   PublishSuccessMessage,
   publishAuthoredCourseAndRefresh,
@@ -103,6 +105,14 @@ test("publish success displays the non-zero authoring revision returned by the A
   assert.match(markup, /Authoring revision 17 was published as immutable version 3\./);
 });
 
+test("history refresh warning says publish succeeded and asks the trainer to reload History", () => {
+  const markup = renderToStaticMarkup(<HistoryRefreshWarning />);
+
+  assert.match(markup, /Course published, but History could not be refreshed\./);
+  assert.match(markup, /Open History and try reloading it/);
+  assert.match(markup, /data-testid="alert-history-refresh-failed"/);
+});
+
 test("published version history displays the authoring revision returned by the API", () => {
   const response = [courseVersion({ id: "version-current", authoringRevision: 17 })];
   const markup = renderToStaticMarkup(<PublishedVersionHistory versions={response} />);
@@ -137,7 +147,7 @@ test("successful publish refetches version and audit history and shows the lates
   let auditHistoryRequests = 0;
   const invalidatedKeys: unknown[] = [];
 
-  const returnedVersion = await publishAuthoredCourseAndRefresh({
+  const result = await publishAuthoredCourseAndRefresh({
     courseId,
     publish: async ({ courseId: publishedCourseId }) => {
       assert.equal(publishedCourseId, courseId);
@@ -157,7 +167,8 @@ test("successful publish refetches version and audit history and shows the lates
     },
   });
 
-  assert.equal(returnedVersion, publishedVersion);
+  assert.equal(result.version, publishedVersion);
+  assert.equal(result.historyRefreshFailed, false);
   assert.equal(versionHistoryRequests, 1);
   assert.equal(auditHistoryRequests, 1);
   assert.ok(invalidatedKeys.some((key) =>
@@ -171,3 +182,68 @@ test("successful publish refetches version and audit history and shows the lates
   assert.match(historyMarkup, /data-testid="version-item-version-latest"/);
   assert.match(historyMarkup, /Authoring revision: 17/);
 });
+
+for (const failedHistoryRefresh of ["version", "audit"] as const) {
+  test(`successful publish remains successful when ${failedHistoryRefresh} history refresh fails`, async () => {
+    const courseId = "course-1";
+    const publishedVersion = courseVersion();
+    const failedKey = failedHistoryRefresh === "version"
+      ? getListAuthoredCourseVersionsQueryKey(courseId)
+      : getListCourseAuthoringAuditQueryKey(courseId);
+
+    const result = await publishAuthoredCourseAndRefresh({
+      courseId,
+      publish: async () => publishedVersion,
+      invalidateQueries: async (queryKey) => {
+        if (JSON.stringify(queryKey) === JSON.stringify(failedKey)) {
+          throw new Error(`${failedHistoryRefresh} history unavailable`);
+        }
+      },
+    });
+
+    assert.equal(result.version, publishedVersion);
+    assert.equal(result.historyRefreshFailed, true);
+  });
+}
+
+for (const failedHistoryRefresh of ["version", "audit"] as const) {
+  test(`real QueryClient reports a failed ${failedHistoryRefresh} history refetch after publish`, async () => {
+    const courseId = "course-1";
+    const publishedVersion = courseVersion();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const failedKey = failedHistoryRefresh === "version"
+      ? getListAuthoredCourseVersionsQueryKey(courseId)
+      : getListCourseAuthoringAuditQueryKey(courseId);
+    const queryFn = async () => {
+      throw new Error(`${failedHistoryRefresh} history unavailable`);
+    };
+
+    queryClient.setQueryData(failedKey, []);
+    const observer = new QueryObserver(queryClient, {
+      queryKey: failedKey,
+      queryFn,
+      staleTime: Infinity,
+      retry: false,
+    });
+    const unsubscribe = observer.subscribe(() => undefined);
+
+    try {
+      const result = await publishAuthoredCourseAndRefresh({
+        courseId,
+        publish: async () => publishedVersion,
+        invalidateQueries: (queryKey) => queryClient.invalidateQueries(
+          { queryKey },
+          { throwOnError: true },
+        ),
+      });
+
+      assert.equal(result.version, publishedVersion);
+      assert.equal(result.historyRefreshFailed, true);
+    } finally {
+      unsubscribe();
+      queryClient.clear();
+    }
+  });
+}

@@ -19,25 +19,44 @@ interface PublishAndRefreshDependencies {
   invalidateQueries: (queryKey: QueryKey) => Promise<unknown>;
 }
 
+interface PublishAndRefreshResult {
+  version: CourseVersion;
+  historyRefreshFailed: boolean;
+}
+
 export async function publishAuthoredCourseAndRefresh({
   courseId,
   publish,
   invalidateQueries,
-}: PublishAndRefreshDependencies): Promise<CourseVersion> {
+}: PublishAndRefreshDependencies): Promise<PublishAndRefreshResult> {
   const version = await publish({ courseId });
 
-  await Promise.all([
+  const refreshResults = await Promise.allSettled([
     invalidateQueries(getListAuthoredCoursesQueryKey()),
     invalidateQueries(getPreviewAuthoredCourseQueryKey(courseId)),
     invalidateQueries(getListAuthoredCourseVersionsQueryKey(courseId)),
     invalidateQueries(getListCourseAuthoringAuditQueryKey(courseId)),
   ]);
 
-  return version;
+  return {
+    version,
+    historyRefreshFailed:
+      refreshResults[2].status === "rejected" ||
+      refreshResults[3].status === "rejected",
+  };
 }
 
 export function PublishSuccessMessage({ version }: { version: CourseVersion }) {
   return <>Authoring revision {version.authoringRevision} was published as immutable version {version.version}.</>;
+}
+
+export function HistoryRefreshWarning() {
+  return (
+    <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-left" role="alert" data-testid="alert-history-refresh-failed">
+      <p className="text-sm font-semibold text-amber-500">Course published, but History could not be refreshed.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Open History and try reloading it to see the latest version and audit activity.</p>
+    </div>
+  );
 }
 
 export function PublishedVersionHistory({ versions }: { versions: CourseVersion[] | undefined }) {
@@ -66,6 +85,7 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
   const publishMutation = usePublishAuthoredCourse();
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [publishedVersion, setPublishedVersion] = useState<CourseVersion | null>(null);
+  const [historyRefreshFailed, setHistoryRefreshFailed] = useState(false);
 
   const { data: validation } = useValidateAuthoredCourse(courseId, { query: { enabled: !!courseId, queryKey: getValidateAuthoredCourseQueryKey(courseId) } });
   const { data: versions } = useListAuthoredCourseVersions(courseId, { query: { enabled: !!courseId, queryKey: getListAuthoredCourseVersionsQueryKey(courseId) } });
@@ -73,13 +93,22 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
 
   const handlePublish = async () => {
     try {
-      const version = await publishAuthoredCourseAndRefresh({
+      const result = await publishAuthoredCourseAndRefresh({
         courseId,
         publish: publishMutation.mutateAsync,
-        invalidateQueries: (queryKey) => queryClient.invalidateQueries({ queryKey }),
+        invalidateQueries: (queryKey) => queryClient.invalidateQueries(
+          { queryKey },
+          { throwOnError: true },
+        ),
       });
-      setPublishedVersion(version);
-      toast({ title: "Course Published", description: `Authoring revision ${version.authoringRevision} was published as version ${version.version}.` });
+      setPublishedVersion(result.version);
+      setHistoryRefreshFailed(result.historyRefreshFailed);
+      toast({
+        title: "Course Published",
+        description: result.historyRefreshFailed
+          ? `Version ${result.version.version} is published. History could not be refreshed; open History and try reloading it.`
+          : `Authoring revision ${result.version.authoringRevision} was published as version ${result.version.version}.`,
+      });
     } catch (err: any) {
       toast({ title: "Publish failed", description: err?.response?.data?.message || err.message, variant: "destructive" });
     }
@@ -168,6 +197,7 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
               disabled={!isPublishable || publishMutation.isPending}
               onClick={() => {
                 setPublishedVersion(null);
+                setHistoryRefreshFailed(false);
                 setConfirmPublish(true);
               }}
               data-testid="button-publish-course"
@@ -222,6 +252,7 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
                 ? <PublishSuccessMessage version={publishedVersion} />
                 : "This will create a new immutable published version of the course. It will become instantly available to all enrolled learners on this pathway."}
             </DialogDescription>
+            {publishedVersion && historyRefreshFailed && <HistoryRefreshWarning />}
           </DialogHeader>
           <DialogFooter className="mt-4">
             {publishedVersion ? (
