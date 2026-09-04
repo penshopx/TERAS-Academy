@@ -39,6 +39,9 @@ const clerkPubKey = publishableKeyFromHost(
 
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+// This value is compiled only by the NODE_ENV=test harness.  It never grants
+// API access: that harness injects its identity privately in its own server.
+const integrationTestMode = import.meta.env.MODE === 'test' && import.meta.env.VITE_INTEGRATION_TEST_MODE === 'true';
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
@@ -46,7 +49,7 @@ function stripBase(path: string): string {
     : path;
 }
 
-if (!clerkPubKey) {
+if (!clerkPubKey && !integrationTestMode) {
   throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env file');
 }
 
@@ -630,8 +633,27 @@ function ClerkProviderWithRoutes() {
   );
 }
 
+function IntegrationTestRoutes() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <main className="min-h-screen bg-background p-6 text-foreground">
+          <RoutedErrorBoundary>
+            <Switch>
+              <Route path="/practice" component={Practice} />
+              <Route path="/evidence" component={Evidence} />
+              <Route component={NotFound} />
+            </Switch>
+          </RoutedErrorBoundary>
+        </main>
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
 function App() {
-  return <WouterRouter base={basePath}><ClerkProviderWithRoutes /></WouterRouter>;
+  return <WouterRouter base={basePath}>{integrationTestMode ? <IntegrationTestRoutes /> : <ClerkProviderWithRoutes />}</WouterRouter>;
 }
 
 export default App;

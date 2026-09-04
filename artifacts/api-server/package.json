@@ -8,11 +8,13 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:pathway-isolation": "tsx ./src/pathway-isolation.integration.ts",
-    "test:safety-blockers": "tsx ./src/safety-blockers.integration.ts",
-    "test:learning-transition": "tsx ./src/learning-transition.integration.ts",
-    "test:identity-isolation": "tsx ./src/identity-isolation.integration.ts",
-    "test:learner-isolation": "tsx ./src/learner-isolation.integration.ts"
+    "test:pathway-isolation": "NODE_ENV=test tsx ./src/pathway-isolation.integration.ts",
+    "test:safety-blockers": "NODE_ENV=test tsx ./src/safety-blockers.integration.ts",
+    "test:learning-transition": "NODE_ENV=test tsx ./src/learning-transition.integration.ts",
+    "test:identity-isolation": "NODE_ENV=test tsx ./src/identity-isolation.integration.ts",
+    "test:learner-isolation": "NODE_ENV=test tsx ./src/learner-isolation.integration.ts",
+    "setup:browser-idempotency": "playwright install chromium",
+    "test:browser-idempotency": "NODE_ENV=test tsx ./src/browser-idempotency.integration.ts"
   },
   "dependencies": {
     "@clerk/express": "^2.1.65",
@@ -32,9 +34,12 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
+    "@types/pg": "^8.20.0",
     "esbuild": "0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
+    "pg": "^8.22.0",
     "pino-pretty": "^13.1.3",
+    "playwright": "^1.62.1",
     "thread-stream": "3.1.0",
     "tsx": "catalog:"
   }
