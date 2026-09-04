@@ -459,6 +459,13 @@ async function run() {
     const createdPractice = concurrentPractice.find(response => response.status === 201) ?? concurrentPractice[0];
     assert(concurrentPractice.map(response => response.status).sort().join(",") === "200,201", `Concurrent practice statuses were ${concurrentPractice.map(response => response.status).join(",")}`);
     assert(concurrentPractice[0].body.id === concurrentPractice[1].body.id, "Concurrent practice requests returned different attempts");
+    const practiceRetryAfterLostResponse = await postJson(routeServer.baseUrl, "/practice/tasks/task-m03/attempts", practicePayload);
+    assert(practiceRetryAfterLostResponse.status === 200, `Practice retry after a lost response returned ${practiceRetryAfterLostResponse.status}`);
+    assert(practiceRetryAfterLostResponse.body.id === createdPractice.body.id, "Practice retry after a lost response created a different attempt");
+    const practiceRecordsAfterRetry = await db.select({ id: practiceAttemptsTable.id })
+      .from(practiceAttemptsTable)
+      .where(eq(practiceAttemptsTable.reflection, practicePayload.reflection));
+    assert(practiceRecordsAfterRetry.length === 1, `Practice retry created ${practiceRecordsAfterRetry.length} records instead of one`);
     assert(createdPractice.body.nextAction?.action === "SUBMIT_EVIDENCE", "Successful practice route did not return its causal next action");
     routeRecords.practiceIds.push(createdPractice.body.id);
     const conflictingPractice = await postJson(routeServer.baseUrl, "/practice/tasks/task-m03/attempts", {
@@ -488,6 +495,13 @@ async function run() {
     const createdEvidence = concurrentEvidence.find(response => response.status === 201) ?? concurrentEvidence[0];
     assert(concurrentEvidence.map(response => response.status).sort().join(",") === "200,201", `Concurrent evidence statuses were ${concurrentEvidence.map(response => response.status).join(",")}`);
     assert(concurrentEvidence[0].body.id === concurrentEvidence[1].body.id, "Concurrent evidence requests returned different records");
+    const evidenceRetryAfterLostResponse = await postJson(routeServer.baseUrl, "/evidence", evidencePayload);
+    assert(evidenceRetryAfterLostResponse.status === 200, `Evidence retry after a lost response returned ${evidenceRetryAfterLostResponse.status}`);
+    assert(evidenceRetryAfterLostResponse.body.id === createdEvidence.body.id, "Evidence retry after a lost response created a different record");
+    const evidenceRecordsAfterRetry = await db.select({ id: evidenceTable.id })
+      .from(evidenceTable)
+      .where(eq(evidenceTable.title, evidencePayload.title));
+    assert(evidenceRecordsAfterRetry.length === 1, `Evidence retry created ${evidenceRecordsAfterRetry.length} records instead of one`);
     assert(createdEvidence.body.practiceAttemptId === createdPractice.body.id, "Successful evidence response lost its practice-attempt link");
     routeRecords.evidenceIds.push(createdEvidence.body.id);
     const conflictingEvidence = await postJson(routeServer.baseUrl, "/evidence", {
@@ -509,9 +523,21 @@ async function run() {
       gapId: fixtureIds.gap,
       remediationPlanId: fixtureIds.remediation,
     }), actorTrainer), "remediation");
-    expectSuccess(await transitionLearningState(command("REMEDIATION", "PRACTICE_IN_PROGRESS", "repractice", {
-      practiceAttemptId: fixtureIds.practice,
-    }), actorLearner), "re-practice");
+    const remediationPracticePayload = {
+      reflection: `${fixturePrefix} remediation route practice`,
+      outputSummary: "Remediation practice output.",
+      sourceActivityId: activityId,
+      idempotencyKey: `${fixturePrefix}-remediation-practice`,
+    };
+    const remediationPractice = await postJson(routeServer.baseUrl, "/practice/tasks/task-m03/attempts", remediationPracticePayload);
+    assert(remediationPractice.status === 201, `Remediation practice route returned ${remediationPractice.status}`);
+    const remediationPracticeRetry = await postJson(routeServer.baseUrl, "/practice/tasks/task-m03/attempts", remediationPracticePayload);
+    assert(remediationPracticeRetry.status === 200 && remediationPracticeRetry.body.id === remediationPractice.body.id, "Remediation practice retry created a duplicate");
+    const remediationPracticeRecords = await db.select({ id: practiceAttemptsTable.id })
+      .from(practiceAttemptsTable)
+      .where(eq(practiceAttemptsTable.reflection, remediationPracticePayload.reflection));
+    assert(remediationPracticeRecords.length === 1, `Remediation practice retry created ${remediationPracticeRecords.length} records`);
+    routeRecords.practiceIds.push(remediationPractice.body.id);
     expectSuccess(await transitionLearningState(command("PRACTICE_IN_PROGRESS", "EVIDENCE_SUBMITTED", "re-evidence", {
       evidenceId: fixtureIds.evidence,
     }), actorLearner), "re-evidence");

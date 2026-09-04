@@ -29,6 +29,24 @@ async function learningWrite<T>(write: (tx: Parameters<Parameters<typeof db.tran
     throw error;
   }
 }
+async function currentLearningState(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  learnerId: string,
+  pathwayId: string,
+  activityId: string,
+) {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${learnerId}:${pathwayId}:${activityId}`}))`);
+  const [latest] = await tx.select({ toState: learningTransitionEventsTable.toState })
+    .from(learningTransitionEventsTable)
+    .where(and(
+      eq(learningTransitionEventsTable.activityId, activityId),
+      eq(learningTransitionEventsTable.learnerId, learnerId),
+      eq(learningTransitionEventsTable.pathwayId, pathwayId),
+    ))
+    .orderBy(desc(learningTransitionEventsTable.createdAt), desc(learningTransitionEventsTable.id))
+    .limit(1);
+  return (latest?.toState ?? "NOT_STARTED") as LearningState;
+}
 async function pathwayTimeline(learnerId: string) { const context = await learnerContext(learnerId); const [events, pathways] = await Promise.all([db.select().from(enrollmentPathwayEventsTable).where(eq(enrollmentPathwayEventsTable.enrollmentId, context.enrollment.id)).orderBy(enrollmentPathwayEventsTable.sequence), db.select().from(pathwaysTable)]); const map = new Map(pathways.map((pathway) => [pathway.id, pathway])); const original = map.get(context.enrollment.pathwayId) ?? context.pathway; return { context, steps: [{ id: "pathway-enrol", pathwayId: original.id, pathwayName: original.name, label: "Pathway started", description: `Enrolled on ${original.name}.`, status: "Complete", date: new Date("2025-01-06T09:00:00Z"), href: "/programs/solar-pv-tech" }, ...events.map((event) => { const pathway = map.get(event.pathwayId); return { id: `pathway-${event.id}`, pathwayId: event.pathwayId, pathwayName: pathway?.name ?? "Unknown pathway", label: "Pathway selected", description: `Activated ${pathway?.name ?? "capability pathway"}.`, status: "Complete", date: event.createdAt, href: "/programs/solar-pv-tech" }; })] }; }
 router.get("/evidence", async (req, res): Promise<void> => { const learnerId = await authorizeLearner(req, res); if (!learnerId) return; res.json(ListEvidenceResponse.parse(await evidenceRecords(learnerId))); });
 router.post("/learner/pathway", async (req, res): Promise<void> => { const parsed = SelectLearnerPathwayBody.safeParse(req.body); if (!parsed.success) { bad(req, res, parsed.error.message); return; } const learnerId = await authorizeLearner(req, res); if (!learnerId) return; const context = await learnerContext(learnerId); const [pathway] = await db.select().from(pathwaysTable).where(eq(pathwaysTable.id, parsed.data.pathwayId)); if (!pathway || pathway.programId !== context.program.id) { res.status(404).json({ error: "Pathway not found for the enrolled program" }); return; } const event = await db.transaction(async (tx) => { await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${context.enrollment.id}))`); const [previous] = await tx.select().from(enrollmentPathwayEventsTable).where(eq(enrollmentPathwayEventsTable.enrollmentId, context.enrollment.id)).orderBy(desc(enrollmentPathwayEventsTable.sequence)).limit(1); return (await tx.insert(enrollmentPathwayEventsTable).values({ id: id("pathway-selection"), enrollmentId: context.enrollment.id, pathwayId: pathway.id, programId: context.program.id, sequence: (previous?.sequence ?? 0) + 1, createdBy: learnerId }).returning())[0]; }); const summary = await pathwaySummary(pathway.id); if (!summary) throw new Error(`Missing pathway catalogue for ${pathway.id}`); res.status(201).json(SelectLearnerPathwayResponse.parse({ pathway: summary, programId: pathway.programId, selectedAt: event.createdAt })); });
@@ -38,15 +56,10 @@ router.post("/evidence", async (req, res): Promise<void> => {
   const learnerId = await authorizeLearner(req, res);
   if (!learnerId) return;
   const context = await learnerContext(learnerId);
-  const [module, task, attempt, latestTransition] = await Promise.all([
+  const [module, task, attempt] = await Promise.all([
     db.select().from(modulesTable).where(eq(modulesTable.id, parsed.data.moduleId)).then(rows => rows[0]),
     db.select().from(practiceTasksTable).where(eq(practiceTasksTable.id, parsed.data.taskId)).then(rows => rows[0]),
     db.select().from(practiceAttemptsTable).where(eq(practiceAttemptsTable.id, parsed.data.practiceAttemptId)).then(rows => rows[0]),
-    db.select().from(learningTransitionEventsTable).where(and(
-      eq(learningTransitionEventsTable.activityId, parsed.data.sourceActivityId),
-      eq(learningTransitionEventsTable.learnerId, learnerId),
-      eq(learningTransitionEventsTable.pathwayId, context.pathway.id),
-    )).orderBy(desc(learningTransitionEventsTable.createdAt), desc(learningTransitionEventsTable.id)).limit(1).then(rows => rows[0]),
   ]);
   if (!module || module.pathwayId !== context.pathway.id || !task || task.moduleId !== module.id || !attempt || attempt.taskId !== task.id || attempt.learnerId !== learnerId || attempt.pathwayId !== context.pathway.id) {
     res.status(404).json({ error: "Linked practice attempt was not found for the enrolled pathway" });
@@ -67,11 +80,12 @@ router.post("/evidence", async (req, res): Promise<void> => {
         ? { kind: "duplicate" as const, entityId: duplicate.entityReference }
         : { kind: "conflict" as const };
     }
+    const currentState = await currentLearningState(tx, learnerId, context.pathway.id, parsed.data.sourceActivityId);
     const record = { id: id("evidence"), learnerId, pathwayId: context.pathway.id, moduleId: parsed.data.moduleId, taskId: parsed.data.taskId, title: parsed.data.title, type: parsed.data.type, description: parsed.data.description, fileName: parsed.data.fileName, createdBy: learnerId };
     await tx.insert(evidenceTable).values(record);
     await tx.insert(evidenceReviewsTable).values({ id: id("evidence-review"), evidenceId: record.id, status: "Under review", quality: { valid: false, relevant: false, sufficient: false, traceable: false }, createdBy: learnerId });
     const transition = await transitionLearningState({
-      currentState: (latestTransition?.toState ?? "NOT_STARTED") as LearningState,
+      currentState,
       targetState: "EVIDENCE_SUBMITTED",
       learnerId,
       pathwayId: context.pathway.id,
@@ -101,13 +115,7 @@ router.post("/practice/tasks/:taskId/attempts", async (req, res): Promise<void> 
   const context = await learnerContext(learnerId);
   const [task] = await db.select().from(practiceTasksTable).where(eq(practiceTasksTable.id, params.data.taskId));
   const [module] = task ? await db.select().from(modulesTable).where(eq(modulesTable.id, task.moduleId)) : [];
-  const [latestTransition] = await db.select().from(learningTransitionEventsTable).where(and(
-    eq(learningTransitionEventsTable.activityId, body.data.sourceActivityId),
-    eq(learningTransitionEventsTable.learnerId, learnerId),
-    eq(learningTransitionEventsTable.pathwayId, context.pathway.id),
-  )).orderBy(desc(learningTransitionEventsTable.createdAt), desc(learningTransitionEventsTable.id)).limit(1);
   if (!task || !module || module.pathwayId !== context.pathway.id) { res.status(404).json({ error: "Practice task not found for the enrolled pathway" }); return; }
-  const currentState = (latestTransition?.toState ?? "NOT_STARTED") as LearningState;
   const transitionKey = scopedIdempotencyKey("practice-attempt", learnerId, body.data.idempotencyKey);
   const fingerprint = digest({ taskId: task.id, reflection: body.data.reflection, outputSummary: body.data.outputSummary, sourceActivityId: body.data.sourceActivityId });
   const result = await learningWrite(async (tx) => {
@@ -120,6 +128,7 @@ router.post("/practice/tasks/:taskId/attempts", async (req, res): Promise<void> 
       if (!existing) throw new Error(`Idempotent practice result ${duplicate.entityReference} was not found`);
       return { kind: "duplicate" as const, row: existing };
     }
+    const currentState = await currentLearningState(tx, learnerId, context.pathway.id, body.data.sourceActivityId);
     const [row] = await tx.insert(practiceAttemptsTable).values({ id: id("practice"), taskId: task.id, learnerId, pathwayId: context.pathway.id, reflection: body.data.reflection, outputSummary: body.data.outputSummary, status: "Submitted", createdBy: learnerId }).returning();
     if (!row) throw new Error("Practice attempt insert returned no row");
     const transition = await transitionLearningState({

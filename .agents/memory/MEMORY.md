@@ -6,3 +6,4 @@
 - [Assessor browser fixtures](assessor-browser-fixtures.md) — keyboard decision tests need isolated pending critical rubrics, not mutable shared assessment state.
 - [OpenAPI canonical anchors](openapi-canonical-anchors.md) — schema-like legacy snapshots can capture ambiguous patches; anchor active paths and schemas to canonical root blocks.
 - [Learner identity isolation](learner-identity-isolation.md) — derive learner ownership server-side from authenticated identity; never trust learner IDs supplied by clients.
+- [Workflow database isolation](workflow-database-isolation.md) — browser workflows and agent shells may target different development databases; verify the environment before asserting shared records.
