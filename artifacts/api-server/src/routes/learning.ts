@@ -29,11 +29,7 @@ const router: IRouter = Router();
 router.get("/learning/courses", async (req, res): Promise<void> => {
   const learnerId = await authorizeLearner(req, res);
   if (!learnerId) return;
-  const context = await learnerContext();
-  if (learnerId !== context.learner.id) {
-    res.status(403).json({ error: "You are not authorized for this learner" });
-    return;
-  }
+  const context = await learnerContext(learnerId);
 
   const [courses, courseModules, modules, lessons, activities, resources, outcomes, transitions] = await Promise.all([
     db.select().from(coursesTable).where(eq(coursesTable.pathwayId, context.pathway.id)),

@@ -75,7 +75,7 @@ async function assessmentDetail(assessment: {
   );
   const personMap = new Map(people.map((person) => [person.id, person.name]));
   return {
-    assessment: await assessmentSummary(assessment, context.pathway.id),
+    assessment: await assessmentSummary(assessment, context.learner.id, context.pathway.id),
     criteria: criteria.map((criterion) => {
       const observation = observationMap.get(criterion.id);
       return {
@@ -113,7 +113,7 @@ async function activeAssessments() {
   const summaries = await Promise.all(
     assessments
       .filter((assessment) => moduleIds.has(assessment.moduleId))
-      .map((assessment) => assessmentSummary(assessment, context.pathway.id)),
+      .map((assessment) => assessmentSummary(assessment, context.learner.id, context.pathway.id)),
   );
   return { context, pathwayModules, summaries };
 }

@@ -1,6 +1,8 @@
 import { clerkClient, getAuth } from "@clerk/express";
 import type { Request, Response } from "express";
 import { learnerContext } from "./teras";
+import { db, peopleTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
 
 type WorkspaceRole = "trainer" | "assessor";
 export type LearningActorRole = WorkspaceRole | "learner";
@@ -8,6 +10,8 @@ export type LearningActor = { id: string; role: LearningActorRole };
 export type TestAuthorizationIdentity = {
   userId: string | null;
   role: WorkspaceRole | "learner" | null;
+  /** Test-only server injected learner identity; never accepted from HTTP. */
+  learnerId?: string;
 };
 
 /**
@@ -55,6 +59,15 @@ export async function authorizeLearner(req: Request, res: Response): Promise<str
   const identity = integrationIdentity(req);
   if (identity) {
     if (identity.userId && identity.role === "learner") {
+      const learnerId = identity.learnerId;
+      if (learnerId) {
+        try {
+          return (await learnerContext(learnerId)).learner.id;
+        } catch {
+          res.status(403).json({ error: "You are not authorized for this learner" });
+          return null;
+        }
+      }
       return (await learnerContext()).learner.id;
     }
     res.status(identity.userId ? 403 : 401).json({ error: "You are not authorized for this learner" });
@@ -65,13 +78,19 @@ export async function authorizeLearner(req: Request, res: Response): Promise<str
     return (await learnerContext()).learner.id;
   }
   if (userId) {
-    const context = await learnerContext();
     const clerkUser = await clerkClient.users.getUser(userId);
     const primaryEmail = clerkUser.emailAddresses.find(
       (email) => email.id === clerkUser.primaryEmailAddressId,
     )?.emailAddress;
-    if (context.learner.email && primaryEmail?.toLowerCase() === context.learner.email.toLowerCase()) {
-      return context.learner.id;
+    if (primaryEmail) {
+      const [learner] = await db.select().from(peopleTable).where(sql`lower(${peopleTable.email}) = lower(${primaryEmail})`).limit(1);
+      if (learner) {
+        try {
+          return (await learnerContext(learner.id)).learner.id;
+        } catch {
+          // Signed-in people without a valid enrollment are forbidden.
+        }
+      }
     }
   }
   req.log.warn({ userId: userId ?? null }, "Unauthorized learner mutation");
@@ -86,7 +105,7 @@ export async function authorizeLearningActor(req: Request, res: Response): Promi
       res.status(identity.userId ? 403 : 401).json({ error: "You are not authorized for this learning transition" });
       return null;
     }
-    const context = await learnerContext();
+    const context = await learnerContext(identity.learnerId);
     if (identity.role === "learner") return { id: context.learner.id, role: "learner" };
     if (identity.role === "trainer" && context.enrollment.trainerId) return { id: context.enrollment.trainerId, role: "trainer" };
     if (identity.role === "assessor" && context.enrollment.assessorId) return { id: context.enrollment.assessorId, role: "assessor" };
@@ -95,10 +114,11 @@ export async function authorizeLearningActor(req: Request, res: Response): Promi
   }
 
   const { userId } = getAuth(req);
-  const context = await learnerContext();
   if (!userId && process.env.NODE_ENV !== "production") {
+    const context = await learnerContext();
     return { id: context.learner.id, role: "learner" };
   }
+  const context = await learnerContext();
   if (userId && userId === process.env.CLERK_TRAINER_USER_ID && context.enrollment.trainerId) {
     return { id: context.enrollment.trainerId, role: "trainer" };
   }
@@ -110,8 +130,16 @@ export async function authorizeLearningActor(req: Request, res: Response): Promi
     const primaryEmail = clerkUser.emailAddresses.find(
       (email) => email.id === clerkUser.primaryEmailAddressId,
     )?.emailAddress;
-    if (context.learner.email && primaryEmail?.toLowerCase() === context.learner.email.toLowerCase()) {
-      return { id: context.learner.id, role: "learner" };
+    if (primaryEmail) {
+      const [learner] = await db.select().from(peopleTable).where(sql`lower(${peopleTable.email}) = lower(${primaryEmail})`).limit(1);
+      if (learner) {
+        try {
+          const context = await learnerContext(learner.id);
+          return { id: context.learner.id, role: "learner" };
+        } catch {
+          // Mapped users need an enrollment.
+        }
+      }
     }
   }
   req.log.warn({ userId: userId ?? null }, "Unauthorized learning transition");

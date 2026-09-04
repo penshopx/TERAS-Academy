@@ -159,7 +159,7 @@ export async function transitionLearningState(
   command: LearningTransitionCommand,
   actor: LearningActor,
 ): Promise<LearningTransitionResult> {
-  const context = await learnerContext();
+  const context = await learnerContext(actor.role === "learner" ? actor.id : command.learnerId);
   if (command.learnerId !== context.learner.id || (actor.role === "learner" && actor.id !== command.learnerId)) {
     return reject("LEARNER_MISMATCH", "The authenticated actor does not own this learner record.", command.currentState, 403);
   }
