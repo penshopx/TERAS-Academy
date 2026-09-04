@@ -8,6 +8,7 @@ TERAS Academy is a capability-development platform with an LMS as its core learn
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
+- `pnpm run smoke:app-storage` — run the disposable real-sidecar App Storage smoke check
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 
@@ -54,7 +55,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The native Replit scheduled job `App Storage weekday smoke` runs `pnpm run smoke:app-storage` each weekday at 16:00 UTC with a 180-second timeout, alongside the unchanged autoscale deployment. Its PASS/FAIL output is operational early warning only and never constitutes release approval.
 
 ## Pointers
 

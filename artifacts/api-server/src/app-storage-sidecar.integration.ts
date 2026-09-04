@@ -22,13 +22,40 @@ const ownerId = `trainer-owner-${runId}`;
 const otherUserId = `trainer-other-${runId}`;
 const createdObjectNames = new Set<string>();
 let primaryFailure: unknown;
+let activeCheck = "initialization";
+const completedChecks: string[] = [];
+
+function log(status: "START" | "PASS" | "FAIL", check: string, detail?: string) {
+  console.log(JSON.stringify({
+    smoke: "app-storage-sidecar",
+    runId,
+    status,
+    check,
+    ...(detail ? { detail } : {}),
+    releaseApproval: false,
+  }));
+}
+
+async function check<T>(name: string, action: () => Promise<T>): Promise<T> {
+  activeCheck = name;
+  log("START", name);
+  try {
+    const result = await action();
+    completedChecks.push(name);
+    log("PASS", name);
+    return result;
+  } catch (error) {
+    log("FAIL", name, error instanceof Error ? error.message : String(error));
+    throw error;
+  }
+}
 
 async function expectObjectNotFound(action: () => Promise<unknown>, message: string) {
   await assert.rejects(action, error => error instanceof ObjectNotFoundError, message);
 }
 
 try {
-  const uploadURL = await storage.getObjectEntityUploadURL();
+  const uploadURL = await check("signing", () => storage.getObjectEntityUploadURL());
   const uploadedUrl = new URL(uploadURL);
   const uploadedPath = decodeURIComponent(uploadedUrl.pathname).replace(/^\//, "");
   assert(uploadedPath.startsWith(`${bucketName}/${prefix}`), "signed upload escaped the disposable run prefix");
@@ -37,44 +64,48 @@ try {
   const objectPath = storage.normalizeObjectEntityPath(uploadURL);
   assert.match(objectPath, /^\/objects\/uploads\/[0-9a-f-]{36}$/i);
 
-  const uploadResponse = await fetch(uploadURL, {
-    method: "PUT",
-    headers: { "Content-Type": mimeType },
-    body: payload,
-    signal: AbortSignal.timeout(30_000),
+  await check("upload", async () => {
+    const uploadResponse = await fetch(uploadURL, {
+      method: "PUT",
+      headers: { "Content-Type": mimeType },
+      body: payload,
+      signal: AbortSignal.timeout(30_000),
+    });
+    assert(uploadResponse.ok, `App Storage upload failed (${uploadResponse.status})`);
   });
-  assert(uploadResponse.ok, `App Storage upload failed (${uploadResponse.status})`);
 
-  await storage.verifyUploadedMetadata(objectPath, { size: payload.byteLength, mimeType });
-  await storage.setPrivateOwner(objectPath, ownerId);
-  assert.equal(await storage.ownerCanRead(objectPath, ownerId), true, "owner must be able to read");
-  assert.equal(await storage.ownerCanRead(objectPath, otherUserId), false, "cross-user read must be denied");
+  await check("metadata", () =>
+    storage.verifyUploadedMetadata(objectPath, { size: payload.byteLength, mimeType }));
+  await check("acl", async () => {
+    await storage.setPrivateOwner(objectPath, ownerId);
+    assert.equal(await storage.ownerCanRead(objectPath, ownerId), true, "owner must be able to read");
+    assert.equal(await storage.ownerCanRead(objectPath, otherUserId), false, "cross-user read must be denied");
+  });
 
-  const download = await storage.downloadObject(await storage.getObjectEntityFile(objectPath));
-  assert.equal(download.headers.get("content-type"), mimeType);
-  assert.equal(download.headers.get("cache-control"), "private, no-store");
-  assert.deepEqual(Buffer.from(await download.arrayBuffer()), payload);
+  await check("download", async () => {
+    const download = await storage.downloadObject(await storage.getObjectEntityFile(objectPath));
+    assert.equal(download.headers.get("content-type"), mimeType);
+    assert.equal(download.headers.get("cache-control"), "private, no-store");
+    assert.deepEqual(Buffer.from(await download.arrayBuffer()), payload);
+  });
 
-  await expectObjectNotFound(
-    () => storage.getObjectEntityFile(`/objects/uploads/${randomUUID()}`),
-    "a different object path must not resolve",
-  );
-  await expectObjectNotFound(
-    () => storage.getObjectEntityFile(`/objects/../${randomUUID()}`),
-    "a path traversal attempt must be rejected",
-  );
+  await check("path-isolation", async () => {
+    await expectObjectNotFound(
+      () => storage.getObjectEntityFile(`/objects/uploads/${randomUUID()}`),
+      "a different object path must not resolve",
+    );
+    await expectObjectNotFound(
+      () => storage.getObjectEntityFile(`/objects/../${randomUUID()}`),
+      "a path traversal attempt must be rejected",
+    );
+  });
 
-  console.log(JSON.stringify({
-    evidence: "real-app-storage-sidecar",
-    runId,
-    disposablePrefix: `/${bucketName}/${prefix}`,
-    checks: ["upload", "metadata", "owner-read", "cross-user-denial", "download", "cross-path-denial"],
-    status: "PASS",
-  }));
 } catch (error) {
   primaryFailure = error;
 } finally {
   let cleanupFailure: unknown;
+  activeCheck = "cleanup";
+  log("START", activeCheck);
   try {
     const [files] = await bucket.getFiles({ prefix });
     for (const file of files) {
@@ -86,8 +117,11 @@ try {
     for (const name of createdObjectNames) {
       assert.equal((await bucket.file(name).exists())[0], false, `cleanup did not remove ${name}`);
     }
+    completedChecks.push(activeCheck);
+    log("PASS", activeCheck);
   } catch (error) {
     cleanupFailure = error;
+    log("FAIL", activeCheck, error instanceof Error ? error.message : String(error));
   }
 
   if (cleanupFailure) {
@@ -97,4 +131,13 @@ try {
     );
   }
   if (primaryFailure) throw primaryFailure;
+  console.log(JSON.stringify({
+    smoke: "app-storage-sidecar",
+    runId,
+    disposablePrefix: `/${bucketName}/${prefix}`,
+    checks: completedChecks,
+    status: "PASS",
+    releaseApproval: false,
+    note: "Operational smoke evidence only; this result never approves a release.",
+  }));
 }

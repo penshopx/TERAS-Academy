@@ -10,6 +10,8 @@
     "setup:browser-idempotency": "pnpm --filter @workspace/api-server run setup:browser-idempotency",
     "test:browser-idempotency": "pnpm --filter @workspace/api-server run test:browser-idempotency",
     "test:certification-preparation-release-workflow": "pnpm --filter @workspace/scripts run test:certification-preparation-release-workflow",
+    "test:app-storage-sidecar-smoke-contract": "pnpm --filter @workspace/scripts run test:app-storage-sidecar-smoke-contract",
+    "smoke:app-storage": "pnpm --filter @workspace/api-server run smoke:app-storage",
     "gate:certification-preparation": "pnpm --filter @workspace/scripts run gate:certification-preparation"
   },
   "private": true,

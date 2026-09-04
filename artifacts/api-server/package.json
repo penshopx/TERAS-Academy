@@ -24,7 +24,8 @@
     "setup:browser-idempotency": "playwright install --with-deps chromium",
     "test:browser-idempotency": "NODE_ENV=test tsx ./src/browser-idempotency.integration.ts",
     "test:certification-preparation-journey": "NODE_ENV=test tsx ./src/certification-preparation-journey.integration.ts",
-    "test:app-storage-sidecar": "NODE_ENV=test tsx ./src/app-storage-sidecar.integration.ts"
+    "test:app-storage-sidecar": "NODE_ENV=test tsx ./src/app-storage-sidecar.integration.ts",
+    "smoke:app-storage": "bash ../../scripts/app-storage-sidecar-smoke.sh"
   },
   "dependencies": {
     "@clerk/express": "^2.1.65",
