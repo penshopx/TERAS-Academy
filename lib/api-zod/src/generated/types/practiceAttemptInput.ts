@@ -11,4 +11,5 @@ export interface PracticeAttemptInput {
   reflection: string;
   /** @minLength 1 */
   outputSummary: string;
+  sourceActivityId: string;
 }

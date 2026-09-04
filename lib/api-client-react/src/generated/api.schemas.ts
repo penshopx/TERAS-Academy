@@ -75,6 +75,29 @@ export interface LearningOutcome {
   required: boolean;
 }
 
+export type LearningNextActionAction = typeof LearningNextActionAction[keyof typeof LearningNextActionAction];
+
+
+export const LearningNextActionAction = {
+  START_ACTIVITY: 'START_ACTIVITY',
+  COMPLETE_ACTIVITY: 'COMPLETE_ACTIVITY',
+  WAIT_FOR_VERIFICATION: 'WAIT_FOR_VERIFICATION',
+  WAIT_FOR_PRACTICE: 'WAIT_FOR_PRACTICE',
+  START_PRACTICE: 'START_PRACTICE',
+  SUBMIT_EVIDENCE: 'SUBMIT_EVIDENCE',
+  WAIT_FOR_REVIEW: 'WAIT_FOR_REVIEW',
+  FOLLOW_FEEDBACK: 'FOLLOW_FEEDBACK',
+  VIEW_READINESS: 'VIEW_READINESS',
+} as const;
+
+export interface LearningNextAction {
+  action: LearningNextActionAction;
+  title: string;
+  description: string;
+  /** @nullable */
+  href: string | null;
+}
+
 export interface LearningActivity {
   id: string;
   lessonId: string;
@@ -88,6 +111,7 @@ export interface LearningActivity {
   estimatedDurationMinutes: number;
   status: string;
   currentState: LearningState;
+  nextAction: LearningNextAction;
   resources: LearningResource[];
   outcomes: LearningOutcome[];
 }
@@ -436,6 +460,7 @@ export interface PracticeAttemptInput {
   reflection: string;
   /** @minLength 1 */
   outputSummary: string;
+  sourceActivityId: string;
 }
 
 export interface PracticeAttempt {
@@ -445,6 +470,9 @@ export interface PracticeAttempt {
   status: string;
   reflection: string;
   outputSummary: string;
+  pathwayId: string;
+  sourceActivityId: string;
+  nextAction: LearningNextAction;
   /** @nullable */
   feedback: string | null;
 }
@@ -459,6 +487,8 @@ export interface EvidenceInput {
   description: string;
   /** @nullable */
   fileName: string | null;
+  sourceActivityId: string;
+  practiceAttemptId: string;
 }
 
 export interface EvidenceQuality {
@@ -475,6 +505,11 @@ export interface EvidenceRecord {
   moduleId: string;
   moduleName: string;
   taskId: string;
+  pathwayId: string;
+  /** @nullable */
+  sourceActivityId: string | null;
+  /** @nullable */
+  practiceAttemptId: string | null;
   description: string;
   status: string;
   submittedAt: string;

@@ -6,16 +6,21 @@ import { Activity, PlayCircle, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 export default function Practice() {
   const { data: tasks, isLoading, error } = useListPracticeTasks();
   const createAttempt = useCreatePracticeAttempt();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const query = new URLSearchParams(window.location.search);
+  const requestedTaskId = query.get("taskId");
+  const sourceActivityId = query.get("activityId");
   
-  const [activeTask, setActiveTask] = useState<string | null>(null);
+  const [activeTask, setActiveTask] = useState<string | null>(requestedTaskId);
   const [reflection, setReflection] = useState("");
   const [outputSummary, setOutputSummary] = useState("");
+  const [nextEvidenceHref, setNextEvidenceHref] = useState<string | null>(null);
 
   if (isLoading) {
     return <div className="h-full flex items-center justify-center"><Activity className="w-8 h-8 text-primary animate-pulse" /></div>;
@@ -26,18 +31,18 @@ export default function Practice() {
   }
 
   const handleSubmit = (taskId: string) => {
-    if (!reflection || !outputSummary) {
-      toast({ title: "Incomplete", description: "Please fill both reflection and output fields.", variant: "destructive" });
+    if (!reflection || !outputSummary || !sourceActivityId) {
+      toast({ title: "Incomplete", description: sourceActivityId ? "Please fill both reflection and output fields." : "Open practice from the completed learning activity so its causal link is preserved.", variant: "destructive" });
       return;
     }
     
     createAttempt.mutate({
       taskId,
-      data: { reflection, outputSummary }
+      data: { reflection, outputSummary, sourceActivityId }
     }, {
-      onSuccess: () => {
-        toast({ title: "Submitted", description: "Practice attempt recorded successfully." });
-        setActiveTask(null);
+      onSuccess: (attempt) => {
+        toast({ title: "Submitted", description: "Practice attempt recorded. This is not a readiness decision." });
+        setNextEvidenceHref(attempt.nextAction.href);
         setReflection("");
         setOutputSummary("");
         queryClient.invalidateQueries({ queryKey: getListPracticeTasksQueryKey() });
@@ -53,6 +58,12 @@ export default function Practice() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Practice Workspace</h1>
         <p className="text-muted-foreground mt-1 text-sm">Execute tasks and record practical reflections</p>
+      </div>
+
+      <div className="grid gap-3 border-y border-border/50 py-4 text-sm sm:grid-cols-3">
+        <div><p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Learning progress</p><p className="mt-1 font-semibold">Practice attempts are appended</p></div>
+        <div><p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Learning achievement</p><p className="mt-1 font-semibold">Requires reviewed evidence</p></div>
+        <div><p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Capability readiness</p><p className="mt-1 font-semibold">Controlled by existing gates</p></div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -83,8 +94,6 @@ export default function Practice() {
         <div className="h-full">
           {activeTask ? (() => {
             const task = tasks.find(t => t.id === activeTask)!;
-            const isCompleted = task.status === "COMPLETED";
-            
             return (
               <Card className="cockpit-panel h-full flex flex-col border-primary/30 sticky top-0">
                 <CardHeader className="bg-background/80 border-b border-border/50 pb-4">
@@ -114,12 +123,15 @@ export default function Practice() {
                     <div className="pt-6 border-t border-border">
                       <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Submission Record</h4>
                       
-                      {isCompleted ? (
+                      {nextEvidenceHref ? (
                         <div className="flex items-center gap-3 p-4 bg-green-500/10 text-green-500 rounded border border-green-500/20">
                           <CheckCircle2 className="w-6 h-6" />
                           <div>
                             <div className="font-bold">Attempt Recorded Successfully</div>
-                            <div className="text-xs opacity-80">This task has been completed and logged.</div>
+                            <div className="text-xs opacity-80">This attempt was appended to the active pathway. Submit linked evidence next.</div>
+                            <Link href={nextEvidenceHref}>
+                              <Button size="sm" className="mt-3 font-mono text-xs">CONTINUE TO EVIDENCE</Button>
+                            </Link>
                           </div>
                         </div>
                       ) : (
@@ -148,7 +160,7 @@ export default function Practice() {
                   </div>
                 </CardContent>
                 
-                {!isCompleted && (
+                {!nextEvidenceHref && (
                   <CardFooter className="p-4 bg-background/80 border-t border-border/50">
                     <Button 
                       className="w-full font-mono font-bold tracking-wider" 

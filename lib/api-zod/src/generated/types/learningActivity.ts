@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { LearningActivityType } from './learningActivityType';
+import type { LearningNextAction } from './learningNextAction';
 import type { LearningOutcome } from './learningOutcome';
 import type { LearningResource } from './learningResource';
 import type { LearningState } from './learningState';
@@ -23,6 +24,7 @@ export interface LearningActivity {
   estimatedDurationMinutes: number;
   status: string;
   currentState: LearningState;
+  nextAction: LearningNextAction;
   resources: LearningResource[];
   outcomes: LearningOutcome[];
 }

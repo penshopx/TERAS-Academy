@@ -18,6 +18,7 @@ import {
 import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   isValidLearningTransition,
+  learningNextAction,
   transitionLearningState,
   type LearningState,
   type LearningTransitionCommand,
@@ -253,6 +254,9 @@ async function run() {
   ];
   assert(validEdges.every(([from, to]) => isValidLearningTransition(from, to)), "A canonical transition edge is missing");
   assert(invalidEdges.every(([from, to]) => !isValidLearningTransition(from, to)), "An invalid jump was accepted");
+  assert(learningNextAction("LEARNING_COMPLETED", { activityId }).action === "WAIT_FOR_VERIFICATION", "Completion bypassed outcome verification");
+  assert(learningNextAction("PRACTICE_REQUIRED", { activityId, taskId: "task-m03" }).href?.startsWith("/practice?"), "Practice next action is not linked");
+  assert(learningNextAction("PRACTICE_IN_PROGRESS", { activityId, taskId: "task-m03", practiceAttemptId: fixtureIds.practice }).href?.includes("practiceAttemptId="), "Evidence next action lost practice causality");
 
   await seedFixtures();
   try {
@@ -357,6 +361,8 @@ async function run() {
     const history = await db.select().from(learningTransitionEventsTable).where(eq(learningTransitionEventsTable.activityId, activityId));
     const links = await db.select().from(learningRecordLinksTable).where(eq(learningRecordLinksTable.activityId, activityId));
     assert(history.length === 14, `Expected 14 append-only journey events including re-practice, got ${history.length}`);
+    assert(links.some(link => link.practiceAttemptId === fixtureIds.practice), "Practice attempt causal link was not recorded");
+    assert(links.some(link => link.evidenceId === fixtureIds.evidence && link.practiceAttemptId === fixtureIds.practice), "Evidence was not causally linked to its practice attempt");
     assert(links.some(link => link.gapId === fixtureIds.gap && link.remediationPlanId === fixtureIds.remediation), "Causal remediation link was not recorded");
     assert(links.some(link => link.reassessmentAttemptId === fixtureIds.reassessment), "Causal reassessment link was not recorded");
     process.stdout.write("Learning transition integration checks passed\n");

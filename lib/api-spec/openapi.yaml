@@ -1517,6 +1517,8 @@ components:
         status: { type: string }
         currentState:
           $ref: "#/components/schemas/LearningState"
+        nextAction:
+          $ref: "#/components/schemas/LearningNextAction"
         resources:
           type: array
           items:
@@ -1525,7 +1527,17 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LearningOutcome"
-      required: [id, lessonId, pathwayId, type, title, description, sequence, required, estimatedDurationMinutes, status, currentState, resources, outcomes]
+      required: [id, lessonId, pathwayId, type, title, description, sequence, required, estimatedDurationMinutes, status, currentState, nextAction, resources, outcomes]
+    LearningNextAction:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [START_ACTIVITY, COMPLETE_ACTIVITY, WAIT_FOR_VERIFICATION, WAIT_FOR_PRACTICE, START_PRACTICE, SUBMIT_EVIDENCE, WAIT_FOR_REVIEW, FOLLOW_FEEDBACK, VIEW_READINESS]
+        title: { type: string }
+        description: { type: string }
+        href: { type: ["string", "null"] }
+      required: [action, title, description, href]
     LearningLesson:
       type: object
       properties:
@@ -1838,7 +1850,8 @@ components:
       properties:
         reflection: { type: string, minLength: 1 }
         outputSummary: { type: string, minLength: 1 }
-      required: [reflection, outputSummary]
+        sourceActivityId: { type: string }
+      required: [reflection, outputSummary, sourceActivityId]
     PracticeAttempt:
       type: object
       properties:
@@ -1848,9 +1861,13 @@ components:
         status: { type: string }
         reflection: { type: string }
         outputSummary: { type: string }
+        pathwayId: { type: string }
+        sourceActivityId: { type: string }
+        nextAction:
+          $ref: "#/components/schemas/LearningNextAction"
         feedback:
           type: ["string", "null"]
-      required: [id, taskId, submittedAt, status, reflection, outputSummary, feedback]
+      required: [id, taskId, submittedAt, status, reflection, outputSummary, pathwayId, sourceActivityId, nextAction, feedback]
     EvidenceInput:
       type: object
       properties:
@@ -1860,7 +1877,9 @@ components:
         type: { type: string }
         description: { type: string, minLength: 1 }
         fileName: { type: ["string", "null"] }
-      required: [moduleId, taskId, title, type, description, fileName]
+        sourceActivityId: { type: string }
+        practiceAttemptId: { type: string }
+      required: [moduleId, taskId, title, type, description, fileName, sourceActivityId, practiceAttemptId]
     EvidenceRecord:
       type: object
       properties:
@@ -1870,6 +1889,9 @@ components:
         moduleId: { type: string }
         moduleName: { type: string }
         taskId: { type: string }
+        pathwayId: { type: string }
+        sourceActivityId: { type: ["string", "null"] }
+        practiceAttemptId: { type: ["string", "null"] }
         description: { type: string }
         status: { type: string }
         submittedAt: { type: string, format: date-time }
@@ -1878,7 +1900,7 @@ components:
         fileName: { type: ["string", "null"] }
         quality:
           $ref: "#/components/schemas/EvidenceQuality"
-      required: [id, title, type, moduleId, moduleName, taskId, description, status, submittedAt, reviewer, reviewerComment, fileName, quality]
+      required: [id, title, type, moduleId, moduleName, taskId, pathwayId, sourceActivityId, practiceAttemptId, description, status, submittedAt, reviewer, reviewerComment, fileName, quality]
     EvidenceQuality:
       type: object
       properties:

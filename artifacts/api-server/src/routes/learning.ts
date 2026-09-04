@@ -6,10 +6,12 @@ import {
   coursesTable,
   db,
   learningActivitiesTable,
+  learningRecordLinksTable,
   learningOutcomesTable,
   learningTransitionEventsTable,
   lessonsTable,
   modulesTable,
+  practiceTasksTable,
 } from "@workspace/db";
 import {
   ListLearningCoursesResponse,
@@ -19,6 +21,7 @@ import {
 import { authorizeLearner, authorizeLearningActor } from "../lib/authorization";
 import {
   transitionLearningState,
+  learningNextAction,
   type LearningState,
   type LearningTransitionCommand,
 } from "../lib/learning-transition";
@@ -31,7 +34,7 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
   if (!learnerId) return;
   const context = await learnerContext(learnerId);
 
-  const [courses, courseModules, modules, lessons, activities, resources, outcomes, transitions] = await Promise.all([
+  const [courses, courseModules, modules, lessons, activities, resources, outcomes, transitions, practiceTasks, recordLinks] = await Promise.all([
     db.select().from(coursesTable).where(eq(coursesTable.pathwayId, context.pathway.id)),
     db.select().from(courseModulesTable).where(eq(courseModulesTable.pathwayId, context.pathway.id)),
     db.select().from(modulesTable).where(eq(modulesTable.pathwayId, context.pathway.id)),
@@ -42,6 +45,11 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
     db.select().from(learningTransitionEventsTable).where(and(
       eq(learningTransitionEventsTable.learnerId, learnerId),
       eq(learningTransitionEventsTable.pathwayId, context.pathway.id),
+    )),
+    db.select().from(practiceTasksTable),
+    db.select().from(learningRecordLinksTable).where(and(
+      eq(learningRecordLinksTable.learnerId, learnerId),
+      eq(learningRecordLinksTable.pathwayId, context.pathway.id),
     )),
   ]);
 
@@ -98,7 +106,13 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
                 activities: activities
                   .filter(activity => activity.lessonId === lesson.id)
                   .sort((a, b) => a.sequence - b.sequence)
-                  .map(activity => ({
+                  .map(activity => {
+                    const currentState = latestState.get(activity.id)?.state ?? "NOT_STARTED";
+                    const task = practiceTasks.find(item => item.moduleId === module.id);
+                    const latestLink = recordLinks
+                      .filter(item => item.activityId === activity.id && item.practiceAttemptId)
+                      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+                    return ({
                     id: activity.id,
                     lessonId: activity.lessonId,
                     pathwayId: activity.pathwayId,
@@ -109,7 +123,8 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
                     required: activity.required,
                     estimatedDurationMinutes: activity.estimatedDurationMinutes,
                     status: activity.status,
-                    currentState: latestState.get(activity.id)?.state ?? "NOT_STARTED",
+                    currentState,
+                    nextAction: learningNextAction(currentState, { activityId: activity.id, taskId: task?.id, practiceAttemptId: latestLink?.practiceAttemptId ?? undefined }),
                     resources: resources
                       .filter(resource => resource.activityId === activity.id)
                       .sort((a, b) => a.sequence - b.sequence)
@@ -131,7 +146,8 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
                         verificationMethod: outcome.verificationMethod,
                         required: outcome.required,
                       })),
-                  })),
+                    });
+                  }),
               })),
           };
         }),

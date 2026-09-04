@@ -103,6 +103,13 @@ export type LearningTransitionResult =
   | { ok: true; statusCode: 200 | 201; value: LearningTransitionSuccess }
   | { ok: false; statusCode: 403 | 404 | 409; value: LearningTransitionRejection };
 
+export type LearningNextAction = {
+  action: "START_ACTIVITY" | "COMPLETE_ACTIVITY" | "WAIT_FOR_VERIFICATION" | "WAIT_FOR_PRACTICE" | "START_PRACTICE" | "SUBMIT_EVIDENCE" | "WAIT_FOR_REVIEW" | "FOLLOW_FEEDBACK" | "VIEW_READINESS";
+  title: string;
+  description: string;
+  href: string | null;
+};
+
 const validTargets: Record<LearningState, readonly LearningState[]> = {
   NOT_STARTED: ["IN_PROGRESS"],
   IN_PROGRESS: ["LEARNING_COMPLETED"],
@@ -124,6 +131,48 @@ const actorTargets: Record<LearningActor["role"], ReadonlySet<LearningState>> = 
   trainer: new Set(["OUTCOME_VERIFIED", "PRACTICE_REQUIRED", "UNDER_REVIEW", "REVISION_REQUIRED", "REMEDIATION", "REASSESSMENT"]),
   assessor: new Set(["UNDER_REVIEW", "REASSESSMENT", "READY", "NOT_READY"]),
 };
+
+export function learningNextAction(
+  state: LearningState,
+  context: { activityId: string; taskId?: string; practiceAttemptId?: string },
+): LearningNextAction {
+  switch (state) {
+    case "NOT_STARTED":
+      return { action: "START_ACTIVITY", title: "Start this activity", description: "Begin the learning activity and its materials.", href: null };
+    case "IN_PROGRESS":
+      return { action: "COMPLETE_ACTIVITY", title: "Complete this activity", description: "Record learning completion when you have finished the materials.", href: null };
+    case "LEARNING_COMPLETED":
+      return { action: "WAIT_FOR_VERIFICATION", title: "Await outcome verification", description: "Learning is complete. A trainer must verify the learning outcome before practice is assigned.", href: null };
+    case "OUTCOME_VERIFIED":
+      return { action: "WAIT_FOR_PRACTICE", title: "Await practice assignment", description: "The outcome is verified. A trainer must open the linked practice requirement.", href: null };
+    case "PRACTICE_REQUIRED":
+    case "REMEDIATION":
+      return {
+        action: "START_PRACTICE",
+        title: state === "REMEDIATION" ? "Continue remediation practice" : "Continue to practice",
+        description: "Create a new pathway-scoped practice attempt. Previous attempts remain in the record.",
+        href: context.taskId ? `/practice?taskId=${encodeURIComponent(context.taskId)}&activityId=${encodeURIComponent(context.activityId)}` : "/practice",
+      };
+    case "PRACTICE_IN_PROGRESS":
+      return {
+        action: "SUBMIT_EVIDENCE",
+        title: "Submit linked evidence",
+        description: "Add evidence for this practice attempt. Submission does not mean the outcome is verified or ready.",
+        href: context.taskId
+          ? `/evidence?taskId=${encodeURIComponent(context.taskId)}&activityId=${encodeURIComponent(context.activityId)}${context.practiceAttemptId ? `&practiceAttemptId=${encodeURIComponent(context.practiceAttemptId)}` : ""}`
+          : "/evidence",
+      };
+    case "EVIDENCE_SUBMITTED":
+    case "UNDER_REVIEW":
+      return { action: "WAIT_FOR_REVIEW", title: "Evidence under review", description: "Your evidence is recorded and awaits an authorized review.", href: "/evidence" };
+    case "REVISION_REQUIRED":
+      return { action: "FOLLOW_FEEDBACK", title: "Review feedback", description: "Review the evidence feedback before the trainer opens remediation.", href: "/evidence" };
+    case "REASSESSMENT":
+    case "READY":
+    case "NOT_READY":
+      return { action: "VIEW_READINESS", title: "View capability readiness", description: "Readiness remains controlled by assessment, evidence, safety blockers, and authorized decisions.", href: "/readiness" };
+  }
+}
 
 export function isValidLearningTransition(currentState: LearningState, targetState: LearningState): boolean {
   return validTargets[currentState].includes(targetState);

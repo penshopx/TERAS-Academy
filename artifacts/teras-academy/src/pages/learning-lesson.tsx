@@ -248,13 +248,25 @@ export default function LearningLessonDetail() {
                   {/* Action Button */}
                   <div className={`flex ${index % 2 === 0 ? 'md:justify-end' : ''}`}>
                     {isCompleted ? (
-                      <div className="space-y-1 rounded-lg border border-border/50 bg-background/60 px-4 py-3 text-left">
+                      <div className="space-y-3 rounded-lg border border-border/50 bg-background/60 px-4 py-3 text-left">
                         <div className="flex items-center gap-2 text-xs font-bold text-primary">
                           <CheckCircle2 className="w-4 h-4" /> LEARNING COMPLETE
                         </div>
                         <div className={`text-[10px] font-mono font-bold tracking-wider ${isVerified ? 'text-emerald-400' : 'text-amber-400'}`}>
                           OUTCOME {isVerified ? 'VERIFIED' : 'AWAITING VERIFICATION'}
                         </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{activity.nextAction.title}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{activity.nextAction.description}</p>
+                        </div>
+                        {activity.nextAction.href && (
+                          <Link href={activity.nextAction.href}>
+                            <Button size="sm" variant="secondary" className="mt-1 w-full font-mono text-[10px] font-bold uppercase tracking-wider">
+                              {activity.nextAction.action === "SUBMIT_EVIDENCE" ? "Open evidence" : activity.nextAction.action === "VIEW_READINESS" ? "View readiness" : "Open practice"}
+                              <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     ) : isInProgress ? (
                       <Button 

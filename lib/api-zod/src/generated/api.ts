@@ -382,7 +382,8 @@ export const CreatePracticeAttemptParams = zod.object({
 
 export const CreatePracticeAttemptBody = zod.object({
   "reflection": zod.string().min(1),
-  "outputSummary": zod.string().min(1)
+  "outputSummary": zod.string().min(1),
+  "sourceActivityId": zod.string()
 })
 
 export const CreatePracticeAttemptResponse = zod.object({
@@ -392,6 +393,14 @@ export const CreatePracticeAttemptResponse = zod.object({
   "status": zod.string(),
   "reflection": zod.string(),
   "outputSummary": zod.string(),
+  "pathwayId": zod.string(),
+  "sourceActivityId": zod.string(),
+  "nextAction": zod.object({
+  "action": zod.enum(['START_ACTIVITY', 'COMPLETE_ACTIVITY', 'WAIT_FOR_VERIFICATION', 'WAIT_FOR_PRACTICE', 'START_PRACTICE', 'SUBMIT_EVIDENCE', 'WAIT_FOR_REVIEW', 'FOLLOW_FEEDBACK', 'VIEW_READINESS']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "href": zod.string().nullable()
+}),
   "feedback": zod.string().nullable()
 })
 
@@ -406,6 +415,9 @@ export const ListEvidenceResponseItem = zod.object({
   "moduleId": zod.string(),
   "moduleName": zod.string(),
   "taskId": zod.string(),
+  "pathwayId": zod.string(),
+  "sourceActivityId": zod.string().nullable(),
+  "practiceAttemptId": zod.string().nullable(),
   "description": zod.string(),
   "status": zod.string(),
   "submittedAt": zod.coerce.date(),
@@ -435,7 +447,9 @@ export const CreateEvidenceBody = zod.object({
   "title": zod.string().min(1),
   "type": zod.string(),
   "description": zod.string().min(1),
-  "fileName": zod.string().nullable()
+  "fileName": zod.string().nullable(),
+  "sourceActivityId": zod.string(),
+  "practiceAttemptId": zod.string()
 })
 
 export const CreateEvidenceResponse = zod.object({
@@ -445,6 +459,9 @@ export const CreateEvidenceResponse = zod.object({
   "moduleId": zod.string(),
   "moduleName": zod.string(),
   "taskId": zod.string(),
+  "pathwayId": zod.string(),
+  "sourceActivityId": zod.string().nullable(),
+  "practiceAttemptId": zod.string().nullable(),
   "description": zod.string(),
   "status": zod.string(),
   "submittedAt": zod.coerce.date(),
@@ -816,6 +833,9 @@ export const ReviewEvidenceByTrainerResponse = zod.object({
   "moduleId": zod.string(),
   "moduleName": zod.string(),
   "taskId": zod.string(),
+  "pathwayId": zod.string(),
+  "sourceActivityId": zod.string().nullable(),
+  "practiceAttemptId": zod.string().nullable(),
   "description": zod.string(),
   "status": zod.string(),
   "submittedAt": zod.coerce.date(),
@@ -850,6 +870,14 @@ export const ReviewPracticeAttemptResponse = zod.object({
   "status": zod.string(),
   "reflection": zod.string(),
   "outputSummary": zod.string(),
+  "pathwayId": zod.string(),
+  "sourceActivityId": zod.string(),
+  "nextAction": zod.object({
+  "action": zod.enum(['START_ACTIVITY', 'COMPLETE_ACTIVITY', 'WAIT_FOR_VERIFICATION', 'WAIT_FOR_PRACTICE', 'START_PRACTICE', 'SUBMIT_EVIDENCE', 'WAIT_FOR_REVIEW', 'FOLLOW_FEEDBACK', 'VIEW_READINESS']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "href": zod.string().nullable()
+}),
   "feedback": zod.string().nullable()
 })
 
@@ -1009,6 +1037,12 @@ export const ListLearningCoursesResponseItem = zod.object({
   "estimatedDurationMinutes": zod.int().min(listLearningCoursesResponseModulesItemLessonsItemActivitiesItemEstimatedDurationMinutesMin),
   "status": zod.string(),
   "currentState": zod.enum(['NOT_STARTED', 'IN_PROGRESS', 'LEARNING_COMPLETED', 'OUTCOME_VERIFIED', 'PRACTICE_REQUIRED', 'PRACTICE_IN_PROGRESS', 'EVIDENCE_SUBMITTED', 'UNDER_REVIEW', 'REVISION_REQUIRED', 'REMEDIATION', 'REASSESSMENT', 'READY', 'NOT_READY']),
+  "nextAction": zod.object({
+  "action": zod.enum(['START_ACTIVITY', 'COMPLETE_ACTIVITY', 'WAIT_FOR_VERIFICATION', 'WAIT_FOR_PRACTICE', 'START_PRACTICE', 'SUBMIT_EVIDENCE', 'WAIT_FOR_REVIEW', 'FOLLOW_FEEDBACK', 'VIEW_READINESS']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "href": zod.string().nullable()
+}),
   "resources": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['PDF', 'VIDEO', 'AUDIO', 'DOCUMENT', 'LINK', 'IMAGE', 'TEXT']),

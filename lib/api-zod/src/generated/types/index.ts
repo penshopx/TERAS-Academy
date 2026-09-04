@@ -39,6 +39,8 @@ export * from './learningActivityType';
 export * from './learningCourse';
 export * from './learningCourseModule';
 export * from './learningLesson';
+export * from './learningNextAction';
+export * from './learningNextActionAction';
 export * from './learningOutcome';
 export * from './learningPlanItem';
 export * from './learningResource';

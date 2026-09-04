@@ -5,6 +5,7 @@
  * TERAS Academy capability development API
  * OpenAPI spec version: 0.1.0
  */
+import type { LearningNextAction } from './learningNextAction';
 
 export interface PracticeAttempt {
   id: string;
@@ -13,6 +14,9 @@ export interface PracticeAttempt {
   status: string;
   reflection: string;
   outputSummary: string;
+  pathwayId: string;
+  sourceActivityId: string;
+  nextAction: LearningNextAction;
   /** @nullable */
   feedback: string | null;
 }

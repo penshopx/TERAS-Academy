@@ -14,6 +14,11 @@ export interface EvidenceRecord {
   moduleId: string;
   moduleName: string;
   taskId: string;
+  pathwayId: string;
+  /** @nullable */
+  sourceActivityId: string | null;
+  /** @nullable */
+  practiceAttemptId: string | null;
   description: string;
   status: string;
   submittedAt: Date;

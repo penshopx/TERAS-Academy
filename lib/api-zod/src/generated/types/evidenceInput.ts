@@ -16,4 +16,6 @@ export interface EvidenceInput {
   description: string;
   /** @nullable */
   fileName: string | null;
+  sourceActivityId: string;
+  practiceAttemptId: string;
 }
