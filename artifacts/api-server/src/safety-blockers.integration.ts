@@ -6,10 +6,14 @@ import {
   enrollmentPathwayEventsTable,
   evidenceReviewsTable,
   gapEventsTable,
+  learningRecordLinksTable,
+  learningTransitionEventsTable,
+  practiceAttemptsTable,
+  reassessmentLinksTable,
   remediationEventsTable,
   readinessEventsTable,
 } from "@workspace/db";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { createIntegrationTestApp } from "./integration-test-app";
 
 type Identity = "learner" | "trainer" | "assessor" | "other" | "anonymous";
@@ -28,6 +32,7 @@ type Evidence = Array<{ id: string; status: string }>;
 type Remediation = Array<{ id: string; status: string }>;
 type Passport = {
   readiness: { status: string };
+  readinessDisclaimer: string;
   achievements: Array<{ capability: string; status: string }>;
   timeline: Array<{ id: string; pathwayId: string | null; pathwayName: string | null; label: string }>;
 };
@@ -40,6 +45,15 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 async function restoreBaseline() {
+  await db
+    .delete(learningTransitionEventsTable)
+    .where(eq(learningTransitionEventsTable.id, "test-m03-reassessment-transition"));
+  await db
+    .delete(reassessmentLinksTable)
+    .where(eq(reassessmentLinksTable.id, "test-rem-m07-causal-reassessment"));
+  await db
+    .delete(learningRecordLinksTable)
+    .where(eq(learningRecordLinksTable.practiceAttemptId, "test-rem-m07-repractice"));
   const attempts = await db
     .select({ id: assessmentAttemptsTable.id })
     .from(assessmentAttemptsTable)
@@ -51,13 +65,23 @@ async function restoreBaseline() {
       ),
     );
   if (attempts.length) {
+    const attemptIds = attempts.map(({ id }) => id);
+    await db
+      .delete(reassessmentLinksTable)
+      .where(or(
+        inArray(reassessmentLinksTable.reassessmentAttemptId, attemptIds),
+        inArray(reassessmentLinksTable.previousAssessmentAttemptId, attemptIds),
+      ));
     await db
       .delete(criterionObservationsTable)
-      .where(inArray(criterionObservationsTable.attemptId, attempts.map(({ id }) => id)));
+      .where(inArray(criterionObservationsTable.attemptId, attemptIds));
     await db
       .delete(assessmentAttemptsTable)
-      .where(inArray(assessmentAttemptsTable.id, attempts.map(({ id }) => id)));
+      .where(inArray(assessmentAttemptsTable.id, attemptIds));
   }
+  await db
+    .delete(practiceAttemptsTable)
+    .where(eq(practiceAttemptsTable.id, "test-rem-m07-repractice"));
   await db.insert(assessmentAttemptsTable).values({
     id: "attempt-m03-1",
     assessmentId: "assessment-m03",
@@ -218,6 +242,39 @@ async function run() {
       status: "Completed",
       createdBy: "trainer-sari",
     });
+    const [m07Reassessment] = await db
+      .select()
+      .from(assessmentAttemptsTable)
+      .where(and(
+        eq(assessmentAttemptsTable.assessmentId, "assessment-m07"),
+        eq(assessmentAttemptsTable.learnerId, "learner-demo"),
+        eq(assessmentAttemptsTable.pathwayId, "path-a"),
+        eq(assessmentAttemptsTable.decision, "Competent"),
+      ))
+      .orderBy(desc(assessmentAttemptsTable.createdAt))
+      .limit(1);
+    assert(m07Reassessment, "M07 competent reassessment fixture was not created");
+    await db.insert(practiceAttemptsTable).values({
+      id: "test-rem-m07-repractice",
+      taskId: "task-m07",
+      learnerId: "learner-demo",
+      pathwayId: "path-a",
+      reflection: "Re-practice completed for the M07 safety regression fixture",
+      outputSummary: "Commissioning checks repeated after remediation",
+      status: "Submitted",
+      createdBy: "learner-demo",
+    });
+    await db.insert(reassessmentLinksTable).values({
+      id: "test-rem-m07-causal-reassessment",
+      learnerId: "learner-demo",
+      pathwayId: "path-a",
+      originalGapId: "gap-m07",
+      remediationPlanId: "rem-m07",
+      practiceAttemptId: "test-rem-m07-repractice",
+      evidenceId: "evidence-m07",
+      reassessmentAttemptId: m07Reassessment.id,
+      createdBy: "assessor-sam",
+    });
     await post("/remediation/rem-m07/complete", "learner", {}, 200);
     const remediation = await request<Remediation>("/remediation", "learner");
     assert(remediation.find(({ id }) => id === "rem-m07")?.status === "Completed", "Completed remediation was not returned by GET");
@@ -234,6 +291,25 @@ async function run() {
     const stillBlocked = await request<Readiness>("/readiness", "learner");
     assert(stillBlocked.status === "Blocked" && stillBlocked.blockers.some((blocker) => blocker.includes("Critical safety failure in M03")), "Completing remediation cleared unresolved M03 critical failure");
 
+    const failedM03Attempt = failedM03.attempts[0];
+    assert(failedM03Attempt, "M03 failed assessment attempt was not created");
+    await db.insert(learningTransitionEventsTable).values({
+      id: "test-m03-reassessment-transition",
+      activityId: "activity-m03-safe-isolation",
+      learnerId: "learner-demo",
+      enrollmentId: "enrol-demo",
+      programId: "solar-pv-tech",
+      pathwayId: "path-a",
+      fromState: "UNDER_REVIEW",
+      toState: "REASSESSMENT",
+      actorId: "assessor-sam",
+      actorRole: "assessor",
+      entityReference: failedM03Attempt.id,
+      reason: "Controlled safety blocker reassessment fixture",
+      idempotencyKey: "test-m03-reassessment-transition",
+      metadata: { references: { reassessmentAttemptId: failedM03Attempt.id } },
+      createdBy: "assessor-sam",
+    });
     await post("/assessor/assessments/assessment-m03/decision", "assessor", {
       learnerId: "learner-demo",
       decision: "Competent", observation: `${marker}: passing reassessment`,
@@ -269,11 +345,12 @@ async function run() {
     const pathBTimeline = passport.timeline.find((step) => step.pathwayId === "path-b");
     assert(
       passport.readiness.status === cleared.status &&
-        passport.achievements.some((item) => item.capability === "Electrical safety" && item.status === "Achieved") &&
+        passport.readinessDisclaimer.includes("not an official competency decision or certification claim") &&
+        passport.achievements.some((item) => item.capability === "Safe isolation and verification" && item.status === "Readiness record") &&
         passport.timeline.some((step) => step.id === "pathway-enrol") &&
         pathATimeline?.pathwayName?.startsWith("Path A") &&
         pathBTimeline?.pathwayName?.startsWith("Path B"),
-      "Capability Passport did not preserve the longitudinal achievement, pathway, and readiness record",
+      "Capability Passport did not preserve the longitudinal readiness record, institutional disclaimer, or pathway history",
     );
     process.stdout.write("Safety blocker integration check passed\n");
   } finally {
