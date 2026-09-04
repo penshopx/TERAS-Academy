@@ -109,7 +109,7 @@ const clerkAppearance = {
 
 function PublicHome() {
   return (
-    <main className="relative min-h-[100dvh] overflow-hidden bg-[#050505] text-white selection:bg-[#00c3ff]/30">
+    <main className="public-theme-surface relative min-h-[100dvh] overflow-hidden bg-background text-foreground selection:bg-[#00c3ff]/30">
       {/* Background elements */}
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(0,195,255,0.12),transparent_40%),linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:auto,64px_64px,64px_64px]" />
       <div className="pointer-events-none fixed inset-0 bg-gradient-to-b from-transparent via-[#050505]/50 to-[#050505]" />
@@ -541,15 +541,15 @@ function SignUpPage() {
 
 function ProtectedPageMessage() {
   return (
-    <main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#050505] px-6 text-white">
+    <main className="public-theme-surface relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-background px-6 text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(0,195,255,0.15),transparent_35%)]" />
-      <div className="relative w-full max-w-xl rounded-2xl border border-white/10 bg-white/[0.035] p-8 text-center shadow-2xl shadow-black sm:p-12">
+      <div className="relative w-full max-w-xl rounded-2xl border border-border bg-card p-8 text-center shadow-2xl sm:p-12">
         <p className="font-mono text-xs font-bold tracking-[0.22em] text-[#00c3ff]">TERAS ACADEMY</p>
         <h1 className="mt-5 text-3xl font-extrabold tracking-tight sm:text-4xl">Masuk untuk melanjutkan ke TERAS</h1>
-        <p className="mt-5 leading-7 text-white/55">Journey, Readiness, dan Capability Passport tersedia setelah Anda masuk ke workspace.</p>
+        <p className="mt-5 leading-7 text-muted-foreground">Journey, Readiness, dan Capability Passport tersedia setelah Anda masuk ke workspace.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link href="/sign-in" className="rounded-lg bg-[#00c3ff] px-6 py-3 font-bold text-black transition hover:bg-[#70dcff]">Masuk</Link>
-          <Link href="/" className="rounded-lg border border-white/20 px-6 py-3 font-bold transition hover:border-[#00c3ff]/70">Kembali ke Beranda</Link>
+          <Link href="/" className="rounded-lg border border-border px-6 py-3 font-bold transition hover:border-[#00c3ff]/70">Kembali ke Beranda</Link>
         </div>
       </div>
     </main>

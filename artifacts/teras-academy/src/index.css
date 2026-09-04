@@ -163,6 +163,19 @@
 }
 
 @layer utilities {
+  :root:not(.dark) .public-theme-surface [class*="text-white"] {
+    color: hsl(var(--foreground)) !important;
+  }
+  :root:not(.dark) .public-theme-surface [class*="border-white"] {
+    border-color: hsl(var(--border)) !important;
+  }
+  :root:not(.dark) .public-theme-surface [class*="bg-white"] {
+    background-color: hsl(var(--muted)) !important;
+  }
+  :root:not(.dark) .public-theme-surface [class*="bg-black"],
+  :root:not(.dark) .public-theme-surface [class*="bg-[#0"] {
+    background-color: hsl(var(--card)) !important;
+  }
   .cockpit-panel {
     @apply bg-card border border-card-border rounded-lg shadow-sm relative overflow-hidden;
   }
