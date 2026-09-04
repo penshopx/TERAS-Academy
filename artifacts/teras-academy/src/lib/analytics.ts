@@ -76,3 +76,44 @@ export function trackResourceOpened({
     location: "lesson_activity_resources",
   });
 }
+
+type ReadinessQueueType =
+  | "trainer_practice"
+  | "trainer_evidence"
+  | "assessor_readiness";
+
+type ReadinessQueueOpenedData = {
+  queueType: ReadinessQueueType;
+  pathway: string;
+  hasBlocker: boolean;
+};
+
+type ReadinessDecisionRecordedData = ReadinessQueueOpenedData & {
+  outcome: string;
+};
+
+export function trackReadinessQueueOpened({
+  queueType,
+  pathway,
+  hasBlocker,
+}: ReadinessQueueOpenedData): void {
+  trackEvent("readiness_queue_opened", {
+    queue_type: queueType,
+    pathway,
+    has_blocker: hasBlocker,
+  });
+}
+
+export function trackReadinessDecisionRecorded({
+  queueType,
+  pathway,
+  hasBlocker,
+  outcome,
+}: ReadinessDecisionRecordedData): void {
+  trackEvent("readiness_decision_recorded", {
+    queue_type: queueType,
+    pathway,
+    has_blocker: hasBlocker,
+    outcome,
+  });
+}

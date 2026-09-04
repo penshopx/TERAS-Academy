@@ -11,6 +11,7 @@ import { type ElementType, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionSummary, enforceInternalRecommendation, hasCriticalFailure, prioritizeDecisionQueue, recommendationLabel, restoreDecisionFocus, type LegacyAssessmentDecision } from "@/components/assessor-decision";
+import { trackReadinessDecisionRecorded, trackReadinessQueueOpened } from "@/lib/analytics";
 
 export default function AssessorDesk() {
   const { data: dashboard, isLoading, error } = useGetAssessorDashboard();
@@ -30,18 +31,37 @@ export default function AssessorDesk() {
   const queueTitleRef = useRef<HTMLHeadingElement | null>(null);
   const closeFocusTargetRef = useRef<HTMLElement | null>(null);
   const decisionScrollYRef = useRef(0);
+  const decisionAnalyticsRef = useRef({ pathway: "", hasBlocker: false });
   const metrics: { label: string; value: number; Icon: ElementType; color: string }[] = [
     { label: "Assessments", value: dashboard?.pendingAssessmentCount ?? 0, Icon: Scale, color: "text-primary" },
     { label: "Evidence", value: dashboard?.pendingEvidenceCount ?? 0, Icon: BookOpen, color: "" },
     { label: "Reassessments", value: dashboard?.reassessmentCount ?? 0, Icon: Activity, color: "text-amber-500" },
     { label: "Blocked Gates", value: dashboard?.blockedGateCount ?? 0, Icon: AlertTriangle, color: "text-destructive" },
   ];
-  const openDecision = (item: { id: string; learnerId: string }, trigger: HTMLButtonElement) => { decisionTriggerRef.current = trigger; closeFocusTargetRef.current = trigger; decisionScrollYRef.current = window.scrollY; setSelectedAssessment({ assessmentId: item.id, learnerId: item.learnerId }); setDecision("Competent"); setObservation(""); setScores({}); setObservations({}); };
+  const openDecision = (item: { id: string; learnerId: string; pathwayName: string; priority: string }, trigger: HTMLButtonElement) => {
+    trackReadinessQueueOpened({
+      queueType: "assessor_readiness",
+      pathway: item.pathwayName,
+      hasBlocker: item.priority === "Critical",
+    });
+    decisionAnalyticsRef.current = {
+      pathway: item.pathwayName,
+      hasBlocker: item.priority === "Critical",
+    };
+    decisionTriggerRef.current = trigger;
+    closeFocusTargetRef.current = trigger;
+    decisionScrollYRef.current = window.scrollY;
+    setSelectedAssessment({ assessmentId: item.id, learnerId: item.learnerId });
+    setDecision("Competent");
+    setObservation("");
+    setScores({});
+    setObservations({});
+  };
   const submit = () => {
     const detail = detailQuery.data;
     if (!assessmentId || !learnerId || !detail || !observation.trim() || detail.criteria.some(c => scores[c.id] === undefined)) { toast({ title: "Complete the rubric", description: "A decision, overall observation, and score for every criterion are required.", variant: "destructive" }); return; }
     const criticalFail = hasCriticalFailure(detail.criteria, scores);
-    decisionMutation.mutate({ assessmentId, data: { learnerId, decision: enforceInternalRecommendation(decision, criticalFail), observation, criteria: detail.criteria.map(c => ({ criterionId: c.id, score: scores[c.id]!, observation: observations[c.id] || null, evidenceId: null })) } }, { onSuccess: () => { const recommendation = recommendationLabel(enforceInternalRecommendation(decision, criticalFail)); setDecisionHistory(current => [{ id: `${assessmentId}-${Date.now()}`, assessment: detail.assessment.name, recommendation, recordedAt: new Date().toLocaleString() }, ...current]); toast({ title: "Recommendation recorded", description: criticalFail ? "Critical criterion failure recorded. Readiness remains blocked." : "The internal evaluation recommendation has been recorded." }); closeFocusTargetRef.current = queueTitleRef.current; setSelectedAssessment(null); [getListAssessmentsQueryKey(), getListGapsQueryKey(), getGetLearnerDashboardQueryKey(), getGetLearnerJourneyQueryKey(), getGetLearnerLearningPlanQueryKey(), getGetLearnerReadinessQueryKey(), getGetCapabilityPassportQueryKey(), getGetAssessorDashboardQueryKey(), getGetAssessorQueueQueryKey(), getGetAssessmentQueryKey(assessmentId, assessmentParams), getGetModuleQueryKey(detail.assessment.moduleId), getGetProgramQueryKey("solar-pv-tech")].forEach(queryKey => queryClient.invalidateQueries({ queryKey })); }, onError: () => toast({ title: "Recommendation failed", description: "The internal recommendation could not be recorded.", variant: "destructive" }) });
+    decisionMutation.mutate({ assessmentId, data: { learnerId, decision: enforceInternalRecommendation(decision, criticalFail), observation, criteria: detail.criteria.map(c => ({ criterionId: c.id, score: scores[c.id]!, observation: observations[c.id] || null, evidenceId: null })) } }, { onSuccess: () => { const recommendation = recommendationLabel(enforceInternalRecommendation(decision, criticalFail)); trackReadinessDecisionRecorded({ queueType: "assessor_readiness", pathway: decisionAnalyticsRef.current.pathway, hasBlocker: criticalFail, outcome: criticalFail || decision === "Not competent" ? "needs_reinforcement" : "ready_for_next_stage" }); setDecisionHistory(current => [{ id: `${assessmentId}-${Date.now()}`, assessment: detail.assessment.name, recommendation, recordedAt: new Date().toLocaleString() }, ...current]); toast({ title: "Recommendation recorded", description: criticalFail ? "Critical criterion failure recorded. Readiness remains blocked." : "The internal evaluation recommendation has been recorded." }); closeFocusTargetRef.current = queueTitleRef.current; setSelectedAssessment(null); [getListAssessmentsQueryKey(), getListGapsQueryKey(), getGetLearnerDashboardQueryKey(), getGetLearnerJourneyQueryKey(), getGetLearnerLearningPlanQueryKey(), getGetLearnerReadinessQueryKey(), getGetCapabilityPassportQueryKey(), getGetAssessorDashboardQueryKey(), getGetAssessorQueueQueryKey(), getGetAssessmentQueryKey(assessmentId, assessmentParams), getGetModuleQueryKey(detail.assessment.moduleId), getGetProgramQueryKey("solar-pv-tech")].forEach(queryKey => queryClient.invalidateQueries({ queryKey })); }, onError: () => toast({ title: "Recommendation failed", description: "The internal recommendation could not be recorded.", variant: "destructive" }) });
   };
   if (isLoading) return <div className="h-full flex items-center justify-center"><Activity className="w-8 h-8 text-primary animate-pulse" /></div>;
   if (error || !dashboard) return <div className="text-destructive">Failed to load assessor dashboard.</div>;

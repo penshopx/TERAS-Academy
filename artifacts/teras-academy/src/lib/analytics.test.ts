@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { trackLearningAction, trackResourceOpened } from "./analytics";
+import {
+  trackLearningAction,
+  trackReadinessDecisionRecorded,
+  trackReadinessQueueOpened,
+  trackResourceOpened,
+} from "./analytics";
 
 type TestUmami = {
   track(name: string, data?: Record<string, string | number | boolean>): void;
@@ -80,6 +85,51 @@ test("dispatches only the minimum anonymous resource-open contract", () => {
       location: "lesson_activity_resources",
     },
   }]);
+});
+
+test("dispatches the anonymous readiness funnel contract without learner data", () => {
+  const calls: Array<{
+    name: string;
+    data?: Record<string, string | number | boolean>;
+  }> = [];
+
+  setTestWindow({
+    track(name, data) {
+      calls.push({ name, data });
+    },
+  });
+
+  trackReadinessQueueOpened({
+    queueType: "trainer_evidence",
+    pathway: "Solar PV Technician",
+    hasBlocker: false,
+  });
+  trackReadinessDecisionRecorded({
+    queueType: "trainer_evidence",
+    pathway: "Solar PV Technician",
+    hasBlocker: true,
+    outcome: "needs_revision",
+  });
+
+  assert.deepStrictEqual(calls, [
+    {
+      name: "readiness_queue_opened",
+      data: {
+        queue_type: "trainer_evidence",
+        pathway: "Solar PV Technician",
+        has_blocker: false,
+      },
+    },
+    {
+      name: "readiness_decision_recorded",
+      data: {
+        queue_type: "trainer_evidence",
+        pathway: "Solar PV Technician",
+        has_blocker: true,
+        outcome: "needs_revision",
+      },
+    },
+  ]);
 });
 
 test("remains a safe no-op when the injected tracker is unavailable", () => {

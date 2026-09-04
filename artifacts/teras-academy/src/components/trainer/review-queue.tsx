@@ -9,6 +9,7 @@ import { Activity, Users, AlertCircle, FileText, ArrowRight, ShieldAlert, Histor
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { trackReadinessDecisionRecorded, trackReadinessQueueOpened } from "@/lib/analytics";
 import { getGetCapabilityPassportQueryKey, getGetLearnerDashboardQueryKey, getGetLearnerReadinessQueryKey, getGetTrainerDashboardQueryKey, getGetTrainerReviewQueueQueryKey, getListEvidenceQueryKey, useReviewEvidenceByTrainer, useReviewPracticeAttempt, TrainerDashboard } from "@workspace/api-client-react";
 
 type QueueItem = { id: string; kind: string; title: string; moduleName: string; learnerName: string; pathwayName: string; priority: string; };
@@ -34,6 +35,11 @@ export function ReviewQueue({ dashboard }: { dashboard: TrainerDashboard }) {
   ];
 
   const openReview = (item: QueueItem) => {
+    trackReadinessQueueOpened({
+      queueType: item.kind === "Practice" ? "trainer_practice" : "trainer_evidence",
+      pathway: item.pathwayName,
+      hasBlocker: item.priority === "Critical",
+    });
     setSelected(item); setComment("");
     setStatus(item.kind === "Practice" ? "Reviewed" : "Valid");
     setQuality({ valid: true, relevant: true, sufficient: true, traceable: true });
@@ -54,6 +60,12 @@ export function ReviewQueue({ dashboard }: { dashboard: TrainerDashboard }) {
       return;
     }
     const done = () => {
+      trackReadinessDecisionRecorded({
+        queueType: selected.kind === "Practice" ? "trainer_practice" : "trainer_evidence",
+        pathway: selected.pathwayName,
+        hasBlocker: status === "Needs revision",
+        outcome: status === "Needs revision" ? "needs_revision" : selected.kind === "Practice" ? "reviewed" : "valid",
+      });
       toast({ title: "Review recorded", description: "The latest review is now visible in the workspace." });
       setSelected(null); refresh();
     };
