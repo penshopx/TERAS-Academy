@@ -655,18 +655,6 @@ x-pathway-selection-components:
         href: { type: string }
         priority: { type: string }
       required: [title, description, href, priority]
-    JourneyStep:
-      type: object
-      properties:
-        id: { type: string }
-        pathwayId: { type: ["string", "null"] }
-        pathwayName: { type: ["string", "null"] }
-        label: { type: string }
-        description: { type: string }
-        status: { type: string }
-        date: { type: ["string", "null"], format: date-time }
-        href: { type: ["string", "null"] }
-      required: [id, pathwayId, pathwayName, label, description, status, date, href]
     LearningPlanItem:
       type: object
       properties:
