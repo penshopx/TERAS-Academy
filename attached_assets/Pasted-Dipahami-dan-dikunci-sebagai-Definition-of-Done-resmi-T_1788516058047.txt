@@ -1,0 +1,88 @@
+Dipahami dan **dikunci sebagai Definition of Done resmi TERAS Academy**.
+
+### Baseline TERAS Academy
+
+> **TERAS Academy adalah jembatan persiapan peserta sertifikasi untuk membangun kecukupan kompetensi, kapabilitas, evidence, dan readiness sebelum mengikuti asesmen resmi oleh Lembaga Sertifikasi.**
+
+Batas institusionalnya juga tetap tegas:
+
+**TERAS Academy ≠ Lembaga Sertifikasi**
+**TERAS Readiness ≠ Keputusan Kompeten**
+**TERAS Capability Passport ≠ Sertifikat Kompetensi**
+
+### Workstream yang dikunci
+
+```text
+#54
+ADMIN & ROLE GOVERNANCE
+        │
+        ▼
+#55
+LMS AUTHORING & MANAGED MEDIA
+        │
+        ▼
+#56
+VALIDATOR & READINESS WORKFLOW
+        │
+        ▼
+INTEGRATED ROLE-BASED JOURNEY TEST
+        │
+        ▼
+FINAL PRODUCTION GATE REVIEW
+```
+
+**#54** menjadi fondasi karena seluruh workstream berikutnya bergantung pada pengguna, role, program, pathway, cohort, dan enrollment yang benar.
+
+**#55** kemudian menjadikan LMS benar-benar operasional sebagai **core learning engine**, bukan sekadar tampilan course.
+
+**#56** menjadi jembatan dari proses belajar menuju evidence, feedback, remediation, reassessment, readiness, dan akhirnya **handoff ke proses sertifikasi eksternal**.
+
+### Definition of Done keseluruhan
+
+Proyek **belum boleh dinyatakan 100% selesai** sebelum seluruh journey membuktikan:
+
+```text
+Admin
+  ↓
+User / Role / Program / Pathway / Cohort / Enrollment
+  ↓
+Instructor
+  ↓
+Author Course → Module → Lesson → Activity
+              → Outcome → Resource
+  ↓
+Learner
+  ↓
+Learn → Practice → Evidence
+  ↓
+Validator
+  ↓
+Verify → Feedback → Remediation → Reassessment
+  ↓
+Readiness
+  ↓
+Handoff
+  ↓
+External Certification Process
+```
+
+Dan pada setiap tahap harus ada:
+
+* **Server-side authorization**
+* **Role isolation**
+* **Persistent database state**
+* **Audit history**
+* **Secure upload / managed media**
+* **Pathway isolation**
+* **Production-path verification**
+* **No frontend-only security**
+* **No fake/demo state presented as production truth**
+* **No shortcut yang melewati prerequisite workflow**
+
+Yang paling penting, **readiness tetap menjadi output internal TERAS** dan tidak boleh berubah secara semantik menjadi keputusan sertifikasi resmi.
+
+Dengan demikian, baseline sekarang jelas:
+
+> **TERAS Academy belum selesai sampai #54 → #55 → #56 → integrated journey → final production Gate Review seluruhnya lolos.**
+
+Saya akan menggunakan urutan dan Definition of Done ini sebagai **baseline evaluasi berikutnya**, tanpa memperluas scope secara sepihak.
