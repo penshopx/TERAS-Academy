@@ -1,0 +1,76 @@
+Saya sudah membaca dokumen yang ditempelkan. Isinya memperjelas **batas positioning TERAS Academy** secara sangat penting: TERAS adalah **platform pengembangan kapabilitas dan persiapan menuju uji kompetensi**, bukan lembaga asesmen atau sertifikasi. 
+
+Yang menurut saya paling penting untuk dijadikan **aturan desain produk dan komunikasi TERAS ke depan** adalah:
+
+### 1. TERAS = jembatan, bukan pengganti lembaga resmi
+
+Alur utamanya harus konsisten:
+
+**Learn → Practice → Build Evidence → Identify Gaps → Improve → Prepare → Official Competency Testing**
+
+Sedangkan keputusan **Kompeten / Belum Kompeten dan sertifikasi resmi** tetap berada pada lembaga serta asesor yang berwenang. 
+
+### 2. Semua evaluasi di dalam TERAS harus diberi konteks “internal”
+
+Diagnostic, formative, practice assessment, dan readiness verification **boleh dan justru penting**, tetapi semuanya merupakan mekanisme pembelajaran dan kesiapan internal. 
+
+Ini sangat cocok dengan engine yang sekarang sudah kita bangun. Artinya **tidak perlu mengubah core engine hanya karena positioning ini**. Yang perlu dijaga adalah bagaimana hasil engine ditampilkan dan diberi label.
+
+### 3. Capability Passport harus dipertahankan sebagai “rekam kapabilitas”
+
+Passport bukan sertifikat.
+
+Ia merekam:
+
+**Learning + Practice + Evidence + Feedback + Gap + Remediation + Reassessment + Readiness + Longitudinal Development.**
+
+Ini justru membuat Passport TERAS memiliki posisi yang berbeda dan lebih menarik daripada sekadar “certificate repository”. 
+
+### 4. “Readiness” adalah indikator kesiapan, bukan kompetensi
+
+Ini menurut saya salah satu prinsip terpenting untuk UI TERAS.
+
+Misalnya:
+
+> **Recommended for Official Competency Testing**
+
+lebih aman daripada:
+
+> ~~Competent~~
+
+Dan:
+
+> **Safety Cleared for TERAS Practice**
+
+lebih tepat daripada:
+
+> ~~Safe / Authorized to Work~~
+
+Karena safety gate TERAS merupakan perlindungan dalam lingkungan pembelajaran/praktik, bukan izin kerja resmi. 
+
+### 5. Ini juga menjadi guardrail untuk Task #13–#16
+
+Dengan baseline proyek yang sudah kita sepakati, dokumen ini memberi **guardrail tambahan**:
+
+| Area                  | Prinsip                                                                     |
+| --------------------- | --------------------------------------------------------------------------- |
+| Hardening             | Jangan sampai sistem menghasilkan klaim kompetensi resmi                    |
+| Accessibility         | Status harus mudah dipahami tanpa interpretasi ambigu                       |
+| Consistency           | Istilah readiness, practice, evidence, gap, remediation harus konsisten     |
+| Regression Protection | Test harus mencegah perubahan UI/logic yang kembali mengaburkan batas TERAS |
+
+Jadi Task #13–#16 **bukan sekadar technical cleanup**. Fase tersebut sekarang juga menjadi mekanisme untuk memastikan positioning TERAS **terkunci sampai ke level produk**.
+
+### Kesimpulan
+
+Saya akan menjadikan dokumen ini sebagai **positioning/communication guardrail TERAS**, bukan sebagai alasan untuk membuka kembali pekerjaan yang sudah selesai.
+
+Dengan demikian arsitektur konseptual TERAS semakin jelas:
+
+> **TERAS Academy membangun kapabilitas dan kesiapan.**
+> **Lembaga resmi melakukan asesmen dan sertifikasi.**
+> **Capability Passport merekam perjalanan kapabilitas.**
+> **Readiness menunjukkan kesiapan untuk melanjutkan.**
+> **Safety Gate melindungi proses praktik.**
+
+Ini menurut saya adalah positioning yang **lebih aman secara kelembagaan sekaligus lebih kuat secara produk**. 
