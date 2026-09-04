@@ -13,3 +13,4 @@
 - [Causal journey release gates](causal-journey-release-gates.md) — end-to-end gates must drive production transitions; seeded end states can hide broken remediation and readiness handoffs.
 - [Authoring publish serialization](authoring-publish-serialization.md) — edits and publishes for one course must share a database transaction lock before snapshot reads begin.
 - [App Storage private directory](app-storage-private-directory.md) — normalize PRIVATE_OBJECT_DIR before URL matching because provisioned values may begin with a slash.
+- [Publish-safe database checks](publish-safe-database-checks.md) — publish schema diffs may omit custom functions, so table constraints must be self-contained.

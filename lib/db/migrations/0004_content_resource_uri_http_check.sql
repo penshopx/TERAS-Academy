@@ -98,16 +98,24 @@ BEGIN
       'Cannot enforce resource URI policy: unsafe legacy values remain; run the resource URI quarantine first';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conrelid = 'teras_content_resources'::regclass
-      AND conname = 'teras_content_resources_uri_http_check'
-  ) THEN
-    ALTER TABLE teras_content_resources
-      ADD CONSTRAINT teras_content_resources_uri_http_check
-      CHECK (uri IS NULL OR teras_is_valid_resource_uri(uri));
-  END IF;
+  ALTER TABLE teras_content_resources
+    DROP CONSTRAINT IF EXISTS teras_content_resources_uri_http_check;
+
+  ALTER TABLE teras_content_resources
+    ADD CONSTRAINT teras_content_resources_uri_http_check
+    CHECK (
+      uri IS NULL
+      OR (
+        uri !~ '[[:space:]]'
+        AND uri ~* '^https?://(\[[0-9A-Fa-f:.]+\]|[A-Za-z0-9_](?:[A-Za-z0-9_.-]*[A-Za-z0-9_])?)(?::(?:[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^[:space:]]*)?$'
+        AND (
+          uri !~* '^https?://[0-9.]+(?:[/:?#]|$)'
+          OR uri ~* '^https?://(?:(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\.){3}(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})(?::(?:[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#]|$)'
+        )
+      )
+    );
 END $$;
+
+DROP FUNCTION IF EXISTS teras_is_valid_resource_uri(text);
 
 COMMIT;

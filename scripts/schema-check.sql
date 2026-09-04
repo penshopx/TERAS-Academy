@@ -61,8 +61,7 @@ BEGIN
   ) OR NOT EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'teras_readiness_gates_pathway_id_teras_pathways_id_fk' AND contype = 'f'
-  ) OR to_regprocedure('teras_is_valid_resource_uri(text)') IS NULL
-    OR NOT EXISTS (
+  ) OR NOT EXISTS (
       SELECT 1 FROM pg_constraint
       WHERE conrelid = 'teras_content_resources'::regclass
         AND conname = 'teras_content_resources_uri_http_check'
@@ -92,7 +91,14 @@ BEGIN
     SELECT 1
     FROM teras_content_resources
     WHERE uri IS NOT NULL
-      AND NOT teras_is_valid_resource_uri(uri)
+    AND (
+      uri ~ '[[:space:]]'
+      OR uri !~* '^https?://(\[[0-9A-Fa-f:.]+\]|[A-Za-z0-9_](?:[A-Za-z0-9_.-]*[A-Za-z0-9_])?)(?::(?:[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^[:space:]]*)?$'
+      OR (
+        uri ~* '^https?://[0-9.]+(?:[/:?#]|$)'
+        AND uri !~* '^https?://(?:(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\.){3}(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})(?::(?:[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#]|$)'
+      )
+    )
   ) THEN
     RAISE EXCEPTION 'Unsafe content resource URI remains after quarantine';
   END IF;

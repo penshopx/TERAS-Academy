@@ -172,7 +172,7 @@ TERAS_MIGRATION_ACTOR=integration-test \
 
 fresh_state="$(psql "$test_database_url" -Atqc "
   SELECT
-    to_regprocedure('teras_is_valid_resource_uri(text)') IS NOT NULL,
+    to_regprocedure('teras_is_valid_resource_uri(text)') IS NULL,
     EXISTS (
       SELECT 1
       FROM pg_constraint
@@ -182,6 +182,6 @@ fresh_state="$(psql "$test_database_url" -Atqc "
     )
 ")"
 if [ "$fresh_state" != "t|t" ]; then
-  echo "Existing-schema reconciliation did not establish the URI validator and CHECK constraint: $fresh_state" >&2
+  echo "Existing-schema reconciliation did not establish the self-contained URI CHECK constraint: $fresh_state" >&2
   exit 1
 fi

@@ -126,7 +126,14 @@ export const contentResourcesTable = pgTable("teras_content_resources", {
 }, table => [
   check(
     "teras_content_resources_uri_http_check",
-    sql`${table.uri} IS NULL OR teras_is_valid_resource_uri(${table.uri})`,
+    sql`${table.uri} IS NULL OR (
+      ${table.uri} !~ '[[:space:]]'
+      AND ${table.uri} ~* '^https?://(\\[[0-9A-Fa-f:.]+\\]|[A-Za-z0-9_](?:[A-Za-z0-9_.-]*[A-Za-z0-9_])?)(?::(?:[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^[:space:]]*)?$'
+      AND (
+        ${table.uri} !~* '^https?://[0-9.]+(?:[/:?#]|$)'
+        OR ${table.uri} ~* '^https?://(?:(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\\.){3}(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})(?::(?:[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#]|$)'
+      )
+    )`,
   ),
   uniqueIndex("teras_content_resources_activity_sequence_unique").on(table.activityId, table.sequence),
 ]);
