@@ -72,10 +72,15 @@ async function queue() {
 
 router.get("/trainer/review-queue", async (req, res): Promise<void> => {
   req.log.info("Loading trainer review queue");
+  const trainerId = await authorizeWorkspaceRole(req, res, "trainer");
+  if (!trainerId) return;
   res.json(GetTrainerReviewQueueResponse.parse(await queue()));
 });
-router.get("/trainer/dashboard", async (_req, res): Promise<void> => {
+router.get("/trainer/dashboard", async (req, res): Promise<void> => {
+  const trainerId = await authorizeWorkspaceRole(req, res, "trainer");
+  if (!trainerId) return;
   const [ctx, items, evidence, gaps, plans] = await Promise.all([learnerContext(), queue(), evidenceRecords(), gapRecords(), remediationRecords()]);
+  if (ctx.enrollment.trainerId !== trainerId) { res.status(403).json({ error: "You are not assigned to this learner enrollment" }); return; }
   const trainer = await db.select().from(peopleTable).where(eq(peopleTable.id, ctx.enrollment.trainerId!)).then((rows) => rows[0]);
   res.json(GetTrainerDashboardResponse.parse({ trainer, assignedLearnerCount: 1, pendingFeedbackCount: items.filter((item) => item.kind === "Practice").length, pendingEvidenceCount: evidence.filter((item) => item.status === "Under review").length, activeRemediationCount: plans.filter((plan) => plan.status !== "Completed").length, blockedLearnerCount: gaps.some((gap) => gap.severity === "Critical" && gap.status !== "Resolved") ? 1 : 0, recentActivity: items }));
 });

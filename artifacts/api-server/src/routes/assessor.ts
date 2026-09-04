@@ -33,7 +33,7 @@ import {
   gapRecords,
   learnerContext,
 } from "../lib/teras";
-import { authorizeWorkspaceRole } from "../lib/authorization";
+import { authorizeLearningActor, authorizeWorkspaceRole, type LearnerContext } from "../lib/authorization";
 import { enforceSafetyDecision } from "../lib/safety";
 
 const router: IRouter = Router();
@@ -44,8 +44,7 @@ async function assessmentDetail(assessment: {
   moduleId: string;
   name: string;
   gateCode: string | null;
-}) {
-  const context = await learnerContext();
+}, context: LearnerContext) {
   const [criteria, attempts, observations, people] = await Promise.all([
     db
       .select()
@@ -57,7 +56,7 @@ async function assessmentDetail(assessment: {
       .where(
         and(
           eq(assessmentAttemptsTable.assessmentId, assessment.id),
-          eq(assessmentAttemptsTable.learnerId, DEMO_LEARNER),
+          eq(assessmentAttemptsTable.learnerId, context.learner.id),
           eq(assessmentAttemptsTable.pathwayId, context.pathway.id),
         ),
       ),
@@ -100,9 +99,9 @@ async function assessmentDetail(assessment: {
   };
 }
 
-async function activeAssessments() {
-  const [context, modules, assessments] = await Promise.all([
-    learnerContext(),
+async function activeAssessments(requestContext?: LearnerContext) {
+  const context = requestContext ?? await learnerContext();
+  const [modules, assessments] = await Promise.all([
     db.select().from(modulesTable),
     db.select().from(assessmentsTable),
   ]);
@@ -120,7 +119,10 @@ async function activeAssessments() {
 
 router.get("/assessments", async (req, res): Promise<void> => {
   req.log.info("Listing assessments");
-  const { summaries } = await activeAssessments();
+  const actor = await authorizeLearningActor(req, res);
+  if (!actor) return;
+  const context = await learnerContext(actor.role === "learner" ? actor.id : DEMO_LEARNER);
+  const { summaries } = await activeAssessments(context);
   res.json(ListAssessmentsResponse.parse(summaries));
 });
 
@@ -134,19 +136,27 @@ router.get("/assessments/:assessmentId", async (req, res): Promise<void> => {
     .select()
     .from(assessmentsTable)
     .where(eq(assessmentsTable.id, parsed.data.assessmentId));
-  const { pathway } = await learnerContext();
+  const actor = await authorizeLearningActor(req, res);
+  if (!actor) return;
+  const context = await learnerContext(actor.role === "learner" ? actor.id : DEMO_LEARNER);
   const [module] = assessment
     ? await db.select().from(modulesTable).where(eq(modulesTable.id, assessment.moduleId))
     : [];
-  if (!assessment || module?.pathwayId !== pathway.id) {
+  if (!assessment || module?.pathwayId !== context.pathway.id) {
     res.status(404).json({ error: "Assessment not found for the enrolled pathway" });
     return;
   }
-  res.json(GetAssessmentResponse.parse(await assessmentDetail(assessment)));
+  res.json(GetAssessmentResponse.parse(await assessmentDetail(assessment, context)));
 });
 
-router.get("/assessor/queue", async (_req, res): Promise<void> => {
+router.get("/assessor/queue", async (req, res): Promise<void> => {
+  const assessorId = await authorizeWorkspaceRole(req, res, "assessor");
+  if (!assessorId) return;
   const { context, pathwayModules, summaries } = await activeAssessments();
+  if (context.enrollment.assessorId !== assessorId) {
+    res.status(403).json({ error: "You are not assigned to this learner enrollment" });
+    return;
+  }
   res.json(
     GetAssessorQueueResponse.parse(
       summaries
@@ -168,12 +178,18 @@ router.get("/assessor/queue", async (_req, res): Promise<void> => {
   );
 });
 
-router.get("/assessor/dashboard", async (_req, res): Promise<void> => {
+router.get("/assessor/dashboard", async (req, res): Promise<void> => {
+  const assessorId = await authorizeWorkspaceRole(req, res, "assessor");
+  if (!assessorId) return;
   const [{ context, pathwayModules, summaries }, evidence, gaps] = await Promise.all([
     activeAssessments(),
     evidenceRecords(),
     gapRecords(),
   ]);
+  if (context.enrollment.assessorId !== assessorId) {
+    res.status(403).json({ error: "You are not assigned to this learner enrollment" });
+    return;
+  }
   const [assessor] = await db
     .select()
     .from(peopleTable)
@@ -416,7 +432,7 @@ router.post(
     );
     res
       .status(201)
-      .json(SubmitAssessmentDecisionResponse.parse(await assessmentDetail(assessment)));
+      .json(SubmitAssessmentDecisionResponse.parse(await assessmentDetail(assessment, context)));
   },
 );
 

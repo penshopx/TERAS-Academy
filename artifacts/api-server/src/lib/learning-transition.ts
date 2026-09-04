@@ -163,6 +163,12 @@ export async function transitionLearningState(
   if (command.learnerId !== context.learner.id || (actor.role === "learner" && actor.id !== command.learnerId)) {
     return reject("LEARNER_MISMATCH", "The authenticated actor does not own this learner record.", command.currentState, 403);
   }
+  if (
+    (actor.role === "trainer" && actor.id !== context.enrollment.trainerId) ||
+    (actor.role === "assessor" && actor.id !== context.enrollment.assessorId)
+  ) {
+    return reject("UNAUTHORIZED_ACTOR", "The authenticated staff member is not assigned to this learner enrollment.", command.currentState, 403);
+  }
   if (command.programId !== context.program.id) {
     return reject("PROGRAM_MISMATCH", "The learning record is outside the active program.", command.currentState, 403);
   }

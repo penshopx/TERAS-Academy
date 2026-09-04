@@ -13,6 +13,8 @@ export type TestAuthorizationIdentity = {
   /** Test-only server injected learner identity; never accepted from HTTP. */
   learnerId?: string;
 };
+export type LearnerContext = Awaited<ReturnType<typeof learnerContext>>;
+const allowsDemoAccess = () => process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
 
 /**
  * This symbol is only populated by the in-process integration app factory.
@@ -46,7 +48,7 @@ export async function authorizeWorkspaceRole(req: Request, res: Response, role: 
     const context = await learnerContext();
     return role === "trainer" ? context.enrollment.trainerId : context.enrollment.assessorId;
   }
-  if (!userId && process.env.NODE_ENV !== "production") {
+  if (!userId && allowsDemoAccess()) {
     const context = await learnerContext();
     return role === "trainer" ? context.enrollment.trainerId : context.enrollment.assessorId;
   }
@@ -74,7 +76,7 @@ export async function authorizeLearner(req: Request, res: Response): Promise<str
     return null;
   }
   const { userId } = getAuth(req);
-  if (!userId && process.env.NODE_ENV !== "production") {
+  if (!userId && allowsDemoAccess()) {
     return (await learnerContext()).learner.id;
   }
   if (userId) {
@@ -114,7 +116,7 @@ export async function authorizeLearningActor(req: Request, res: Response): Promi
   }
 
   const { userId } = getAuth(req);
-  if (!userId && process.env.NODE_ENV !== "production") {
+  if (!userId && allowsDemoAccess()) {
     const context = await learnerContext();
     return { id: context.learner.id, role: "learner" };
   }
