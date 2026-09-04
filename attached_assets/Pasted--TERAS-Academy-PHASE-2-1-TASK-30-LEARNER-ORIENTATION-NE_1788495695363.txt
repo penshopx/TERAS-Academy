@@ -1,0 +1,1084 @@
+# TERAS Academy — PHASE 2.1
+
+## TASK #30 — LEARNER ORIENTATION & NEXT ACTION
+
+### “Buat learner selalu tahu sedang belajar apa dan harus lanjut ke mana”
+
+## STATUS
+
+**Phase 2 Entry Gate: GO**
+
+Task #25 — PASS
+Task #26 — PASS
+Task #27 — PASS
+
+Task #30 adalah pekerjaan pertama Phase 2.
+
+---
+
+# 1. TUJUAN UTAMA
+
+Bangun **Learner Orientation Layer** pada LMS TERAS Academy.
+
+Tujuannya bukan membuat dashboard LMS besar.
+
+Tujuannya adalah memastikan setiap learner yang masuk ke LMS selalu dapat memahami dengan cepat:
+
+1. Saya sedang mengikuti program/pathway apa?
+2. Saya sedang belajar course apa?
+3. Saya berada di module mana?
+4. Saya berada di lesson mana?
+5. Aktivitas apa yang sedang/harus saya kerjakan?
+6. Apa yang sudah selesai?
+7. Apa tindakan berikutnya yang valid?
+8. Mengapa tindakan tersebut menjadi next action?
+
+Prinsip utama:
+
+> **The LMS must always answer: “Where am I, what have I completed, and what should I do next?”**
+
+---
+
+# 2. BATAS ARSITEKTUR — WAJIB DIPATUHI
+
+Jangan mengubah:
+
+* safety engine;
+* safety formula;
+* readiness formula;
+* readiness engine;
+* Capability Passport engine;
+* Capability Passport history;
+* central learning transition contract;
+* identity/ownership boundary;
+* Path A/B isolation;
+* existing assessment engine;
+* existing practice engine;
+* existing evidence engine;
+* remediation engine;
+* audit/event architecture.
+
+Jangan mengubah canonical learning states.
+
+Jangan membuat state baru hanya untuk kebutuhan UI.
+
+Jangan membuat shortcut frontend yang mem-bypass transition service.
+
+Jangan menganggap:
+
+`LEARNING_COMPLETED = OUTCOME_VERIFIED`
+
+Jangan menganggap:
+
+`Progress 100% = Capability`
+
+Jangan menganggap:
+
+`Progress 100% = Ready`
+
+Jangan menganggap:
+
+`Learning Completed = Certified`
+
+---
+
+# 3. JANGAN MEMBANGUN DASHBOARD BESAR
+
+Task ini bukan pembangunan seluruh dashboard role.
+
+Jangan membuat terlebih dahulu:
+
+* Instructor dashboard lengkap;
+* Evaluator dashboard lengkap;
+* Program Admin dashboard;
+* Content Manager dashboard;
+* Organization Admin dashboard;
+* Platform Admin dashboard;
+* analytics suite;
+* AI dashboard;
+* reporting suite.
+
+Fokus hanya pada **learner learning experience**.
+
+---
+
+# 4. UX CORE
+
+Bangun pengalaman berikut:
+
+```text
+MY LEARNING
+    ↓
+CURRENT LEARNING CONTEXT
+    ↓
+COURSE
+    ↓
+MODULE
+    ↓
+LESSON
+    ↓
+ACTIVITY
+    ↓
+PROGRESS
+    ↓
+NEXT ACTION
+```
+
+Learner tidak perlu mengetahui kompleksitas backend.
+
+Jangan tampilkan kepada learner:
+
+* transition contract;
+* advisory lock;
+* causal event;
+* internal state machine;
+* authorization implementation;
+* readiness engine internals;
+* audit implementation.
+
+Engine boleh kompleks.
+
+UX harus sederhana.
+
+---
+
+# 5. LEARNING COCKPIT
+
+Perkuat `/learning` menjadi **Learning Cockpit**, bukan dashboard statistik.
+
+Prioritas tampilan:
+
+## A. Current Learning
+
+Tampilkan:
+
+* Program;
+* Learning Path;
+* Course;
+* Module;
+* Lesson;
+* current activity;
+* learning progress.
+
+Contoh konsep:
+
+```text
+Your Current Learning
+
+Program
+Pengembangan Kompetensi ...
+
+Learning Path
+...
+
+Course
+...
+
+Module
+...
+
+Lesson
+...
+
+Current Activity
+...
+
+Progress
+72%
+
+[ Continue Learning ]
+```
+
+---
+
+# 6. CONTINUE LEARNING
+
+`Continue Learning` harus menjadi primary CTA.
+
+Sistem harus menentukan tujuan berdasarkan **server-side learning state dan persisted progress**.
+
+Jangan menentukan next destination hanya berdasarkan:
+
+* array index frontend;
+* localStorage;
+* browser state;
+* hardcoded lesson ID;
+* hardcoded activity ID.
+
+Prioritas:
+
+```text
+Persisted Learning State
+        ↓
+Current Activity
+        ↓
+Next Valid Action
+        ↓
+Continue Learning
+```
+
+Jika learner sedang berada pada activity `IN_PROGRESS`, Continue Learning harus mengembalikannya ke activity tersebut.
+
+Jika activity telah selesai dan activity berikutnya tersedia, Continue Learning diarahkan ke activity berikutnya yang valid.
+
+Jika lesson selesai tetapi outcome verification masih diperlukan, UI harus menunjukkan status tersebut dan tidak mengklaim achievement.
+
+---
+
+# 7. NEXT ACTION ENGINE — UX LAYER
+
+Jangan membuat readiness engine baru.
+
+Jangan membuat competing state engine.
+
+Gunakan state dan transition authority yang sudah ada.
+
+Buat hanya **read-only next-action resolver/presentation layer** bila diperlukan.
+
+Contoh:
+
+```text
+CURRENT STATE
+IN_PROGRESS
+
+NEXT ACTION
+Continue Activity
+```
+
+atau:
+
+```text
+CURRENT STATE
+LEARNING_COMPLETED
+
+NEXT ACTION
+Await Outcome Verification
+```
+
+atau:
+
+```text
+CURRENT STATE
+OUTCOME_VERIFIED
+
+NEXT ACTION
+Practice Required
+```
+
+Jika transition belum valid, UI tidak boleh menawarkan tombol yang menyebabkan invalid transition.
+
+---
+
+# 8. COURSE NAVIGATION
+
+Course page:
+
+`/learning/courses/:courseId`
+
+harus memperlihatkan hierarchy:
+
+```text
+Course
+│
+├── Module 1
+│   ├── Lesson 1
+│   │   ├── Activity 1 ✓
+│   │   ├── Activity 2 ✓
+│   │   └── Activity 3 →
+│   │
+│   └── Lesson 2
+│
+├── Module 2
+│
+└── Module 3
+```
+
+Gunakan status yang berasal dari persisted learning state.
+
+Jangan mengarang status di frontend.
+
+---
+
+# 9. LESSON CONTEXT
+
+Pada:
+
+`/learning/lessons/:lessonId`
+
+learner harus selalu dapat melihat:
+
+```text
+Course
+  ↓
+Module
+  ↓
+Lesson
+  ↓
+Activity
+```
+
+Tambahkan contextual navigation:
+
+* Back to Course;
+* Back to Module;
+* Previous Activity;
+* Current Activity;
+* Next Activity.
+
+Tetapi navigation tidak boleh berarti bypass prerequisite.
+
+Contoh:
+
+Jika Activity 3 belum boleh dibuka karena Activity 2 wajib selesai, jangan hanya menyembunyikan Activity 3.
+
+Backend harus tetap menjadi authority.
+
+---
+
+# 10. ACTIVITY STATUS
+
+Bedakan dengan jelas minimal:
+
+```text
+NOT_STARTED
+IN_PROGRESS
+COMPLETED
+```
+
+Jika sistem memiliki canonical state yang lebih detail, jangan menggandakan state tersebut secara sembarangan.
+
+UI boleh memberikan label manusiawi seperti:
+
+* Not Started
+* In Progress
+* Completed
+* Awaiting Verification
+* Practice Required
+
+Tetapi mapping harus konsisten dengan server-side state.
+
+---
+
+# 11. LEARNING PROGRESS
+
+Progress harus dihitung dari **required learning activities** sesuai logic yang telah dibangun pada Task #26.
+
+Jangan mengganti formula progress.
+
+Jangan menghitung:
+
+* login;
+* page visit;
+* time spent;
+* number of opened lessons;
+
+sebagai completion kecuali memang sudah didefinisikan oleh existing contract.
+
+Pertahankan:
+
+```text
+Learning Progress
+=
+completed required learning activities
+/
+required learning activities
+```
+
+Progress harus tetap berbeda dari achievement.
+
+---
+
+# 12. TIGA LAYER WAJIB TERLIHAT DI UX
+
+UX harus mempertahankan pemisahan:
+
+### Learning Progress
+
+Contoh:
+
+```text
+Learning Progress
+72%
+```
+
+### Learning Achievement
+
+Contoh:
+
+```text
+Outcome Verification
+Awaiting Verification
+```
+
+### Capability Readiness
+
+Jika ditampilkan:
+
+```text
+Capability Readiness
+Evaluated separately
+```
+
+Jangan menampilkan:
+
+```text
+72% Complete → Ready
+```
+
+atau:
+
+```text
+100% Complete → Competent
+```
+
+atau bentuk wording lain yang memiliki makna serupa.
+
+---
+
+# 13. “WHY AM I HERE?”
+
+Setiap significant next action sebaiknya memiliki konteks singkat.
+
+Contoh:
+
+```text
+Next Action
+
+Complete Activity 4
+
+Why?
+This is the next required learning activity
+in your current lesson.
+```
+
+Jika outcome verification diperlukan:
+
+```text
+Next Action
+
+Await Outcome Verification
+
+Why?
+Your required learning activities are complete,
+but the learning outcome has not yet been verified.
+```
+
+Jika practice diperlukan:
+
+```text
+Next Action
+
+Practice Required
+
+Why?
+Learning has been completed and the next stage
+requires practical application.
+```
+
+Gunakan wording yang tidak menyatakan official competency.
+
+---
+
+# 14. LEARNER JOURNEY
+
+Bangun visual journey sederhana:
+
+```text
+LEARN
+  ↓
+COMPLETE
+  ↓
+VERIFY
+  ↓
+PRACTICE
+  ↓
+EVIDENCE
+  ↓
+READINESS
+```
+
+Namun pada Task #30:
+
+**Jangan mengimplementasikan Practice → Evidence workflow.**
+
+Itu tetap Task #28 / Phase 3.
+
+Untuk tahap sekarang, bagian setelah learning hanya boleh menjadi contextual indication jika sudah tersedia dari existing state.
+
+---
+
+# 15. STATE AUTHORITY
+
+Ini sangat penting.
+
+Frontend tidak boleh menjadi source of truth.
+
+Gunakan:
+
+```text
+DATABASE
+   ↓
+SERVER
+   ↓
+LEARNING STATE / PROGRESS
+   ↓
+NEXT ACTION RESOLUTION
+   ↓
+UI
+```
+
+Bukan:
+
+```text
+UI click
+ ↓
+assume complete
+ ↓
+calculate next
+```
+
+Semua mutation tetap melalui existing transition contract.
+
+---
+
+# 16. RELOAD PERSISTENCE
+
+Pastikan:
+
+```text
+Start Activity
+     ↓
+IN_PROGRESS
+     ↓
+Reload browser
+     ↓
+Same learner
+     ↓
+Same activity
+     ↓
+IN_PROGRESS
+```
+
+Continue Learning harus konsisten setelah:
+
+* reload;
+* logout/login;
+* membuka kembali course;
+* berpindah halaman;
+* berpindah Path A/B.
+
+---
+
+# 17. IDENTITY
+
+Gunakan identity architecture Task #27.
+
+Jangan menerima learner ID dari frontend sebagai authority.
+
+Semua learner-specific data harus berasal dari authenticated server-side identity.
+
+Pastikan:
+
+```text
+Learner A
+    ↓
+Current Learning A
+
+Learner B
+    ↓
+Current Learning B
+```
+
+Tidak boleh terjadi cross-learner leakage.
+
+---
+
+# 18. PATHWAY ISOLATION
+
+Pastikan Current Learning dan Continue Learning selalu pathway-scoped.
+
+Jika learner berpindah:
+
+```text
+Path A → Path B
+```
+
+cache dan current learning context tidak boleh menampilkan data Path A.
+
+Lakukan regression test khusus untuk:
+
+* current course;
+* current lesson;
+* current activity;
+* progress;
+* continue learning.
+
+---
+
+# 19. EMPTY / EDGE STATES
+
+Tangani dengan jelas:
+
+### No enrollment
+
+```text
+You don't have an active learning program yet.
+```
+
+### No current activity
+
+```text
+No learning activity is currently assigned.
+```
+
+### All required activities completed
+
+Jangan otomatis mengatakan Ready.
+
+Tampilkan misalnya:
+
+```text
+Learning activities completed.
+
+Outcome verification is separate from learning progress.
+```
+
+### Outcome awaiting verification
+
+```text
+Learning completed.
+Outcome verification is still pending.
+```
+
+---
+
+# 20. ACCESSIBILITY & RESPONSIVE
+
+Pertahankan mobile-first behavior yang sudah ada.
+
+Pastikan:
+
+* hierarchy terbaca jelas;
+* CTA tidak ambigu;
+* progress readable;
+* current activity mudah ditemukan;
+* navigation tidak menyebabkan scroll confusion;
+* keyboard navigation tetap berfungsi;
+* status tidak hanya dibedakan berdasarkan warna.
+
+Jangan melakukan redesign visual global TERAS.
+
+---
+
+# 21. COMPONENT STRATEGY
+
+Gunakan/reuse component existing sebanyak mungkin.
+
+Sebelum membuat component baru:
+
+1. cari component existing;
+2. gunakan jika sesuai;
+3. extend jika diperlukan;
+4. baru buat component baru jika memang belum ada.
+
+Jangan membuat duplicate:
+
+* progress component;
+* pathway context;
+* course navigation;
+* learner identity resolver;
+* state resolver.
+
+---
+
+# 22. API
+
+Reuse existing API terlebih dahulu.
+
+Jika endpoint baru benar-benar diperlukan, dokumentasikan alasan dan buat melalui OpenAPI contract.
+
+Jangan:
+
+* membuat endpoint duplicate;
+* membaca database langsung dari frontend;
+* menambahkan learner ID sebagai trust boundary;
+* membuat endpoint yang bypass transition service.
+
+Jika diperlukan, pertimbangkan read-only endpoint seperti:
+
+```text
+GET /api/learning/current
+```
+
+atau equivalent existing route.
+
+Tetapi hanya buat jika functionality tersebut belum tersedia.
+
+---
+
+# 23. TESTING
+
+Tambahkan regression tests untuk:
+
+### A. Current learning
+
+* learner mendapatkan current course yang benar;
+* current module benar;
+* current lesson benar;
+* current activity benar.
+
+### B. Continue Learning
+
+* IN_PROGRESS → kembali ke activity yang sedang berjalan;
+* completed activity → next valid activity;
+* no active activity → correct empty state.
+
+### C. Progress
+
+* hanya required activities dihitung;
+* progress tetap persisted;
+* reload tidak mereset progress.
+
+### D. Separation
+
+Pastikan:
+
+```text
+100% Learning Progress
+≠
+Outcome Verified
+≠
+Capability
+≠
+Ready
+```
+
+### E. Identity
+
+Learner A tidak dapat melihat current learning learner B.
+
+### F. Pathway
+
+Path A tidak bocor ke Path B.
+
+### G. Backend authority
+
+Frontend tidak dapat memalsukan completion/current state.
+
+### H. Invalid action
+
+UI tidak boleh menghasilkan mutation yang melewati prerequisite.
+
+---
+
+# 24. BROWSER JOURNEY WAJIB
+
+Minimal lakukan journey:
+
+```text
+Login
+ ↓
+/learning
+ ↓
+Current Learning tampil
+ ↓
+Continue Learning
+ ↓
+Course
+ ↓
+Module
+ ↓
+Lesson
+ ↓
+Activity
+ ↓
+Start Activity
+ ↓
+IN_PROGRESS
+ ↓
+Reload
+ ↓
+Tetap IN_PROGRESS
+ ↓
+Complete
+ ↓
+Progress berubah
+ ↓
+Outcome tetap terpisah
+ ↓
+Next Action berubah
+```
+
+Uji juga:
+
+```text
+Learner A
+vs
+Learner B
+```
+
+dan:
+
+```text
+Path A
+vs
+Path B
+```
+
+---
+
+# 25. JANGAN MENYENTUH PHASE 3
+
+Task #30 tidak boleh mengimplementasikan:
+
+* Practice workflow baru;
+* Evidence submission baru;
+* Evidence review baru;
+* Remediation workflow baru;
+* Reassessment workflow baru;
+* Readiness formula baru;
+* Capability Passport redesign.
+
+Jika diperlukan sebagai future state, cukup tampilkan contextual status.
+
+Implementasi penuh:
+
+```text
+Learning
+→ Practice
+→ Evidence
+```
+
+tetap menjadi **Task #28 / Phase 3**.
+
+---
+
+# 26. STOP CONDITIONS
+
+Hentikan implementasi dan laporkan jika ditemukan:
+
+* transition service harus diubah;
+* safety engine harus diubah;
+* readiness formula harus diubah;
+* Passport harus diubah secara destructive;
+* identity boundary harus dilemahkan;
+* Path A/B isolation gagal;
+* existing progress logic bertentangan;
+* existing API contract breaking;
+* duplicate domain entity;
+* learner dapat memalsukan completion;
+* current learning membutuhkan frontend sebagai source of truth.
+
+Jangan menyelesaikan masalah tersebut dengan workaround.
+
+---
+
+# 27. IMPLEMENTATION ORDER
+
+Kerjakan dalam urutan:
+
+```text
+1. Inspect existing Phase 1 + Task #26 + Task #27 implementation
+
+2. Map current:
+   Course
+   Module
+   Lesson
+   Activity
+   Completion
+   Outcome
+   Progress
+   Transition
+
+3. Identify reusable components/API
+
+4. Implement Current Learning context
+
+5. Implement Continue Learning
+
+6. Implement Course hierarchy context
+
+7. Implement Lesson context
+
+8. Implement Activity status/navigation
+
+9. Implement Next Action presentation
+
+10. Implement edge states
+
+11. Regression tests
+
+12. Identity tests
+
+13. Pathway isolation tests
+
+14. Browser journey
+
+15. Typecheck
+
+16. Build
+
+17. API health check
+```
+
+---
+
+# 28. ACCEPTANCE CRITERIA
+
+Task #30 hanya PASS jika:
+
+### Learner orientation
+
+* learner selalu mengetahui current Program/Path/Course/Module/Lesson/Activity;
+* current position persisted;
+* Continue Learning bekerja.
+
+### Progress
+
+* progress berasal dari existing persisted learning completion;
+* progress tetap benar setelah reload;
+* progress tidak disamakan dengan achievement/readiness.
+
+### Next Action
+
+* next action berasal dari valid server-side learning state;
+* tidak ada frontend shortcut;
+* invalid transition tidak ditawarkan/diizinkan.
+
+### Identity
+
+* learner hanya melihat learning state miliknya.
+
+### Pathway
+
+* Path A/B tetap terisolasi.
+
+### Boundary
+
+Tidak ada perubahan pada:
+
+* safety;
+* readiness formula;
+* Passport;
+* transition contract;
+* assessment;
+* practice;
+* evidence;
+* remediation;
+* identity architecture.
+
+### Quality
+
+* tests PASS;
+* typecheck PASS;
+* build PASS;
+* API health PASS;
+* browser journey PASS.
+
+---
+
+# 29. FINAL REPORT FORMAT
+
+Setelah selesai, laporkan:
+
+## TASK #30 STATUS
+
+PASS / HOLD / BLOCKED
+
+## 1. Learner Orientation
+
+Apa yang sekarang dapat diketahui learner?
+
+## 2. Current Learning Context
+
+Bagaimana current Program/Path/Course/Module/Lesson/Activity ditentukan?
+
+## 3. Continue Learning
+
+Bagaimana next destination ditentukan?
+
+## 4. Next Action
+
+Apa resolver/presentation logic yang digunakan?
+
+## 5. Progress
+
+Pastikan formula existing tidak berubah.
+
+## 6. Learning vs Achievement vs Readiness
+
+Buktikan tetap terpisah.
+
+## 7. Identity
+
+Buktikan learner ownership.
+
+## 8. Pathway Isolation
+
+Buktikan Path A/B.
+
+## 9. Backend Authority
+
+Buktikan frontend tidak menjadi source of truth.
+
+## 10. Files Changed
+
+Daftar file.
+
+## 11. Database
+
+Apakah ada migration?
+Jika ya, jelaskan.
+
+## 12. API
+
+Endpoint yang digunakan/ditambahkan.
+
+## 13. Tests
+
+Berikan hasil test.
+
+## 14. Browser Journey
+
+Berikan hasil.
+
+## 15. Typecheck / Build / Health
+
+Berikan hasil.
+
+## 16. Boundary Verification
+
+Konfirmasi:
+
+* safety unchanged;
+* readiness formula unchanged;
+* Passport unchanged;
+* transition contract unchanged;
+* identity boundary unchanged;
+* Phase 3 untouched.
+
+## 17. Remaining Risks
+
+Jangan menyembunyikan limitation.
+
+## 18. Phase 2.1 Gate
+
+Berikan rekomendasi:
+
+**GO / HOLD / BLOCKED**
+
+---
+
+# FINAL PRINCIPLE
+
+Task #30 harus menghasilkan LMS yang membuat learner merasa:
+
+> **“Saya tahu saya sedang belajar apa, saya tahu saya sudah sampai mana, dan saya tahu apa yang harus saya lakukan berikutnya.”**
+
+Tetapi sistem tetap harus menjaga prinsip arsitektur:
+
+> **Learning Progress ≠ Learning Achievement ≠ Capability ≠ Capability Readiness**
+
+Dan:
+
+> **The UI guides the learner. The server controls the learning state.**
