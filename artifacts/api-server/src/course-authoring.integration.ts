@@ -156,10 +156,25 @@ async function run() {
 
     await command({ action: "UPDATE", entity: "LESSON", id: lessonOne.id, courseId: ids.courseA, data: { title: "Edited after publish" } }, 200);
     assert.deepEqual((await db.select().from(courseVersionsTable).where(eq(courseVersionsTable.id, firstVersion.id)))[0].snapshot, firstSnapshot, "editing after publish must not mutate snapshot");
-    response = await request(`/trainer/authoring/courses/${ids.courseA}/publish`, {});
-    assert.equal(response.status, 201);
-    const versions = await (await request(`/trainer/authoring/courses/${ids.courseA}/versions`)).json() as Array<{ version: number }>;
-    assert.deepEqual(versions.map(row => row.version), [2, 1]);
+    const parallelPublishes = await Promise.all([
+      request(`/trainer/authoring/courses/${ids.courseA}/publish`, {}),
+      request(`/trainer/authoring/courses/${ids.courseA}/publish`, {}),
+    ]);
+    const parallelPayloads = await Promise.all(parallelPublishes.map(async publishResponse => {
+      const publishPayload = await publishResponse.json() as { id?: string; version?: number; error?: string };
+      assert.equal(publishResponse.status, 201, JSON.stringify(publishPayload));
+      return publishPayload;
+    }));
+    assert.deepEqual(parallelPayloads.map(row => row.version).sort(), [2, 3], "parallel publishes must receive sequential versions");
+    const versions = await (await request(`/trainer/authoring/courses/${ids.courseA}/versions`)).json() as Array<{ id: string; version: number }>;
+    assert.deepEqual(versions.map(row => row.version), [3, 2, 1]);
+    assert.equal(new Set(versions.map(row => row.version)).size, versions.length, "published versions must remain unique");
+    const publishedCourse = (await db.select().from(coursesTable).where(eq(coursesTable.id, ids.courseA)))[0];
+    assert.equal(
+      publishedCourse.publishedVersionId,
+      versions.find(row => row.version === 3)?.id,
+      "course must point at the latest serialized publish",
+    );
     const audit = await (await request(`/trainer/authoring/courses/${ids.courseA}/audit`)).json() as Array<{ action: string }>;
     assert(audit.some(row => row.action === "PUBLISH") && audit.some(row => row.action === "REORDER_LESSON"));
 

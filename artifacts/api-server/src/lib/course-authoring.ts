@@ -379,14 +379,18 @@ export async function publishCourse(courseId: string, actorId: string) {
   const preview = await coursePreview(courseId);
   if (!preview) return { error: "Course not found" as const };
   if (!preview.validation.valid) return { error: "Course validation failed", report: preview.validation };
-  const [{ value: currentVersion }] = await db.select({ value: max(courseVersionsTable.version) }).from(courseVersionsTable).where(eq(courseVersionsTable.courseId, courseId));
-  const version = (currentVersion ?? 0) + 1, versionId = id("course-version"), publishedAt = new Date();
-  await db.transaction(async tx => {
+  return db.transaction(async tx => {
+    // Publish numbering and pointer updates must be serialized per course. The
+    // unique version constraint remains a final safeguard, while this row lock
+    // lets concurrent legitimate publishes complete with sequential versions.
+    await tx.execute(sql`SELECT id FROM teras_courses WHERE id = ${courseId} FOR UPDATE`);
+    const [{ value: currentVersion }] = await tx.select({ value: max(courseVersionsTable.version) }).from(courseVersionsTable).where(eq(courseVersionsTable.courseId, courseId));
+    const version = (currentVersion ?? 0) + 1, versionId = id("course-version"), publishedAt = new Date();
     await tx.insert(courseVersionsTable).values({ id: versionId, courseId, version, lifecycle: "PUBLISHED", snapshot: preview.course, validationReport: preview.validation, publishedAt, publishedBy: actorId });
     await tx.update(coursesTable).set({ status: "PUBLISHED", publishedVersionId: versionId }).where(eq(coursesTable.id, courseId));
     await tx.insert(courseAuthoringAuditTable).values({ id: id("course-audit"), courseId, versionId, action: "PUBLISH", actorId, details: { version }, createdBy: actorId });
+    return { id: versionId, courseId, version, lifecycle: "PUBLISHED" as const, publishedAt };
   });
-  return { id: versionId, courseId, version, lifecycle: "PUBLISHED" as const, publishedAt };
 }
 
 export async function listAuthoredCourses() {
