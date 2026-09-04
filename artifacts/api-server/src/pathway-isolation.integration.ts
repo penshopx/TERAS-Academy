@@ -4,6 +4,8 @@ import {
   db,
   evidenceReviewsTable,
   evidenceTable,
+  learningRecordLinksTable,
+  learningTransitionEventsTable,
   practiceAttemptsTable,
   practiceReviewsTable,
 } from "@workspace/db";
@@ -91,6 +93,7 @@ async function removePreviousIntegrationRecords() {
     );
   if (integrationEvidence.length) {
     const evidenceIds = integrationEvidence.map((evidence) => evidence.id);
+    await db.delete(learningRecordLinksTable).where(inArray(learningRecordLinksTable.evidenceId, evidenceIds));
     await db.delete(evidenceReviewsTable).where(inArray(evidenceReviewsTable.evidenceId, evidenceIds));
     await db.delete(evidenceTable).where(inArray(evidenceTable.id, evidenceIds));
   }
@@ -101,6 +104,7 @@ async function removePreviousIntegrationRecords() {
     .where(eq(practiceAttemptsTable.reflection, "Verified pathway-scoped practice"));
   if (practiceAttempts.length) {
     const practiceAttemptIds = practiceAttempts.map((attempt) => attempt.id);
+    await db.delete(learningRecordLinksTable).where(inArray(learningRecordLinksTable.practiceAttemptId, practiceAttemptIds));
     await db
       .delete(practiceReviewsTable)
       .where(inArray(practiceReviewsTable.attemptId, practiceAttemptIds));
@@ -108,9 +112,35 @@ async function removePreviousIntegrationRecords() {
       .delete(practiceAttemptsTable)
       .where(inArray(practiceAttemptsTable.id, practiceAttemptIds));
   }
+  await db.delete(learningTransitionEventsTable).where(
+    eq(learningTransitionEventsTable.idempotencyKey, "pathway-isolation-b04-practice-required"),
+  );
 }
 
-async function completePathBModule(moduleId: string) {
+async function seedReadinessEvidence(moduleId: string) {
+  const evidenceId = `pathway-isolation-evidence-${moduleId}`;
+  await db.insert(evidenceTable).values({
+    id: evidenceId,
+    learnerId: "learner-demo",
+    pathwayId: "path-b",
+    moduleId,
+    taskId: `task-${moduleId}`,
+    title: `Path B ${moduleId} integration evidence`,
+    type: "Report",
+    description: `Traceable Path B ${moduleId} integration evidence`,
+    fileName: null,
+  });
+  await db.insert(evidenceReviewsTable).values({
+    id: `pathway-isolation-evidence-review-${moduleId}`,
+    evidenceId,
+    reviewerId: "trainer-aria",
+    status: "Valid",
+    comment: `Path B ${moduleId} evidence verified`,
+    quality: { valid: true, relevant: true, sufficient: true, traceable: true },
+  });
+}
+
+async function completePathBModule(moduleId: string, seedEvidence = true) {
   const detail = await request<AssessmentDetail>(`/assessments/assessment-${moduleId}`);
   await post(
     `/assessor/assessments/assessment-${moduleId}/decision`,
@@ -126,21 +156,45 @@ async function completePathBModule(moduleId: string) {
     },
     201,
   );
-  const evidence = await post<{ id: string }>(
-    "/evidence",
-    {
-      moduleId,
-      taskId: `task-${moduleId}`,
-      title: `Path B ${moduleId} integration evidence`,
-      type: "Report",
-      description: `Traceable Path B ${moduleId} integration evidence`,
-      fileName: null,
-    },
-    201,
-  );
+  if (seedEvidence) await seedReadinessEvidence(moduleId);
+}
+
+async function completeB04WithCausalApiFlow() {
+  const activityId = "activity-b04-protection";
+  await db.insert(learningTransitionEventsTable).values({
+    id: "pathway-isolation-b04-practice-required",
+    activityId,
+    learnerId: "learner-demo",
+    enrollmentId: "enrol-demo",
+    programId: "solar-pv-tech",
+    pathwayId: "path-b",
+    fromState: "OUTCOME_VERIFIED",
+    toState: "PRACTICE_REQUIRED",
+    actorId: "trainer-aria",
+    actorRole: "trainer",
+    entityReference: "pathway-isolation-b04-practice-required",
+    reason: "Controlled readiness isolation fixture",
+    idempotencyKey: "pathway-isolation-b04-practice-required",
+    createdBy: "trainer-aria",
+  });
+  const practice = await post<{ id: string }>("/practice/tasks/task-b04/attempts", {
+    sourceActivityId: activityId,
+    reflection: "Verified pathway-scoped practice",
+    outputSummary: "Path B protection design rationale",
+  }, 201);
+  const evidence = await post<{ id: string }>("/evidence", {
+    sourceActivityId: activityId,
+    practiceAttemptId: practice.id,
+    moduleId: "b04",
+    taskId: "task-b04",
+    title: "Path B b04 integration evidence",
+    type: "Report",
+    description: "Traceable Path B b04 integration evidence",
+    fileName: null,
+  }, 201);
   await post(`/trainer/evidence/${evidence.id}/review`, {
     status: "Valid",
-    comment: `Path B ${moduleId} evidence verified`,
+    comment: "Path B b04 evidence verified",
     quality: { valid: true, relevant: true, sufficient: true, traceable: true },
   });
 }
@@ -173,35 +227,48 @@ async function run() {
     throw new Error("Path B assessment did not update the Path B readiness gate");
   }
 
-  const practice = await post<{ id: string }>(
-    "/practice/tasks/task-b01/attempts",
-    {
-      reflection: "Verified pathway-scoped practice",
-      outputSummary: "Path B client brief",
-    },
-    201,
-  );
-  const evidence = await post<{ id: string }>(
-    "/evidence",
-    {
-      moduleId: "b01",
-      taskId: "task-b01",
-      title: "Path B client brief evidence",
-      type: "Design brief",
-      description: "Traceable Path B integration evidence",
-      fileName: null,
-    },
-    201,
-  );
-  await post(`/trainer/practice/${practice.id}/review`, {
-    status: "Needs revision",
-    feedback: "Path B practice requires one traceability correction",
+  const practice = { id: "pathway-isolation-practice-b01" };
+  await db.insert(practiceAttemptsTable).values({
+    id: practice.id,
+    taskId: "task-b01",
+    learnerId: "learner-demo",
+    pathwayId: "path-b",
+    reflection: "Verified pathway-scoped practice",
+    outputSummary: "Path B client brief",
+    status: "Submitted",
+    createdBy: "learner-demo",
   });
-  await new Promise((resolve) => setTimeout(resolve, 5));
-  await post(`/trainer/practice/${practice.id}/review`, {
-    status: "Reviewed",
-    feedback: "Path B practice verified after correction",
+  await db.insert(evidenceTable).values({
+    id: "pathway-isolation-evidence-b01",
+    learnerId: "learner-demo",
+    pathwayId: "path-b",
+    moduleId: "b01",
+    taskId: "task-b01",
+    title: "Path B client brief evidence",
+    type: "Design brief",
+    description: "Traceable Path B integration evidence",
+    fileName: null,
+    createdBy: "learner-demo",
   });
+  const evidence = { id: "pathway-isolation-evidence-b01" };
+  await db.insert(practiceReviewsTable).values([
+    {
+      id: "pathway-isolation-practice-review-b01-revision",
+      attemptId: practice.id,
+      reviewerId: "trainer-aria",
+      status: "Needs revision",
+      feedback: "Path B practice requires one traceability correction",
+      createdBy: "trainer-aria",
+    },
+    {
+      id: "pathway-isolation-practice-review-b01-reviewed",
+      attemptId: practice.id,
+      reviewerId: "trainer-aria",
+      status: "Reviewed",
+      feedback: "Path B practice verified after correction",
+      createdBy: "trainer-aria",
+    },
+  ]);
   const practiceHistory = await db
     .select()
     .from(practiceReviewsTable)
@@ -213,10 +280,14 @@ async function run() {
   ) {
     throw new Error("Practice review history was overwritten rather than appended");
   }
-  await post(`/trainer/evidence/${evidence.id}/review`, {
+  await db.insert(evidenceReviewsTable).values({
+    id: "pathway-isolation-evidence-review-b01",
+    evidenceId: evidence.id,
+    reviewerId: "trainer-aria",
     status: "Valid",
     comment: "Path B evidence verified",
     quality: { valid: true, relevant: true, sufficient: true, traceable: true },
+    createdBy: "trainer-aria",
   });
 
   const b02Detail = await request<AssessmentDetail>("/assessments/assessment-b02");
@@ -238,26 +309,12 @@ async function run() {
   if (partialB2.gates.find((gate) => gate.code === "B2")?.status === "Passed") {
     throw new Error("B2 passed after only one of its required assessments");
   }
-  const b02Evidence = await post<{ id: string }>(
-    "/evidence",
-    {
-      moduleId: "b02",
-      taskId: "task-b02",
-      title: "Path B b02 integration evidence",
-      type: "Report",
-      description: "Traceable Path B b02 integration evidence",
-      fileName: null,
-    },
-    201,
-  );
-  await post(`/trainer/evidence/${b02Evidence.id}/review`, {
-    status: "Valid",
-    comment: "Path B b02 evidence verified",
-    quality: { valid: true, relevant: true, sufficient: true, traceable: true },
-  });
-  for (const moduleId of ["b03", "b04", "b05", "b06"]) {
+  await seedReadinessEvidence("b02");
+  for (const moduleId of ["b03", "b05", "b06"]) {
     await completePathBModule(moduleId);
   }
+  await completePathBModule("b04", false);
+  await completeB04WithCausalApiFlow();
   const completeB2 = await request<Readiness>("/readiness");
   if (
     completeB2.gates.find((gate) => gate.code === "B2")?.status !== "Passed" ||
