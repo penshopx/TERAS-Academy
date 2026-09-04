@@ -117,7 +117,7 @@ export const playerBridge = {
 
   registerAudio() {
     if (state.audioMuted === null) {
-      commit({ ...state, audioMuted: false });
+      commit({ ...state, audioMuted: true });
     }
   },
 

@@ -1,4 +1,4 @@
-import { getGetCapabilityPassportQueryKey, getGetLearnerDashboardQueryKey, getGetLearnerJourneyQueryKey, getGetLearnerLearningPlanQueryKey, getGetProgramQueryKey, useGetLearnerDashboard, useGetProgram, useSelectLearnerPathway } from "@workspace/api-client-react";
+import { getGetCapabilityPassportQueryKey, getGetLearnerDashboardQueryKey, getGetLearnerJourneyQueryKey, getGetLearnerLearningPlanQueryKey, getGetProgramQueryKey, getListLearningCoursesQueryKey, useGetLearnerDashboard, useGetProgram, useSelectLearnerPathway } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ export default function ProgramDetail() {
   useEffect(() => { if (!selectedId && dashboard?.pathway.id) setSelectedId(dashboard.pathway.id); }, [dashboard?.pathway.id, selectedId]);
   if (!programId) return null; if (isLoading) return <div className="flex h-full items-center justify-center"><Activity className="h-8 w-8 animate-pulse text-primary" /></div>; if (error || !program) return <div className="text-destructive">Failed to load program details.</div>;
   const selected = program.pathways.find((pathway) => pathway.id === selectedId) ?? program.pathways[0]; const modules = program.modules.filter((module) => module.pathwayId === selected?.id); const current = selected?.id === dashboard?.pathway.id;
-  const activate = () => { if (!selected) return; mutation.mutate({ data: { pathwayId: selected.id } }, { onSuccess: () => { [getGetProgramQueryKey(programId), getGetLearnerDashboardQueryKey(), getGetLearnerJourneyQueryKey(), getGetLearnerLearningPlanQueryKey(), getGetCapabilityPassportQueryKey()].forEach((queryKey) => queryClient.invalidateQueries({ queryKey })); toast({ title: "Pathway activated", description: `${selected.name} is now your active capability pathway.` }); }, onError: () => toast({ title: "Pathway selection failed", description: "The pathway could not be activated.", variant: "destructive" }) }); };
+  const activate = () => { if (!selected) return; mutation.mutate({ data: { pathwayId: selected.id } }, { onSuccess: () => { [getGetProgramQueryKey(programId), getGetLearnerDashboardQueryKey(), getGetLearnerJourneyQueryKey(), getGetLearnerLearningPlanQueryKey(), getGetCapabilityPassportQueryKey(), getListLearningCoursesQueryKey()].forEach((queryKey) => queryClient.invalidateQueries({ queryKey })); toast({ title: "Pathway activated", description: `${selected.name} is now your active capability pathway.` }); }, onError: () => toast({ title: "Pathway selection failed", description: "The pathway could not be activated.", variant: "destructive" }) }); };
   return (
     <div className="space-y-6">
       <div className="mb-2 flex items-center gap-2 font-mono text-sm text-muted-foreground">

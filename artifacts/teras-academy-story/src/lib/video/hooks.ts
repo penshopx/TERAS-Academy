@@ -159,6 +159,7 @@ export interface VideoAudioState {
   muted: boolean;
   /** Mirrors the scene clock so the audio element can pause in step with it. */
   paused: boolean;
+  setMuted: (muted: boolean) => void;
 }
 
 /**
@@ -178,8 +179,9 @@ export function useVideoAudio(): VideoAudioState {
   }, []);
 
   return {
-    muted: bridgeState.audioMuted ?? false,
+    muted: bridgeState.audioMuted ?? true,
     paused: bridgeState.paused,
+    setMuted: (muted) => playerBridge.setAudioMuted(muted),
   };
 }
 

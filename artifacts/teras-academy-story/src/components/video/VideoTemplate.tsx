@@ -5,6 +5,7 @@ import {
   useVideoPlayer,
 } from '@/lib/video';
 import { AnimatePresence } from 'framer-motion';
+import { Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 import { SCENE_DURATIONS } from './sceneMeta';
@@ -30,7 +31,7 @@ export default function VideoTemplate() {
   const { currentScene, currentSceneKey } = useVideoPlayer({
     durations: SCENE_DURATIONS,
   });
-  const { muted, paused } = useVideoAudio();
+  const { muted, paused, setMuted } = useVideoAudio();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastSceneKeyRef = useRef<string | null>(null);
 
@@ -65,6 +66,16 @@ export default function VideoTemplate() {
           {currentScene === 3 && <Scene3 key="scene3" />}
           {currentScene === 4 && <Scene4 key="scene4" />}
         </AnimatePresence>
+        <button
+          type="button"
+          aria-label={muted ? 'Nyalakan suara video' : 'Matikan suara video'}
+          aria-pressed={!muted}
+          onClick={() => setMuted(!muted)}
+          className="absolute bottom-5 right-5 z-50 flex items-center gap-2 rounded-full border border-white/20 bg-black/75 px-4 py-2.5 text-sm font-semibold text-white shadow-lg backdrop-blur-md transition hover:border-cyan-400/60 hover:bg-black/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+        >
+          {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+          <span>{muted ? 'Suara off' : 'Suara on'}</span>
+        </button>
       </VideoCanvas>
       <audio
         ref={audioRef}

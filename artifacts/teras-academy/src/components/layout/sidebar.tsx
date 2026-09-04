@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: Activity },
   { href: "/journey", label: "Journey", icon: Map },
   { href: "/learning-plan", label: "Learning Plan", icon: ListTodo },
+  { href: "/learning", label: "Learning", icon: BookOpen },
   { href: "/programs", label: "Programs", icon: Layers },
   { href: "/practice", label: "Practice", icon: Target },
   { href: "/evidence", label: "Evidence", icon: Briefcase },
@@ -52,7 +53,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <nav className="space-y-1">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
-              const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+              const isActive = location === item.href || (item.href !== "/" && location.startsWith(`${item.href}/`));
               
               return (
                 <Link

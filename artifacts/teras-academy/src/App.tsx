@@ -14,6 +14,9 @@ import { AppLayout } from '@/components/layout/app-layout';
 import Dashboard from '@/pages/dashboard';
 import Journey from '@/pages/journey';
 import LearningPlan from '@/pages/learning-plan';
+import LearningList from '@/pages/learning-list';
+import LearningCourse from '@/pages/learning-course';
+import LearningLesson from '@/pages/learning-lesson';
 import Programs from '@/pages/programs';
 import ProgramDetail from '@/pages/program-detail';
 import ModuleDetail from '@/pages/module-detail';
@@ -560,6 +563,9 @@ function WorkspaceRoutes() {
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/journey" component={Journey} />
             <Route path="/learning-plan" component={LearningPlan} />
+            <Route path="/learning" component={LearningList} />
+            <Route path="/learning/courses/:courseId" component={LearningCourse} />
+            <Route path="/learning/lessons/:lessonId" component={LearningLesson} />
             <Route path="/programs" component={Programs} />
             <Route path="/programs/:programId" component={ProgramDetail} />
             <Route path="/modules/:moduleId" component={ModuleDetail} />
