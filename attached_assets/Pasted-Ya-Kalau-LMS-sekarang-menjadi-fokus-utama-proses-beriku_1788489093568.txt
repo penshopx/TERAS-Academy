@@ -1,0 +1,1012 @@
+Ya. Kalau **LMS sekarang menjadi fokus utama proses berikutnya**, saya menyarankan kita tidak mendesainnya sebagai satu dashboard LMS biasa. Kita desain **LMS sebagai “Learning Engine” TERAS** yang menjadi jembatan nyata:
+
+**Diagnostic → Learning → Practice → Evidence → Feedback → Remediation → Reassessment → Readiness → Capability Passport → Official Competency Testing**
+
+Jadi dashboard setiap role harus melihat **proses yang sama dari sudut pandang berbeda**.
+
+# 1. Arsitektur besar LMS TERAS
+
+```text
+                         TERAS ACADEMY
+                              │
+                    ┌─────────▼─────────┐
+                    │ CAPABILITY ENGINE │
+                    └─────────┬─────────┘
+                              │
+                         DIAGNOSTIC
+                              │
+                         GAP ANALYSIS
+                              │
+                    ┌─────────▼─────────┐
+                    │    LMS ENGINE     │
+                    │  LEARNING PROCESS  │
+                    └─────────┬─────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+       LEARNING            PRACTICE            EVIDENCE
+          │                   │                   │
+          └───────────────────┼───────────────────┘
+                              │
+                         FEEDBACK/REVIEW
+                              │
+                       ┌──────▼──────┐
+                       │ REMEDIATION │
+                       └──────┬──────┘
+                              │
+                       REASSESSMENT
+                              │
+                       READINESS ENGINE
+                              │
+                    ┌─────────▼─────────┐
+                    │ CAPABILITY PASSPORT│
+                    └─────────┬─────────┘
+                              │
+                   OFFICIAL COMPETENCY TEST
+```
+
+**Inilah struktur yang menurut saya harus menjadi backbone LMS TERAS.**
+
+---
+
+# 2. Role yang perlu ada
+
+Jangan hanya membuat:
+
+> Admin / Instructor / Student
+
+Karena proses TERAS lebih kompleks.
+
+Saya menyarankan role berikut:
+
+| Role                   | Fungsi utama                              |
+| ---------------------- | ----------------------------------------- |
+| **Platform Admin**     | Mengelola keseluruhan platform            |
+| **Academy Admin**      | Mengelola operasional akademi             |
+| **Program Manager**    | Mengelola program/cohort                  |
+| **Instructor**         | Mengajar, membimbing, memberikan feedback |
+| **Practice Evaluator** | Menilai praktik/evidence                  |
+| **Readiness Reviewer** | Mereview kesiapan peserta                 |
+| **Participant/User**   | Mengikuti pembelajaran                    |
+| **Organization Admin** | Memantau peserta dari organisasi          |
+| **Content Manager**    | Mengelola materi pembelajaran             |
+| **Support/Operator**   | Membantu operasional peserta              |
+
+Namun **tidak semua role harus mempunyai dashboard berbeda total**.
+
+Lebih baik:
+
+> **satu LMS engine + role-based dashboard.**
+
+---
+
+# 3. DASHBOARD PESERTA / USER
+
+Ini dashboard paling penting karena **learning benar-benar terjadi di sini**.
+
+### Header
+
+```text
+TERAS ACADEMY
+
+Halo, Andi
+
+Program:
+Teknisi Instalasi PLTS
+
+Progress Program                 Readiness
+██████████████░░ 72%             PERLU PENGUATAN
+
+Current Learning Path
+Module 4 — Instalasi & Commissioning
+```
+
+### A. “Continue Learning”
+
+Card terbesar:
+
+> **Lanjutkan Pembelajaran**
+
+**Module 4 — Instalasi & Commissioning**
+
+* 3 lesson belum selesai
+* 1 video
+* 1 scenario
+* 1 practice assignment
+* 1 evidence submission
+
+**[Lanjutkan]**
+
+---
+
+# 4. My Learning Path
+
+Bukan sekadar daftar course.
+
+```text
+DIAGNOSTIC
+    ✓
+
+FOUNDATION
+    ✓
+
+MODULE 1
+    ✓
+
+MODULE 2
+    ✓
+
+MODULE 3
+    ✓
+
+MODULE 4
+    ● CURRENT
+
+PRACTICE
+    ○
+
+EVIDENCE
+    ○
+
+REMEDIATION
+    ○
+
+SIMULATION
+    ○
+
+READINESS
+    ○
+```
+
+Ini penting karena peserta harus memahami:
+
+> **Saya sekarang berada di mana dalam perjalanan menuju kesiapan?**
+
+---
+
+# 5. Learning Activity Dashboard
+
+Peserta melihat aktivitas pembelajaran aktual:
+
+### Minggu ini
+
+| Aktivitas          | Status |
+| ------------------ | ------ |
+| Video pembelajaran | ✓      |
+| Modul teori        | ✓      |
+| Quiz               | ✓      |
+| Scenario           | ✓      |
+| Live session       | ✓      |
+| Assignment         | ●      |
+| Practice           | ○      |
+| Evidence           | ○      |
+
+Tetapi progress tidak hanya dihitung dari:
+
+> “sudah klik materi”.
+
+Sistem harus mengetahui:
+
+**Learning Completion**
+
+dan
+
+**Learning Outcome**
+
+sebagai dua hal berbeda.
+
+---
+
+# 6. My Gap
+
+Ini salah satu fitur pembeda TERAS.
+
+```text
+MY CAPABILITY GAPS
+
+Technical Knowledge
+████████░░ 80%
+
+Installation Procedure
+██████░░░░ 60%
+⚠ Need reinforcement
+
+Safety Practice
+████░░░░░░ 40%
+⚠ Critical reinforcement
+
+Documentation
+████████░░ 80%
+```
+
+Kemudian:
+
+> **Recommended Learning**
+
+```text
+Karena terdapat gap pada:
+Installation Procedure
+
+TERAS merekomendasikan:
+
+→ Module 4.2
+→ Practice Scenario #03
+→ Guided Workshop
+→ Repeat Practice
+```
+
+Jadi LMS **tidak berdiri sendiri**.
+
+LMS menerima input dari Diagnostic/Gap Engine.
+
+---
+
+# 7. Practice Center
+
+Peserta kemudian berpindah dari:
+
+**Learn → Practice**
+
+Dashboard:
+
+```text
+PRACTICE CENTER
+
+Practice #01       ✓
+Practice #02       ✓
+Practice #03       ⚠ Repeat Required
+Practice #04       ○ Locked
+
+Current Practice
+
+Installation Procedure Simulation
+
+Instructions
+Tools
+Safety Requirements
+Procedure
+Expected Output
+Evidence Required
+
+[START PRACTICE]
+```
+
+---
+
+# 8. Evidence Center
+
+Setelah praktik:
+
+```text
+EVIDENCE SUBMISSION
+
+Practice:
+Installation Procedure #03
+
+Required Evidence:
+
+☐ Photo
+☐ Video
+☐ Checklist
+☐ Work Record
+☐ Explanation
+☐ Reflection
+
+[UPLOAD EVIDENCE]
+```
+
+Kemudian status:
+
+**Submitted → Under Review → Feedback → Revision → Accepted for Progression**
+
+---
+
+# 9. Feedback Center
+
+Peserta dapat melihat:
+
+```text
+INSTRUCTOR FEEDBACK
+
+Technical Procedure
+★★★★☆ 
+
+Safety
+★★☆☆☆ 
+
+Documentation
+★★★★☆
+
+Feedback:
+
+"Urutan isolasi belum konsisten.
+Ulangi Practice #03 sebelum masuk
+ke commissioning simulation."
+
+[VIEW CORRECTION]
+[REPEAT PRACTICE]
+```
+
+Ini membuat LMS menjadi **learning loop**, bukan course player.
+
+---
+
+# 10. Remediation Center
+
+Jika peserta gagal memenuhi standar internal:
+
+```text
+REMEDIATION REQUIRED
+
+Reason:
+Safety procedure gap
+
+Required actions:
+
+1. Review Module 2.3
+2. Watch safety demonstration
+3. Complete scenario
+4. Repeat Practice #03
+5. Submit evidence again
+
+Progress:
+1 / 5 completed
+```
+
+Dan yang sangat penting dari arsitektur TERAS sebelumnya:
+
+### Critical safety failure tidak boleh tertutup oleh skor rata-rata.
+
+Jadi:
+
+```text
+Technical Score       88%
+Documentation         91%
+Safety                 42%  ← CRITICAL
+
+Overall Score          80%
+
+STATUS:
+REMEDIATION REQUIRED
+```
+
+Bukan:
+
+> Competent karena rata-rata 80%.
+
+---
+
+# 11. Instructor Dashboard
+
+Sekarang kita masuk ke sisi instruktur.
+
+Dashboard instruktur bukan hanya:
+
+> daftar peserta + upload materi.
+
+Tetapi **control center proses learning**.
+
+### Instructor Dashboard
+
+```text
+MY PROGRAMS
+
+PLTS Technician Program
+
+Participants          126
+Active                 98
+Need Attention         17
+Remediation             8
+Ready for Simulation   21
+```
+
+---
+
+# 12. Instructor “Attention Queue”
+
+Ini harus menjadi salah satu komponen utama.
+
+```text
+NEEDS YOUR ATTENTION
+
+🔴 3 Critical Safety Issues
+
+🟠 7 Evidence awaiting review
+
+🟡 5 Participants with learning gaps
+
+🟣 2 Participants need remediation review
+
+🔵 8 Questions unanswered
+```
+
+Instructor langsung tahu:
+
+> **apa yang harus dikerjakan hari ini.**
+
+---
+
+# 13. Instructor Participant View
+
+Instruktur dapat membuka satu peserta:
+
+```text
+ANDI PRATAMA
+
+Learning Progress       72%
+Practice Progress       61%
+Evidence                54%
+Readiness               NEEDS STRENGTHENING
+```
+
+Lalu timeline:
+
+```text
+Diagnostic
+    ↓
+Learning
+    ↓
+Practice
+    ↓
+Evidence
+    ↓
+Feedback
+    ↓
+Remediation
+    ↓
+Reassessment
+```
+
+Instruktur dapat melihat **mengapa peserta berada pada status tersebut**.
+
+Bukan hanya angka.
+
+---
+
+# 14. Content Manager Dashboard
+
+Role ini mengelola:
+
+```text
+CONTENT MANAGEMENT
+
+Courses
+Modules
+Lessons
+Videos
+Documents
+Scenarios
+Quizzes
+Assignments
+Practice Guides
+Evidence Templates
+Assessment Rubrics
+Learning Resources
+```
+
+Tetapi setiap content harus memiliki metadata:
+
+```text
+Content
+
+Module:
+Installation
+
+Capability:
+Installation Procedure
+
+Target Gap:
+Technical Procedure
+
+Learning Objective:
+Participant can perform...
+
+Activity:
+Video + Scenario + Practice
+
+Evidence:
+Photo + Checklist + Explanation
+```
+
+Dengan demikian content LMS terhubung ke **Capability Model**.
+
+---
+
+# 15. Academy / Program Admin Dashboard
+
+Ini lebih tinggi daripada instructor.
+
+```text
+ACADEMY OVERVIEW
+
+Active Programs             18
+Active Participants        742
+Active Instructors          36
+
+Learning Completion         76%
+Practice Completion         64%
+Evidence Completion         58%
+
+Remediation                 83
+Readiness Review            47
+```
+
+Kemudian:
+
+### Program Health
+
+| Program    | Participants | Learning | Practice | Evidence | Readiness |
+| ---------- | -----------: | -------: | -------: | -------: | --------: |
+| PLTS       |          120 |      82% |      71% |      64% |       42% |
+| Instalasi  |           95 |      76% |      63% |      51% |       38% |
+| Konstruksi |          180 |      80% |      68% |      59% |       46% |
+
+---
+
+# 16. Organization Dashboard
+
+Untuk perusahaan/instansi yang mengirim banyak peserta.
+
+```text
+MY ORGANIZATION
+
+Participants              47
+
+Learning Progress         78%
+Practice Progress         69%
+Evidence Progress         61%
+
+Need Attention              6
+Remediation                 4
+Ready for Simulation       12
+```
+
+Perusahaan **tidak perlu melihat seluruh detail pribadi peserta** kecuali memang memiliki hak akses.
+
+Mereka melihat:
+
+> perkembangan capability tenaga mereka.
+
+---
+
+# 17. Platform Admin Dashboard
+
+Ini berbeda lagi.
+
+```text
+TERAS PLATFORM
+
+Users                  12,842
+Organizations             384
+Programs                  126
+Instructors               287
+
+Learning Activities     48,231
+Practice Activities     21,849
+Evidence                18,921
+
+System Health             99.8%
+```
+
+Admin mengelola:
+
+* user
+* role
+* permission
+* organization
+* program
+* tenant
+* configuration
+* audit trail
+* system activity
+* safety rules
+* workflow
+* notification
+* integration
+
+---
+
+# 18. Yang paling penting: TRANSFER DARI LMS
+
+Menurut saya ini justru harus menjadi **fitur inti desain baru**.
+
+LMS jangan berhenti di:
+
+> Course completed.
+
+Tetapi harus mempunyai **Learning Exit Gate**.
+
+```text
+                    LMS
+                     │
+              LEARNING COMPLETE
+                     │
+             LEARNING OUTCOME
+                     │
+              PRACTICE REQUIRED?
+                     │
+          ┌──────────┴──────────┐
+          │                     │
+         YES                    NO
+          │
+      PRACTICE
+          │
+       EVIDENCE
+          │
+       FEEDBACK
+          │
+     REMEDIATION?
+       /       \
+     YES        NO
+     │           │
+RE-PRACTICE      │
+     │           │
+     └─────┬─────┘
+           │
+      REASSESSMENT
+           │
+      READINESS ENGINE
+           │
+   ┌───────┴────────┐
+   │                │
+Need Support      Ready
+   │                │
+Learning Loop   Simulation
+                    │
+             Official Preparation
+```
+
+---
+
+# 19. LMS Completion Gate
+
+Saya bahkan menyarankan jangan menggunakan satu status:
+
+> Completed
+
+Gunakan beberapa status:
+
+### Learning Status
+
+**Not Started**
+
+↓
+
+**In Progress**
+
+↓
+
+**Learning Completed**
+
+↓
+
+**Outcome Verified**
+
+↓
+
+**Practice Required**
+
+↓
+
+**Practice Completed**
+
+↓
+
+**Evidence Submitted**
+
+↓
+
+**Reviewed**
+
+↓
+
+**Remediation Required**
+
+↓
+
+**Reassessment**
+
+↓
+
+**Ready for Next Stage**
+
+---
+
+# 20. Transfer ke Readiness Engine
+
+Ketika LMS selesai, data tidak hilang.
+
+Yang ditransfer:
+
+```text
+LMS
+│
+├── Learning history
+├── Module completion
+├── Quiz results
+├── Scenario performance
+├── Practice history
+├── Evidence
+├── Instructor feedback
+├── Remediation
+├── Reassessment
+└── Safety results
+          │
+          ▼
+   CAPABILITY STATE
+          │
+          ▼
+   READINESS ENGINE
+```
+
+Readiness Engine kemudian memberikan:
+
+**Belum siap**
+
+**Perlu penguatan**
+
+**Siap untuk simulasi**
+
+**Recommended for Official Competency Testing**
+
+Bukan:
+
+> Competent.
+
+---
+
+# 21. Transfer ke Capability Passport
+
+Setelah itu:
+
+```text
+LMS
+ ↓
+Learning Record
+ ↓
+Practice Record
+ ↓
+Evidence
+ ↓
+Feedback
+ ↓
+Remediation
+ ↓
+Reassessment
+ ↓
+Readiness
+ ↓
+CAPABILITY PASSPORT
+```
+
+Jadi Capability Passport bukan sekadar:
+
+> “Saya pernah ikut kursus.”
+
+Tetapi:
+
+> **“Inilah perjalanan perkembangan kemampuan saya.”**
+
+---
+
+# 22. Dashboard utama yang saya rekomendasikan
+
+Kalau kita sederhanakan seluruh ekosistem:
+
+### PARTICIPANT
+
+```text
+MY LEARNING
+MY PATH
+MY PRACTICE
+MY EVIDENCE
+MY FEEDBACK
+MY REMEDIATION
+MY READINESS
+MY PASSPORT
+```
+
+### INSTRUCTOR
+
+```text
+MY PROGRAMS
+MY CLASSES
+MY PARTICIPANTS
+LEARNING MONITOR
+PRACTICE REVIEW
+EVIDENCE REVIEW
+FEEDBACK
+REMEDIATION
+READINESS REVIEW
+```
+
+### PROGRAM ADMIN
+
+```text
+PROGRAMS
+COHORTS
+PARTICIPANTS
+INSTRUCTORS
+LEARNING ANALYTICS
+PRACTICE ANALYTICS
+EVIDENCE ANALYTICS
+READINESS ANALYTICS
+```
+
+### CONTENT MANAGER
+
+```text
+CONTENT
+COURSES
+MODULES
+LESSONS
+SCENARIOS
+QUIZZES
+PRACTICE
+EVIDENCE
+RUBRICS
+CONTENT ANALYTICS
+```
+
+### ORGANIZATION
+
+```text
+PEOPLE
+PROGRAMS
+LEARNING PROGRESS
+CAPABILITY DEVELOPMENT
+GAPS
+READINESS
+REPORTS
+```
+
+### PLATFORM ADMIN
+
+```text
+USERS
+ORGANIZATIONS
+PROGRAMS
+ROLES
+PERMISSIONS
+WORKFLOW
+AUDIT
+SAFETY
+SYSTEM
+ANALYTICS
+```
+
+---
+
+# 23. Tetapi ada satu perubahan fundamental
+
+Saya menyarankan kita **tidak membuat menu LMS terpisah dari sistem TERAS lainnya**.
+
+Misalnya jangan:
+
+```text
+TERAS
+├── Dashboard
+├── LMS
+├── Capability Passport
+├── Assessment
+└── Readiness
+```
+
+Karena ini membuat LMS menjadi aplikasi sendiri.
+
+Lebih baik:
+
+```text
+TERAS ACADEMY
+│
+├── Home
+│
+├── My Journey
+│
+│   ├── Diagnostic
+│   ├── Learning
+│   ├── Practice
+│   ├── Evidence
+│   ├── Feedback
+│   ├── Remediation
+│   ├── Reassessment
+│   └── Readiness
+│
+├── Programs
+│
+├── LMS
+│
+├── Practice
+│
+├── Capability Passport
+│
+└── Profile
+```
+
+Untuk user, **My Journey menjadi pusat pengalaman**.
+
+---
+
+# 24. Prinsip UX yang harus kita kunci
+
+Saya akan mengunci 5 prinsip:
+
+### 1. User tidak boleh bingung “harus melakukan apa”.
+
+Dashboard selalu menjawab:
+
+> **What should I do next?**
+
+---
+
+### 2. Learning harus selalu mempunyai tujuan.
+
+Bukan:
+
+> “Tonton video.”
+
+Tetapi:
+
+> “Pelajari ini karena Anda mempunyai gap X.”
+
+---
+
+### 3. Learning harus bisa mengarah ke Practice.
+
+```text
+Learn
+ ↓
+Try
+ ↓
+Practice
+ ↓
+Evidence
+```
+
+---
+
+### 4. Feedback harus menghasilkan tindakan.
+
+Bukan:
+
+> Score 72%.
+
+Tetapi:
+
+> “Bagian ini masih lemah → lakukan aktivitas X → ulangi practice Y.”
+
+---
+
+### 5. Setiap proses menghasilkan data untuk tahap berikutnya.
+
+Inilah yang membuat TERAS berbeda.
+
+```text
+Diagnostic
+   ↓
+LMS
+   ↓
+Practice
+   ↓
+Evidence
+   ↓
+Feedback
+   ↓
+Remediation
+   ↓
+Readiness
+   ↓
+Passport
+```
+
+**Tidak ada data yang berhenti di satu modul.**
+
+---
+
+## Kesimpulan desain
+
+Dengan demikian, **LMS TERAS bukan sekadar tempat menyimpan course dan video**.
+
+LMS menjadi **mesin pembelajaran nyata** yang menerima kebutuhan belajar dari Diagnostic, menjalankan proses pembelajaran, menghubungkannya dengan praktik dan evidence, menerima feedback, memicu remediation, lalu meneruskan hasilnya ke **Readiness Engine dan Capability Passport**.
+
+Kalau kita menjadikan ini baseline, maka **pekerjaan berikutnya seharusnya bukan langsung coding semua dashboard**, tetapi memecahnya menjadi **LMS Information Architecture + Role/Permission Matrix + Learning State Machine + Dashboard Specification**. Itu akan menjadi fondasi yang jauh lebih aman untuk melanjutkan Task #13–#16 tanpa feature creep.

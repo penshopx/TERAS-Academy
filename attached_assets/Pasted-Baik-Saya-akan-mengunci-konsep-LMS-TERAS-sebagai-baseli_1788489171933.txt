@@ -1,0 +1,1015 @@
+Baik. Saya akan **mengunci konsep LMS TERAS sebagai baseline final sebelum masuk ke prompt Replit**.
+
+# TERAS ACADEMY — LMS FINAL ARCHITECTURE
+
+## 1. Posisi LMS dalam TERAS
+
+LMS adalah **core learning engine** TERAS Academy.
+
+Bukan modul tambahan, bukan sekadar course player, dan bukan hanya repository materi.
+
+Fungsi utamanya:
+
+> **mengubah hasil diagnosis/gap menjadi proses pembelajaran yang menghasilkan bukti perkembangan capability dan diteruskan ke Readiness Engine.**
+
+Arsitektur final:
+
+```text
+DIAGNOSTIC
+    ↓
+CAPABILITY GAP
+    ↓
+LEARNING PLAN
+    ↓
+LMS
+    ↓
+LEARN
+    ↓
+PRACTICE
+    ↓
+EVIDENCE
+    ↓
+FEEDBACK
+    ↓
+REMEDIATION
+    ↓
+REASSESSMENT
+    ↓
+READINESS
+    ↓
+CAPABILITY PASSPORT
+    ↓
+NEXT STAGE / OFFICIAL COMPETENCY PROCESS
+```
+
+---
+
+# 2. Prinsip fundamental yang dikunci
+
+### Prinsip 1 — Completion bukan Capability
+
+```text
+Course Completed
+       ≠
+Capability Achieved
+       ≠
+Readiness
+```
+
+Peserta bisa menyelesaikan seluruh materi tetapi tetap belum siap.
+
+---
+
+### Prinsip 2 — Learning harus menghasilkan action
+
+Setiap gap harus dapat menghasilkan:
+
+**Learn → Practice → Evidence → Feedback → Improvement**
+
+---
+
+### Prinsip 3 — LMS harus context-aware
+
+Peserta tidak melihat LMS sebagai daftar course.
+
+Peserta melihat:
+
+> **Apa yang harus saya pelajari sekarang, mengapa saya harus mempelajarinya, dan apa yang harus saya lakukan setelahnya?**
+
+---
+
+### Prinsip 4 — Critical requirement tidak boleh tertutup oleh average score
+
+Misalnya:
+
+```text
+Knowledge       90%
+Practice        85%
+Documentation   88%
+Safety          45%  ← Critical
+
+Overall         82%
+```
+
+Status:
+
+**NOT READY**
+
+Bukan Competent hanya karena rata-rata tinggi.
+
+---
+
+### Prinsip 5 — Setiap aktivitas menghasilkan learning record
+
+Data tidak berhenti di LMS.
+
+```text
+Learning Record
+       ↓
+Practice Record
+       ↓
+Evidence Record
+       ↓
+Feedback Record
+       ↓
+Remediation Record
+       ↓
+Readiness Record
+       ↓
+Capability Passport
+```
+
+---
+
+# 3. Struktur utama LMS
+
+Saya finalkan menjadi:
+
+```text
+LMS
+│
+├── Programs
+│
+├── Learning Paths
+│
+├── Courses
+│
+├── Modules
+│
+├── Lessons
+│
+├── Activities
+│
+├── Practice
+│
+├── Evidence
+│
+├── Feedback
+│
+├── Remediation
+│
+├── Reassessment
+│
+├── Learning Records
+│
+└── Readiness Transfer
+```
+
+Tetapi **user tidak harus melihat struktur teknis ini seluruhnya**.
+
+Untuk peserta, experience-nya lebih sederhana:
+
+```text
+MY JOURNEY
+│
+├── Learn
+├── Practice
+├── Evidence
+├── Feedback
+├── Improve
+├── Reassess
+└── Readiness
+```
+
+---
+
+# 4. Participant Dashboard — FINAL
+
+Dashboard peserta menjadi **home utama LMS**.
+
+### Header
+
+```text
+Good Morning, Andi
+
+PLTS Technician Program
+
+Current Stage
+Learning & Practice
+
+Overall Progress
+72%
+
+Readiness
+NEEDS STRENGTHENING
+```
+
+### Primary CTA
+
+```text
+CONTINUE LEARNING
+
+Module 4
+Installation & Commissioning
+
+3 activities remaining
+
+[CONTINUE]
+```
+
+### My Journey
+
+```text
+✓ Diagnostic
+✓ Foundation
+✓ Module 1
+✓ Module 2
+✓ Module 3
+● Module 4
+○ Practice
+○ Evidence
+○ Remediation
+○ Reassessment
+○ Readiness
+```
+
+### My Capability
+
+```text
+Technical Knowledge       82%
+Procedure                 67%
+Safety                    48%  ⚠
+Documentation             81%
+```
+
+### Next Action
+
+```text
+⚠ SAFETY GAP
+
+Complete:
+1. Safety Module 2.3
+2. Scenario #04
+3. Repeat Practice #03
+
+[START]
+```
+
+**Dashboard harus selalu menjawab:**
+
+> **What should I do next?**
+
+---
+
+# 5. Learning Experience
+
+Course tidak hanya berupa video/PDF.
+
+Setiap learning unit dapat memiliki:
+
+* video
+* audio
+* reading
+* presentation
+* interactive lesson
+* scenario
+* quiz
+* reflection
+* discussion
+* assignment
+* live session
+* simulation preparation
+* AI Tutor
+
+Struktur:
+
+```text
+COURSE
+ ↓
+MODULE
+ ↓
+LESSON
+ ↓
+LEARNING ACTIVITY
+ ↓
+OUTCOME
+```
+
+Setiap activity memiliki:
+
+```text
+Learning Objective
+Capability Target
+Prerequisite
+Content
+Activity
+Expected Outcome
+Completion Rule
+```
+
+---
+
+# 6. Practice Engine
+
+Practice adalah jembatan antara:
+
+**knowing → doing**
+
+```text
+PRACTICE CENTER
+
+Practice #03
+Installation Procedure
+
+Objective
+Perform installation according to procedure.
+
+Requirements
+• Tools
+• Safety
+• Procedure
+• Documentation
+
+Evidence Required
+• Photo
+• Checklist
+• Explanation
+
+[START PRACTICE]
+```
+
+Practice dapat berupa:
+
+* guided practice
+* scenario
+* case
+* simulation
+* assignment
+* field activity
+* structured task
+
+---
+
+# 7. Evidence Engine
+
+Evidence bukan sekadar upload file.
+
+```text
+EVIDENCE
+
+Practice #03
+
+Required:
+☐ Photo
+☐ Video
+☐ Checklist
+☐ Work Record
+☐ Explanation
+
+Submission
+↓
+Validation
+↓
+Review
+↓
+Feedback
+↓
+Accepted / Revision Required
+```
+
+Evidence harus memiliki:
+
+* owner
+* activity
+* timestamp
+* version
+* reviewer
+* status
+* feedback
+* audit trail
+
+---
+
+# 8. Feedback Engine
+
+Feedback harus menghasilkan tindakan.
+
+Contoh:
+
+```text
+INSTRUCTOR FEEDBACK
+
+Procedure       4/5
+Safety          2/5
+Documentation   4/5
+
+Issue:
+Isolation sequence is inconsistent.
+
+Required action:
+Repeat Practice #03.
+
+[VIEW REMEDIATION]
+```
+
+Bukan hanya:
+
+> Score: 72.
+
+---
+
+# 9. Remediation Engine
+
+Jika ada gap:
+
+```text
+REMEDIATION
+
+Problem:
+Safety procedure
+
+Required:
+✓ Review lesson
+○ Scenario
+○ Practice
+○ Evidence
+○ Reassessment
+```
+
+Remediation dapat otomatis direkomendasikan berdasarkan:
+
+* quiz result
+* practice result
+* evidence
+* instructor feedback
+* critical failure
+* readiness rule
+
+---
+
+# 10. Reassessment
+
+Setelah remediation:
+
+```text
+REASSESSMENT
+
+Original Gap
+Safety Procedure
+
+Previous:
+42%
+
+Required:
+≥ 75%
+
+Current:
+78%
+
+Status:
+IMPROVED
+```
+
+Tetapi jika ada critical requirement:
+
+```text
+Technical       88%
+Safety          78%
+Critical Safety Rule = PASS
+
+→ eligible for next stage
+```
+
+---
+
+# 11. Readiness Transfer
+
+Ini **exit gate LMS**.
+
+LMS tidak memutuskan sertifikasi resmi.
+
+LMS hanya memberikan data dan status perkembangan kepada **Readiness Engine**.
+
+```text
+LMS EXIT
+
+Learning Outcome       ✓
+Practice               ✓
+Evidence               ✓
+Critical Requirements  ✓
+Remediation            ✓
+Reassessment           ✓
+
+        ↓
+
+READINESS ENGINE
+```
+
+Output:
+
+```text
+READY
+READY WITH SUPPORT
+NEEDS STRENGTHENING
+NOT READY
+```
+
+Dan bukan:
+
+> “Certified.”
+
+---
+
+# 12. Instructor Dashboard — FINAL
+
+Instructor melihat:
+
+```text
+MY PROGRAMS
+
+Participants        126
+Active               98
+Need Attention       17
+Remediation           8
+Ready                 21
+```
+
+### Attention Queue
+
+```text
+🔴 Critical issues       3
+🟠 Evidence review       7
+🟡 Learning gaps         5
+🟣 Remediation review    2
+```
+
+### Participant Detail
+
+```text
+ANDI
+
+Learning             82%
+Practice             67%
+Evidence             54%
+Readiness            NEEDS STRENGTHENING
+
+Capability:
+Safety               48% ⚠
+Procedure             67%
+Documentation         81%
+```
+
+Instructor dapat melihat **why**, bukan hanya score.
+
+---
+
+# 13. Evaluator / Reviewer Dashboard
+
+Role ini fokus pada:
+
+```text
+REVIEW QUEUE
+
+Evidence Pending       27
+Reassessment Pending    9
+Readiness Review        6
+Critical Review         2
+```
+
+Evaluator dapat:
+
+* review evidence
+* memberikan feedback
+* request revision
+* approve evidence
+* trigger remediation
+* melakukan readiness review
+
+Tetapi **tidak otomatis mengambil alih keputusan resmi competency assessment**.
+
+---
+
+# 14. Program Admin Dashboard
+
+```text
+PROGRAM OVERVIEW
+
+Programs              18
+Cohorts                32
+Participants          742
+Instructors            36
+
+Learning               76%
+Practice               64%
+Evidence               58%
+Readiness              47%
+```
+
+Program Admin mengontrol:
+
+* cohort
+* enrollment
+* instructor assignment
+* schedule
+* learning path
+* completion
+* analytics
+* intervention
+
+---
+
+# 15. Organization Dashboard
+
+Untuk perusahaan/organisasi:
+
+```text
+MY ORGANIZATION
+
+Participants            47
+
+Learning                78%
+Practice                69%
+Evidence                61%
+
+Need Attention            6
+Remediation               4
+Ready                    12
+```
+
+Fokusnya:
+
+> **workforce capability development**
+
+bukan melihat seluruh data pribadi peserta tanpa hak akses.
+
+---
+
+# 16. Content Manager
+
+Content dibuat **capability-linked**.
+
+Contoh:
+
+```text
+CONTENT
+
+Module:
+Installation
+
+Capability:
+Installation Procedure
+
+Target Gap:
+Procedure Execution
+
+Learning Objective:
+Participant can perform...
+
+Learning:
+Video
+Scenario
+Quiz
+
+Practice:
+Installation Simulation
+
+Evidence:
+Checklist + Photo
+
+Remediation:
+Repeat Procedure
+
+```
+
+Dengan demikian konten tidak menjadi “materi yang berdiri sendiri”.
+
+---
+
+# 17. Platform Admin
+
+Platform Admin mengelola:
+
+```text
+PLATFORM
+│
+├── Users
+├── Organizations
+├── Roles
+├── Permissions
+├── Programs
+├── Workflow
+├── Safety Rules
+├── System Configuration
+├── Audit Trail
+├── Notifications
+├── Integrations
+└── Analytics
+```
+
+---
+
+# 18. Role & Permission — baseline
+
+| Role            |  Learn | Practice | Review | Remediation |  Program | System |
+| --------------- | -----: | -------: | -----: | ----------: | -------: | -----: |
+| Participant     |      ✓ |        ✓ |    own |         own |        — |      — |
+| Instructor      |      ✓ |        ✓ |      ✓ |           ✓ | assigned |      — |
+| Evaluator       |      — |        — |      ✓ |           ✓ | assigned |      — |
+| Program Admin   |      ✓ |        ✓ |      ✓ |           ✓ |        ✓ |      — |
+| Organization    |   view |     view |      — |           — |     view |      — |
+| Content Manager | create |   define |      — |      define |        — |      — |
+| Platform Admin  |      ✓ |        ✓ |      ✓ |           ✓ |        ✓ |      ✓ |
+
+Permission detail nantinya tetap harus mengikuti **RBAC + ownership + organization scope + program scope**.
+
+---
+
+# 19. Learning State Machine — FINAL
+
+Ini saya anggap **fondasi teknis yang tidak boleh dilanggar**.
+
+```text
+NOT_STARTED
+     ↓
+IN_PROGRESS
+     ↓
+LEARNING_COMPLETED
+     ↓
+OUTCOME_VERIFIED
+     ↓
+PRACTICE_REQUIRED
+     ↓
+PRACTICE_IN_PROGRESS
+     ↓
+EVIDENCE_SUBMITTED
+     ↓
+UNDER_REVIEW
+     ↓
+ ┌───────────────┐
+ │               │
+PASS       REVISION_REQUIRED
+ │               │
+ │          REMEDIATION
+ │               │
+ │          RE-PRACTICE
+ │               │
+ └──────→ REASSESSMENT
+                ↓
+        ┌───────┴────────┐
+        ↓                ↓
+      READY          NOT_READY
+```
+
+Setiap state harus memiliki:
+
+* owner
+* timestamp
+* actor
+* reason
+* evidence
+* transition rule
+* audit record
+
+---
+
+# 20. Data flow final
+
+```text
+DIAGNOSTIC
+    │
+    │ GAP
+    ▼
+LMS
+    │
+    ├── Learning Record
+    │
+    ├── Activity Record
+    │
+    ├── Quiz Result
+    │
+    ├── Practice Record
+    │
+    ├── Evidence Record
+    │
+    ├── Feedback Record
+    │
+    ├── Remediation Record
+    │
+    └── Reassessment Record
+              │
+              ▼
+       READINESS ENGINE
+              │
+        ┌─────┴─────┐
+        ▼           ▼
+   Readiness    Capability
+     State        Passport
+```
+
+---
+
+# 21. AI di dalam LMS
+
+AI **bukan pengganti instructor/evaluator**.
+
+AI menjadi learning assistant.
+
+### AI Tutor
+
+Membantu:
+
+* menjelaskan materi
+* menjawab pertanyaan
+* memberikan contoh
+* membuat latihan
+* memberikan hint
+* membantu refleksi
+
+### AI Learning Coach
+
+Menganalisis:
+
+* progress
+* gap
+* learning behavior
+* repeated failure
+* remediation
+
+Kemudian:
+
+> merekomendasikan next action.
+
+### AI tidak boleh:
+
+* mengubah official competency decision
+* melewati critical safety rule
+* menyatakan peserta resmi kompeten
+* menggantikan assessor resmi
+
+---
+
+# 22. Notification Engine
+
+Notifikasi harus berbasis **action**, bukan sekadar informasi.
+
+Contoh:
+
+**Participant**
+
+> Practice #03 membutuhkan pengulangan.
+
+**Instructor**
+
+> 7 evidence menunggu review.
+
+**Program Admin**
+
+> Cohort A memiliki 12 peserta dengan remediation overdue.
+
+**Organization**
+
+> 4 peserta membutuhkan penguatan capability.
+
+---
+
+# 23. Analytics
+
+Analytics tidak berhenti di:
+
+> jumlah login.
+
+Kita ukur:
+
+```text
+Learning
+    ↓
+Engagement
+    ↓
+Outcome
+    ↓
+Practice
+    ↓
+Evidence
+    ↓
+Improvement
+    ↓
+Readiness
+```
+
+KPI utama:
+
+* learning completion
+* outcome achievement
+* practice completion
+* evidence acceptance
+* remediation rate
+* reassessment improvement
+* readiness rate
+* critical failure rate
+* time-to-readiness
+
+---
+
+# 24. UX Navigation final
+
+### Participant
+
+```text
+HOME
+MY JOURNEY
+PROGRAMS
+LEARN
+PRACTICE
+EVIDENCE
+FEEDBACK
+REMEDIATION
+READINESS
+CAPABILITY PASSPORT
+PROFILE
+```
+
+### Instructor
+
+```text
+DASHBOARD
+PROGRAMS
+COHORTS
+PARTICIPANTS
+LEARNING MONITOR
+PRACTICE
+EVIDENCE REVIEW
+FEEDBACK
+REMEDIATION
+READINESS
+ANALYTICS
+```
+
+### Admin
+
+```text
+DASHBOARD
+PROGRAMS
+USERS
+ORGANIZATIONS
+CONTENT
+COHORTS
+WORKFLOW
+READINESS
+ANALYTICS
+AUDIT
+SETTINGS
+```
+
+---
+
+# 25. Dan yang paling penting: jangan overbuild
+
+Untuk implementasi Replit sekarang, saya **tidak menyarankan langsung membangun seluruh ecosystem secara penuh**.
+
+Kita bangun **LMS Core yang benar terlebih dahulu**:
+
+### PHASE A — LMS Foundation
+
+1. Role & authentication
+2. Program
+3. Course
+4. Module
+5. Lesson
+6. Enrollment
+7. Learning progress
+8. Activity
+9. Quiz
+10. Learning state
+
+### PHASE B — Learning-to-Performance
+
+11. Practice
+12. Evidence
+13. Review
+14. Feedback
+15. Remediation
+16. Reassessment
+
+### PHASE C — Transfer
+
+17. Readiness Engine integration
+18. Capability Passport integration
+19. Learning record
+20. Audit trail
+
+### PHASE D — Intelligence
+
+21. AI Tutor
+22. AI Learning Coach
+23. Recommendation engine
+24. Advanced analytics
+
+---
+
+# FINAL POSITIONING
+
+Saya akan mengunci kalimat arsitektural TERAS seperti ini:
+
+> **TERAS Academy adalah capability development platform dengan LMS sebagai core learning engine yang menghubungkan diagnosis kebutuhan, pembelajaran, praktik, evidence, feedback, remediation, reassessment, dan readiness dalam satu continuous learning journey.**
+
+Dan prinsip teknisnya:
+
+> **Learn → Practice → Prove → Improve → Reassess → Readiness.**
+
+Dengan ini, **LMS menjadi fokus utama TERAS**, tetapi tetap tidak terisolasi dari Diagnostic, Readiness Engine, dan Capability Passport.
+
+### Status: **BASELINE LMS TERAS — FINAL**
+
+Setelah baseline ini dikunci, prompt Replit sebaiknya **bukan satu prompt besar yang menyuruh Replit “buat LMS TERAS”**. Kita harus memberikan prompt secara bertahap dan preskriptif: **Architecture → Data Model → RBAC → State Machine → Core LMS → Practice/Evidence → Readiness Transfer → Hardening/Test**.
+
+Itu akan jauh lebih aman terhadap perubahan scope dan regresi pada sistem TERAS yang sudah dibangun.

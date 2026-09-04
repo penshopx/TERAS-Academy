@@ -1,0 +1,153 @@
+Ya. Dari baseline ini, saya melihat **arah TERAS Academy sudah cukup jelas**: kita tidak lagi membangun “LMS sebagai fitur”, tetapi **LMS sebagai mesin inti yang menggerakkan perjalanan capability peserta**.
+
+Saya akan mengunci arsitekturnya pada prinsip:
+
+> **TERAS tidak mengukur apakah seseorang sudah mengikuti pembelajaran. TERAS mengelola bagaimana pembelajaran menghasilkan perubahan capability yang dapat dibuktikan dan ditransfer ke tahap readiness.**
+
+### Baseline berikutnya
+
+```text
+                    TERAS ACADEMY
+                         │
+                 ┌───────▼───────┐
+                 │   DIAGNOSTIC  │
+                 └───────┬───────┘
+                         ↓
+                    GAP / NEED
+                         ↓
+                 ┌───────────────┐
+                 │   LMS ENGINE  │
+                 └───────┬───────┘
+                         ↓
+              ┌──────────┼──────────┐
+              ↓          ↓          ↓
+           LEARN      PRACTICE   SIMULATION
+              │          │          │
+              └──────────┼──────────┘
+                         ↓
+                      EVIDENCE
+                         ↓
+                      FEEDBACK
+                         ↓
+                  ┌──────┴──────┐
+                  │ REMEDIATION │
+                  └──────┬──────┘
+                         ↓
+                    REASSESSMENT
+                         ↓
+                  READINESS ENGINE
+                         ↓
+                CAPABILITY PASSPORT
+                         ↓
+              NEXT / OFFICIAL PROCESS
+```
+
+## Yang perlu kita kunci sekarang
+
+Saya menyarankan **4 artefak desain** dibuat sebelum menambah dashboard atau fitur baru:
+
+### 1. LMS Information Architecture
+
+Menentukan struktur:
+
+* Programs
+* Courses
+* Modules
+* Lessons
+* Learning Activities
+* Practice
+* Evidence
+* Feedback
+* Remediation
+* Reassessment
+* Readiness
+
+### 2. Role & Permission Matrix
+
+Menentukan secara presisi apa yang boleh dilakukan:
+
+**Admin → Instructor → Evaluator → Participant → Organization → Reviewer**
+
+Termasuk siapa yang boleh melihat, membuat, mengubah, menyetujui, menilai, dan meneruskan data.
+
+### 3. Learning State Machine
+
+Ini sangat penting.
+
+Misalnya:
+
+```text
+NOT_STARTED
+     ↓
+IN_PROGRESS
+     ↓
+LEARNING_COMPLETED
+     ↓
+OUTCOME_VERIFIED
+     ↓
+PRACTICE
+     ↓
+EVIDENCE_SUBMITTED
+     ↓
+REVIEW
+     ↓
+ ┌───┴────┐
+ ↓        ↓
+PASS    REMEDIATION
+ ↓        ↓
+ │     RE-PRACTICE
+ │        ↓
+ └────→ REASSESSMENT
+             ↓
+       READY / NOT_READY
+```
+
+Dengan demikian status peserta **tidak boleh ditentukan hanya berdasarkan persentase completion**.
+
+### 4. Dashboard Specification
+
+Baru setelah tiga hal di atas terkunci kita turunkan menjadi dashboard:
+
+* **Participant Dashboard**
+* **Instructor Dashboard**
+* **Evaluator/Reviewer Dashboard**
+* **Program Admin Dashboard**
+* **Organization Dashboard**
+* **Content Manager Dashboard**
+* **Platform Admin Dashboard**
+
+Dan semuanya membaca **state yang sama**, hanya berbeda perspektif dan permission.
+
+---
+
+### Satu prinsip yang menurut saya harus benar-benar dikunci
+
+**“Completed” ≠ “Capable” ≠ “Ready”.**
+
+Misalnya:
+
+```text
+Learning Completion       92%
+Practice Completion       80%
+Evidence                  74%
+
+Capability                DEVELOPING
+
+Critical Safety           NOT VERIFIED
+
+Readiness                 NOT READY
+```
+
+Ini justru kekuatan TERAS.
+
+LMS menghasilkan **learning record**.
+Practice menghasilkan **performance record**.
+Evidence menghasilkan **proof**.
+Feedback menghasilkan **development action**.
+Remediation menghasilkan **improvement loop**.
+Readiness Engine menghasilkan **decision support**.
+Capability Passport menyimpan **longitudinal capability record**.
+
+Dengan struktur ini, TERAS benar-benar bergerak dari **“platform pembelajaran” → “platform pengembangan dan pembuktian capability.”**
+
+**Langkah paling tepat berikutnya:** saya bisa langsung menyusun **LMS Information Architecture TERAS versi final**, sampai level **menu, submenu, halaman, komponen setiap halaman, data yang masuk/keluar, state, dan hubungan antar-role**. Itu akan menjadi blueprint yang bisa langsung diterjemahkan ke Replit/coding tanpa kembali mengubah fondasi.
