@@ -71,3 +71,13 @@ test("Course create dialog collects all required topological metadata", async ()
   assert.match(code, /data-testid="input-new-course-sequence"/);
   assert.match(code, /data-testid="error-course-create"/);
 });
+
+test("Publish confirmation and history identify the immutable authoring revision", async () => {
+  const code = await readFile(path.join(__dirname, "trainer/authoring/validation-panel.tsx"), "utf8");
+
+  assert.match(code, /setPublishedVersion\(version\)/);
+  assert.match(code, /Authoring revision \$\{publishedVersion\.authoringRevision\} was published as immutable version/);
+  assert.match(code, /getListAuthoredCourseVersionsQueryKey\(courseId\)/);
+  assert.match(code, /v\.authoringRevision === 0 \? "Authoring revision: Legacy version"/);
+  assert.match(code, /data-testid=\{`text-authoring-revision-\$\{v\.id\}`\}/);
+});

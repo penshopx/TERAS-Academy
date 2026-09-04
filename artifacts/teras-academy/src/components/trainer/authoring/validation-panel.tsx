@@ -1,4 +1,4 @@
-import { CourseValidationReport, usePublishAuthoredCourse, getListAuthoredCoursesQueryKey, getPreviewAuthoredCourseQueryKey, useValidateAuthoredCourse, useListAuthoredCourseVersions, useListCourseAuthoringAudit, getListAuthoredCourseVersionsQueryKey, getListCourseAuthoringAuditQueryKey, getValidateAuthoredCourseQueryKey } from "@workspace/api-client-react";
+import { CourseValidationReport, CourseVersion, usePublishAuthoredCourse, getListAuthoredCoursesQueryKey, getPreviewAuthoredCourseQueryKey, useValidateAuthoredCourse, useListAuthoredCourseVersions, useListCourseAuthoringAudit, getListAuthoredCourseVersionsQueryKey, getListCourseAuthoringAuditQueryKey, getValidateAuthoredCourseQueryKey } from "@workspace/api-client-react";
 import { AlertCircle, CheckCircle2, AlertTriangle, Send, Clock, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,7 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
   const { toast } = useToast();
   const publishMutation = usePublishAuthoredCourse();
   const [confirmPublish, setConfirmPublish] = useState(false);
+  const [publishedVersion, setPublishedVersion] = useState<CourseVersion | null>(null);
 
   const { data: validation } = useValidateAuthoredCourse(courseId, { query: { enabled: !!courseId, queryKey: getValidateAuthoredCourseQueryKey(courseId) } });
   const { data: versions } = useListAuthoredCourseVersions(courseId, { query: { enabled: !!courseId, queryKey: getListAuthoredCourseVersionsQueryKey(courseId) } });
@@ -24,13 +25,15 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
 
   const handlePublish = async () => {
     try {
-      await publishMutation.mutateAsync({
+      const version = await publishMutation.mutateAsync({
         courseId: courseId
       });
       queryClient.invalidateQueries({ queryKey: getListAuthoredCoursesQueryKey() });
       queryClient.invalidateQueries({ queryKey: getPreviewAuthoredCourseQueryKey(courseId) });
-      toast({ title: "Course Published", description: "The course has been successfully published." });
-      setConfirmPublish(false);
+      queryClient.invalidateQueries({ queryKey: getListAuthoredCourseVersionsQueryKey(courseId) });
+      queryClient.invalidateQueries({ queryKey: getListCourseAuthoringAuditQueryKey(courseId) });
+      setPublishedVersion(version);
+      toast({ title: "Course Published", description: `Authoring revision ${version.authoringRevision} was published as version ${version.version}.` });
     } catch (err: any) {
       toast({ title: "Publish failed", description: err?.response?.data?.message || err.message, variant: "destructive" });
     }
@@ -117,7 +120,10 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
             <Button 
               className="w-full font-bold tracking-widest uppercase bg-green-600 hover:bg-green-500 text-white disabled:opacity-50" 
               disabled={!isPublishable || publishMutation.isPending}
-              onClick={() => setConfirmPublish(true)}
+              onClick={() => {
+                setPublishedVersion(null);
+                setConfirmPublish(true);
+              }}
               data-testid="button-publish-course"
             >
               <Send className="w-4 h-4 mr-2" />
@@ -140,6 +146,9 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
                     <div>
                       <p className="text-xs font-bold text-foreground font-mono">v{v.version}</p>
                       <p className="text-[10px] text-muted-foreground font-mono">{format(new Date(v.publishedAt), 'MMM dd, yyyy HH:mm')}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono" data-testid={`text-authoring-revision-${v.id}`}>
+                        {v.authoringRevision === 0 ? "Authoring revision: Legacy version" : `Authoring revision: ${v.authoringRevision}`}
+                      </p>
                     </div>
                     <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">{v.lifecycle}</span>
                   </div>
@@ -175,16 +184,24 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
       <Dialog open={confirmPublish} onOpenChange={setConfirmPublish}>
         <DialogContent className="border-border bg-background sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Confirm Publish</DialogTitle>
+            <DialogTitle>{publishedVersion ? "Course Published" : "Confirm Publish"}</DialogTitle>
             <DialogDescription>
-              This will create a new immutable published version of the course. It will become instantly available to all enrolled learners on this pathway.
+              {publishedVersion
+                ? `Authoring revision ${publishedVersion.authoringRevision} was published as immutable version ${publishedVersion.version}.`
+                : "This will create a new immutable published version of the course. It will become instantly available to all enrolled learners on this pathway."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setConfirmPublish(false)}>CANCEL</Button>
-            <Button className="bg-green-600 hover:bg-green-500 text-white font-bold" onClick={handlePublish} disabled={publishMutation.isPending} data-testid="button-confirm-publish">
-              {publishMutation.isPending ? "PUBLISHING..." : "CONFIRM PUBLISH"}
-            </Button>
+            {publishedVersion ? (
+              <Button onClick={() => setConfirmPublish(false)} data-testid="button-close-publish-confirmation">CLOSE</Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setConfirmPublish(false)}>CANCEL</Button>
+                <Button className="bg-green-600 hover:bg-green-500 text-white font-bold" onClick={handlePublish} disabled={publishMutation.isPending} data-testid="button-confirm-publish">
+                  {publishMutation.isPending ? "PUBLISHING..." : "CONFIRM PUBLISH"}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
