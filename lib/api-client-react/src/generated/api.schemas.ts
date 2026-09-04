@@ -461,6 +461,11 @@ export interface PracticeAttemptInput {
   /** @minLength 1 */
   outputSummary: string;
   sourceActivityId: string;
+  /**
+     * @minLength 8
+     * @maxLength 160
+     */
+  idempotencyKey: string;
 }
 
 export interface PracticeAttempt {
@@ -489,6 +494,11 @@ export interface EvidenceInput {
   fileName: string | null;
   sourceActivityId: string;
   practiceAttemptId: string;
+  /**
+     * @minLength 8
+     * @maxLength 160
+     */
+  idempotencyKey: string;
 }
 
 export interface EvidenceQuality {

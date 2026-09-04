@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Activity, PlayCircle, ShieldAlert, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -21,6 +21,7 @@ export default function Practice() {
   const [reflection, setReflection] = useState("");
   const [outputSummary, setOutputSummary] = useState("");
   const [nextEvidenceHref, setNextEvidenceHref] = useState<string | null>(null);
+  const submission = useRef<{ fingerprint: string; key: string } | null>(null);
 
   if (isLoading) {
     return <div className="h-full flex items-center justify-center"><Activity className="w-8 h-8 text-primary animate-pulse" /></div>;
@@ -36,15 +37,20 @@ export default function Practice() {
       return;
     }
     
+    const fingerprint = JSON.stringify({ taskId, reflection, outputSummary, sourceActivityId });
+    if (submission.current?.fingerprint !== fingerprint) {
+      submission.current = { fingerprint, key: crypto.randomUUID() };
+    }
     createAttempt.mutate({
       taskId,
-      data: { reflection, outputSummary, sourceActivityId }
+      data: { reflection, outputSummary, sourceActivityId, idempotencyKey: submission.current.key }
     }, {
       onSuccess: (attempt) => {
         toast({ title: "Submitted", description: "Practice attempt recorded. This is not a readiness decision." });
         setNextEvidenceHref(attempt.nextAction.href);
         setReflection("");
         setOutputSummary("");
+        submission.current = null;
         queryClient.invalidateQueries({ queryKey: getListPracticeTasksQueryKey() });
       },
       onError: () => {

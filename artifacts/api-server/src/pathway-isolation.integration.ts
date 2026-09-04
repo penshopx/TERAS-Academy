@@ -181,6 +181,7 @@ async function completeB04WithCausalApiFlow() {
     sourceActivityId: activityId,
     reflection: "Verified pathway-scoped practice",
     outputSummary: "Path B protection design rationale",
+    idempotencyKey: "pathway-isolation-b04-practice-attempt",
   }, 201);
   const evidence = await post<{ id: string }>("/evidence", {
     sourceActivityId: activityId,
@@ -191,6 +192,7 @@ async function completeB04WithCausalApiFlow() {
     type: "Report",
     description: "Traceable Path B b04 integration evidence",
     fileName: null,
+    idempotencyKey: "pathway-isolation-b04-evidence",
   }, 201);
   await post(`/trainer/evidence/${evidence.id}/review`, {
     status: "Valid",

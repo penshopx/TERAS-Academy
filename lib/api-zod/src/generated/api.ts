@@ -378,12 +378,16 @@ export const CreatePracticeAttemptParams = zod.object({
 
 
 
+export const createPracticeAttemptBodyIdempotencyKeyMin = 8;
+export const createPracticeAttemptBodyIdempotencyKeyMax = 160;
+
 
 
 export const CreatePracticeAttemptBody = zod.object({
   "reflection": zod.string().min(1),
   "outputSummary": zod.string().min(1),
-  "sourceActivityId": zod.string()
+  "sourceActivityId": zod.string(),
+  "idempotencyKey": zod.string().min(createPracticeAttemptBodyIdempotencyKeyMin).max(createPracticeAttemptBodyIdempotencyKeyMax)
 })
 
 export const CreatePracticeAttemptResponse = zod.object({
@@ -439,6 +443,9 @@ export const ListEvidenceResponse = zod.array(ListEvidenceResponseItem)
  */
 
 
+export const createEvidenceBodyIdempotencyKeyMin = 8;
+export const createEvidenceBodyIdempotencyKeyMax = 160;
+
 
 
 export const CreateEvidenceBody = zod.object({
@@ -449,7 +456,8 @@ export const CreateEvidenceBody = zod.object({
   "description": zod.string().min(1),
   "fileName": zod.string().nullable(),
   "sourceActivityId": zod.string(),
-  "practiceAttemptId": zod.string()
+  "practiceAttemptId": zod.string(),
+  "idempotencyKey": zod.string().min(createEvidenceBodyIdempotencyKeyMin).max(createEvidenceBodyIdempotencyKeyMax)
 })
 
 export const CreateEvidenceResponse = zod.object({

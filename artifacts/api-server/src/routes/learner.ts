@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import crypto from "node:crypto";
 import { CompleteRemediationParams, CompleteRemediationResponse, CreateEvidenceBody, CreateEvidenceResponse, CreatePracticeAttemptBody, CreatePracticeAttemptParams, CreatePracticeAttemptResponse, GetCapabilityPassportResponse, GetLearnerDashboardResponse, GetLearnerJourneyResponse, GetLearnerLearningPlanResponse, GetLearnerReadinessResponse, ListEvidenceResponse, ListGapsResponse, ListRemediationResponse, SelectLearnerPathwayBody, SelectLearnerPathwayResponse } from "@workspace/api-zod";
 import { db, assessmentAttemptsTable, enrollmentPathwayEventsTable, evidenceReviewsTable, evidenceTable, learningTransitionEventsTable, modulesTable, pathwaysTable, practiceAttemptsTable, practiceTasksTable } from "@workspace/db";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -7,20 +8,24 @@ import { authorizeLearner } from "../lib/authorization";
 import { learningNextAction, transitionLearningState, type LearningState, type LearningTransitionResult } from "../lib/learning-transition";
 const router: IRouter = Router(); const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 function bad(req: any, res: any, error: string) { req.log.warn({ error }, "Invalid request"); res.status(400).json({ error }); }
+const digest = (value: unknown) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
+const scopedIdempotencyKey = (operation: string, learnerId: string, key: string) => `${operation}:${digest({ learnerId, key })}`;
+function idempotencyConflict(res: any) {
+  res.status(409).json({
+    error: "IDEMPOTENCY_KEY_REUSED",
+    message: "The idempotency key was already used with a different payload.",
+  });
+}
 class RejectedLearningTransition extends Error {
   constructor(readonly result: Extract<LearningTransitionResult, { ok: false }>) {
     super(result.value.message);
   }
 }
-async function atomicLearningWrite<T>(write: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<{ value: T; transition: LearningTransitionResult }>) {
+async function learningWrite<T>(write: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>) {
   try {
-    return await db.transaction(async (tx) => {
-      const result = await write(tx);
-      if (!result.transition.ok) throw new RejectedLearningTransition(result.transition);
-      return result;
-    });
+    return await db.transaction(write);
   } catch (error) {
-    if (error instanceof RejectedLearningTransition) return { transition: error.result } as const;
+    if (error instanceof RejectedLearningTransition) return { kind: "rejected" as const, transition: error.result };
     throw error;
   }
 }
@@ -47,11 +52,24 @@ router.post("/evidence", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Linked practice attempt was not found for the enrolled pathway" });
     return;
   }
-  const record = { id: id("evidence"), learnerId, pathwayId: context.pathway.id, moduleId: parsed.data.moduleId, taskId: parsed.data.taskId, title: parsed.data.title, type: parsed.data.type, description: parsed.data.description, fileName: parsed.data.fileName, createdBy: learnerId };
-  const reviewId = id("evidence-review");
-  const result = await atomicLearningWrite(async (tx) => {
+  const transitionKey = scopedIdempotencyKey("evidence-submit", learnerId, parsed.data.idempotencyKey);
+  const fingerprint = digest({
+    moduleId: parsed.data.moduleId, taskId: parsed.data.taskId, title: parsed.data.title, type: parsed.data.type,
+    description: parsed.data.description, fileName: parsed.data.fileName, sourceActivityId: parsed.data.sourceActivityId,
+    practiceAttemptId: parsed.data.practiceAttemptId,
+  });
+  const result = await learningWrite(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${transitionKey}))`);
+    const [duplicate] = await tx.select().from(learningTransitionEventsTable).where(eq(learningTransitionEventsTable.idempotencyKey, transitionKey)).limit(1);
+    if (duplicate) {
+      const metadata = duplicate.metadata as { idempotencyFingerprint?: string } | null;
+      return metadata?.idempotencyFingerprint === fingerprint
+        ? { kind: "duplicate" as const, entityId: duplicate.entityReference }
+        : { kind: "conflict" as const };
+    }
+    const record = { id: id("evidence"), learnerId, pathwayId: context.pathway.id, moduleId: parsed.data.moduleId, taskId: parsed.data.taskId, title: parsed.data.title, type: parsed.data.type, description: parsed.data.description, fileName: parsed.data.fileName, createdBy: learnerId };
     await tx.insert(evidenceTable).values(record);
-    await tx.insert(evidenceReviewsTable).values({ id: reviewId, evidenceId: record.id, status: "Under review", quality: { valid: false, relevant: false, sufficient: false, traceable: false }, createdBy: learnerId });
+    await tx.insert(evidenceReviewsTable).values({ id: id("evidence-review"), evidenceId: record.id, status: "Under review", quality: { valid: false, relevant: false, sufficient: false, traceable: false }, createdBy: learnerId });
     const transition = await transitionLearningState({
       currentState: (latestTransition?.toState ?? "NOT_STARTED") as LearningState,
       targetState: "EVIDENCE_SUBMITTED",
@@ -61,16 +79,18 @@ router.post("/evidence", async (req, res): Promise<void> => {
       activityId: parsed.data.sourceActivityId,
       entityReference: record.id,
       reason: "Learner submitted evidence linked to a practice attempt",
-      idempotencyKey: `evidence-submit:${record.id}`,
+      idempotencyKey: transitionKey,
+      idempotencyFingerprint: fingerprint,
       references: { practiceAttemptId: attempt.id, evidenceId: record.id },
     }, { id: learnerId, role: "learner" }, tx);
-    return { value: record, transition };
+    if (!transition.ok) throw new RejectedLearningTransition(transition);
+    return { kind: "created" as const, entityId: record.id };
   });
-  if (!result.transition.ok) {
-    res.status(result.transition.statusCode).json(result.transition.value);
-    return;
-  }
-  res.status(201).json(CreateEvidenceResponse.parse((await evidenceRecords(learnerId)).find(item => item.id === record.id)));
+  if (result.kind === "rejected") { res.status(result.transition.statusCode).json(result.transition.value); return; }
+  if (result.kind === "conflict") { idempotencyConflict(res); return; }
+  const response = (await evidenceRecords(learnerId)).find(item => item.id === result.entityId);
+  if (!response) throw new Error(`Idempotent evidence result ${result.entityId} was not found`);
+  res.status(result.kind === "duplicate" ? 200 : 201).json(CreateEvidenceResponse.parse(response));
 });
 router.post("/practice/tasks/:taskId/attempts", async (req, res): Promise<void> => {
   const params = CreatePracticeAttemptParams.safeParse(req.params), body = CreatePracticeAttemptBody.safeParse(req.body);
@@ -87,10 +107,21 @@ router.post("/practice/tasks/:taskId/attempts", async (req, res): Promise<void> 
     eq(learningTransitionEventsTable.pathwayId, context.pathway.id),
   )).orderBy(desc(learningTransitionEventsTable.createdAt), desc(learningTransitionEventsTable.id)).limit(1);
   if (!task || !module || module.pathwayId !== context.pathway.id) { res.status(404).json({ error: "Practice task not found for the enrolled pathway" }); return; }
-  const row = { id: id("practice"), taskId: task.id, learnerId, pathwayId: context.pathway.id, reflection: body.data.reflection, outputSummary: body.data.outputSummary, status: "Submitted", createdBy: learnerId };
   const currentState = (latestTransition?.toState ?? "NOT_STARTED") as LearningState;
-  const result = await atomicLearningWrite(async (tx) => {
-    await tx.insert(practiceAttemptsTable).values(row);
+  const transitionKey = scopedIdempotencyKey("practice-attempt", learnerId, body.data.idempotencyKey);
+  const fingerprint = digest({ taskId: task.id, reflection: body.data.reflection, outputSummary: body.data.outputSummary, sourceActivityId: body.data.sourceActivityId });
+  const result = await learningWrite(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${transitionKey}))`);
+    const [duplicate] = await tx.select().from(learningTransitionEventsTable).where(eq(learningTransitionEventsTable.idempotencyKey, transitionKey)).limit(1);
+    if (duplicate) {
+      const metadata = duplicate.metadata as { idempotencyFingerprint?: string } | null;
+      if (metadata?.idempotencyFingerprint !== fingerprint) return { kind: "conflict" as const };
+      const [existing] = await tx.select().from(practiceAttemptsTable).where(eq(practiceAttemptsTable.id, duplicate.entityReference)).limit(1);
+      if (!existing) throw new Error(`Idempotent practice result ${duplicate.entityReference} was not found`);
+      return { kind: "duplicate" as const, row: existing };
+    }
+    const [row] = await tx.insert(practiceAttemptsTable).values({ id: id("practice"), taskId: task.id, learnerId, pathwayId: context.pathway.id, reflection: body.data.reflection, outputSummary: body.data.outputSummary, status: "Submitted", createdBy: learnerId }).returning();
+    if (!row) throw new Error("Practice attempt insert returned no row");
     const transition = await transitionLearningState({
       currentState,
       targetState: "PRACTICE_IN_PROGRESS",
@@ -100,19 +131,20 @@ router.post("/practice/tasks/:taskId/attempts", async (req, res): Promise<void> 
       activityId: body.data.sourceActivityId,
       entityReference: row.id,
       reason: "Learner created a pathway-scoped practice attempt",
-      idempotencyKey: `practice-attempt:${row.id}`,
+      idempotencyKey: transitionKey,
+      idempotencyFingerprint: fingerprint,
       references: { practiceAttemptId: row.id },
     }, { id: learnerId, role: "learner" }, tx);
-    return { value: row, transition };
+    if (!transition.ok) throw new RejectedLearningTransition(transition);
+    return { kind: "created" as const, row };
   });
-  if (!result.transition.ok) {
-    res.status(result.transition.statusCode).json(result.transition.value);
-    return;
-  }
-  res.status(201).json(CreatePracticeAttemptResponse.parse({
+  if (result.kind === "rejected") { res.status(result.transition.statusCode).json(result.transition.value); return; }
+  if (result.kind === "conflict") { idempotencyConflict(res); return; }
+  const row = result.row;
+  res.status(result.kind === "duplicate" ? 200 : 201).json(CreatePracticeAttemptResponse.parse({
     id: row.id,
     taskId: row.taskId,
-    submittedAt: new Date(),
+    submittedAt: row.createdAt,
     status: row.status,
     reflection: row.reflection,
     outputSummary: row.outputSummary,

@@ -1851,7 +1851,8 @@ components:
         reflection: { type: string, minLength: 1 }
         outputSummary: { type: string, minLength: 1 }
         sourceActivityId: { type: string }
-      required: [reflection, outputSummary, sourceActivityId]
+        idempotencyKey: { type: string, minLength: 8, maxLength: 160 }
+      required: [reflection, outputSummary, sourceActivityId, idempotencyKey]
     PracticeAttempt:
       type: object
       properties:
@@ -1879,7 +1880,8 @@ components:
         fileName: { type: ["string", "null"] }
         sourceActivityId: { type: string }
         practiceAttemptId: { type: string }
-      required: [moduleId, taskId, title, type, description, fileName, sourceActivityId, practiceAttemptId]
+        idempotencyKey: { type: string, minLength: 8, maxLength: 160 }
+      required: [moduleId, taskId, title, type, description, fileName, sourceActivityId, practiceAttemptId, idempotencyKey]
     EvidenceRecord:
       type: object
       properties:

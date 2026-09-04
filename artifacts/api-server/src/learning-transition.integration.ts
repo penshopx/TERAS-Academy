@@ -338,6 +338,7 @@ async function run() {
       reflection: rejectedPracticeReflection,
       outputSummary: "This row must be rolled back with its rejected transition.",
       sourceActivityId: activityId,
+      idempotencyKey: `${fixturePrefix}-rejected-practice`,
     });
     assert(rejectedPractice.status === 409, `Rejected practice route returned ${rejectedPractice.status}, expected 409`);
     assert(rejectedPractice.body.status === "REJECTED" && rejectedPractice.body.reason === "INVALID_TRANSITION", "Rejected practice route lost the transition rejection reason");
@@ -354,6 +355,7 @@ async function run() {
       fileName: null,
       sourceActivityId: activityId,
       practiceAttemptId: fixtureIds.practice,
+      idempotencyKey: `${fixturePrefix}-rejected-evidence`,
     });
     assert(rejectedEvidence.status === 409, `Rejected evidence route returned ${rejectedEvidence.status}, expected 409`);
     assert(rejectedEvidence.body.status === "REJECTED" && rejectedEvidence.body.reason === "INVALID_TRANSITION", "Rejected evidence route lost the transition rejection reason");
@@ -444,19 +446,31 @@ async function run() {
     assert(JSON.stringify(beforeReadiness) === JSON.stringify(afterOutcome), "Outcome verification changed readiness");
 
     expectSuccess(await transitionLearningState(command("OUTCOME_VERIFIED", "PRACTICE_REQUIRED", "practice-required"), actorTrainer), "practice required");
-    const createdPractice = await postJson(routeServer.baseUrl, "/practice/tasks/task-m03/attempts", {
+    const practicePayload = {
       reflection: `${fixturePrefix} successful route practice`,
       outputSummary: "Successful route practice output.",
       sourceActivityId: activityId,
-    });
-    assert(createdPractice.status === 201, `Successful practice route returned ${createdPractice.status}, expected 201`);
+      idempotencyKey: `${fixturePrefix}-successful-practice`,
+    };
+    const concurrentPractice = await Promise.all([
+      postJson(routeServer.baseUrl, "/practice/tasks/task-m03/attempts", practicePayload),
+      postJson(routeServer.baseUrl, "/practice/tasks/task-m03/attempts", practicePayload),
+    ]);
+    const createdPractice = concurrentPractice.find(response => response.status === 201) ?? concurrentPractice[0];
+    assert(concurrentPractice.map(response => response.status).sort().join(",") === "200,201", `Concurrent practice statuses were ${concurrentPractice.map(response => response.status).join(",")}`);
+    assert(concurrentPractice[0].body.id === concurrentPractice[1].body.id, "Concurrent practice requests returned different attempts");
     assert(createdPractice.body.nextAction?.action === "SUBMIT_EVIDENCE", "Successful practice route did not return its causal next action");
     routeRecords.practiceIds.push(createdPractice.body.id);
+    const conflictingPractice = await postJson(routeServer.baseUrl, "/practice/tasks/task-m03/attempts", {
+      ...practicePayload,
+      reflection: `${practicePayload.reflection} changed`,
+    });
+    assert(conflictingPractice.status === 409 && conflictingPractice.body.error === "IDEMPOTENCY_KEY_REUSED", "Practice idempotency key accepted a different payload");
     const crossPathEvidence = await transitionLearningState(command("PRACTICE_IN_PROGRESS", "EVIDENCE_SUBMITTED", "cross-path-evidence", {
       evidenceId: fixtureIds.pathBEvidence,
     }), actorLearner);
     assert(!crossPathEvidence.ok && crossPathEvidence.value.reason === "CAUSAL_REFERENCE_INVALID", "Path B evidence was accepted for Path A");
-    const createdEvidence = await postJson(routeServer.baseUrl, "/evidence", {
+    const evidencePayload = {
       moduleId: "m03",
       taskId: "task-m03",
       title: `${fixturePrefix} successful route evidence`,
@@ -465,10 +479,22 @@ async function run() {
       fileName: null,
       sourceActivityId: activityId,
       practiceAttemptId: createdPractice.body.id,
-    });
-    assert(createdEvidence.status === 201, `Successful evidence route returned ${createdEvidence.status}, expected 201`);
+      idempotencyKey: `${fixturePrefix}-successful-evidence`,
+    };
+    const concurrentEvidence = await Promise.all([
+      postJson(routeServer.baseUrl, "/evidence", evidencePayload),
+      postJson(routeServer.baseUrl, "/evidence", evidencePayload),
+    ]);
+    const createdEvidence = concurrentEvidence.find(response => response.status === 201) ?? concurrentEvidence[0];
+    assert(concurrentEvidence.map(response => response.status).sort().join(",") === "200,201", `Concurrent evidence statuses were ${concurrentEvidence.map(response => response.status).join(",")}`);
+    assert(concurrentEvidence[0].body.id === concurrentEvidence[1].body.id, "Concurrent evidence requests returned different records");
     assert(createdEvidence.body.practiceAttemptId === createdPractice.body.id, "Successful evidence response lost its practice-attempt link");
     routeRecords.evidenceIds.push(createdEvidence.body.id);
+    const conflictingEvidence = await postJson(routeServer.baseUrl, "/evidence", {
+      ...evidencePayload,
+      description: `${evidencePayload.description} changed`,
+    });
+    assert(conflictingEvidence.status === 409 && conflictingEvidence.body.error === "IDEMPOTENCY_KEY_REUSED", "Evidence idempotency key accepted a different payload");
     const [createdReview] = await db.select().from(evidenceReviewsTable).where(eq(evidenceReviewsTable.evidenceId, createdEvidence.body.id));
     assert(createdReview?.status === "Under review", "Successful evidence route did not create the initial review");
     routeRecords.reviewIds.push(createdReview.id);
@@ -512,7 +538,13 @@ async function run() {
 
     const history = await db.select().from(learningTransitionEventsTable).where(eq(learningTransitionEventsTable.activityId, activityId));
     const links = await db.select().from(learningRecordLinksTable).where(eq(learningRecordLinksTable.activityId, activityId));
+    const matchingPractices = await db.select().from(practiceAttemptsTable).where(eq(practiceAttemptsTable.reflection, practicePayload.reflection));
+    const matchingEvidence = await db.select().from(evidenceTable).where(eq(evidenceTable.title, evidencePayload.title));
     assert(history.length === 14, `Expected 14 append-only journey events including re-practice, got ${history.length}`);
+    assert(matchingPractices.length === 1, `Concurrent practice created ${matchingPractices.length} attempts`);
+    assert(matchingEvidence.length === 1, `Concurrent evidence created ${matchingEvidence.length} records`);
+    assert(links.filter(link => link.practiceAttemptId === createdPractice.body.id && !link.evidenceId).length === 1, "Concurrent practice created duplicate causal links");
+    assert(links.filter(link => link.evidenceId === createdEvidence.body.id && link.practiceAttemptId === createdPractice.body.id).length === 1, "Concurrent evidence created duplicate causal links");
     assert(links.some(link => link.practiceAttemptId === createdPractice.body.id), "Route-created practice attempt causal link was not recorded");
     assert(links.some(link => link.evidenceId === createdEvidence.body.id && link.practiceAttemptId === createdPractice.body.id), "Route-created evidence was not causally linked to its practice attempt");
     assert(links.some(link => link.gapId === fixtureIds.gap && link.remediationPlanId === fixtureIds.remediation), "Causal remediation link was not recorded");

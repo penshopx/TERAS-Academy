@@ -77,6 +77,7 @@ export type LearningTransitionCommand = {
   entityReference: string;
   reason: string;
   idempotencyKey: string;
+  idempotencyFingerprint?: string;
   references?: LearningTransitionReferences;
 };
 
@@ -246,12 +247,14 @@ export async function transitionLearningState(
       .where(eq(learningTransitionEventsTable.idempotencyKey, command.idempotencyKey))
       .limit(1);
     if (duplicate) {
+      const duplicateMetadata = duplicate.metadata as { idempotencyFingerprint?: string } | null;
       const sameCommand =
         duplicate.activityId === command.activityId &&
         duplicate.learnerId === command.learnerId &&
         duplicate.pathwayId === command.pathwayId &&
         duplicate.fromState === command.currentState &&
-        duplicate.toState === command.targetState;
+        duplicate.toState === command.targetState &&
+        duplicateMetadata?.idempotencyFingerprint === command.idempotencyFingerprint;
       if (!sameCommand) {
         return reject("CAUSAL_REFERENCE_INVALID", "The idempotency key was already used for another transition.", command.currentState);
       }
@@ -403,7 +406,7 @@ export async function transitionLearningState(
       entityReference: command.entityReference,
       reason: command.reason,
       idempotencyKey: command.idempotencyKey,
-      metadata: { references },
+      metadata: { references, idempotencyFingerprint: command.idempotencyFingerprint },
       createdBy: actor.id,
     }).returning();
     if (!event) throw new Error("Learning transition event insert returned no row");

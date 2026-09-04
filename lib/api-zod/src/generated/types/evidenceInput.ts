@@ -18,4 +18,9 @@ export interface EvidenceInput {
   fileName: string | null;
   sourceActivityId: string;
   practiceAttemptId: string;
+  /**
+     * @minLength 8
+     * @maxLength 160
+     */
+  idempotencyKey: string;
 }
