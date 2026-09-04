@@ -29,6 +29,7 @@ import Readiness from '@/pages/readiness';
 import Passport from '@/pages/passport';
 import TrainerDesk from '@/pages/trainer';
 import AssessorDesk from '@/pages/assessor';
+import Admin from '@/pages/admin';
 
 const queryClient = new QueryClient();
 
@@ -582,6 +583,7 @@ function WorkspaceRoutes() {
             <Route path="/passport" component={Passport} />
             <Route path="/trainer" component={TrainerDesk} />
             <Route path="/assessor" component={AssessorDesk} />
+            <Route path="/admin" component={Admin} />
             <Route component={NotFound} />
           </Switch>
         </RoutedErrorBoundary>

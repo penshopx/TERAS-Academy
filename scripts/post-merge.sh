@@ -15,6 +15,10 @@ fi
 pnpm install --frozen-lockfile
 if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_people') IS NOT NULL")" = "t" ]; then
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/post-merge.sql
+  # Explicitly rehearse the additive admin upgrade on existing installations;
+  # 0005 is idempotent and drizzle remains the new-install schema authority.
+  PGOPTIONS="${PGOPTIONS:-} -c teras.admin_clerk_user_ids=${CLERK_ADMIN_USER_IDS:-}" \
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f lib/db/migrations/0005_admin_management.sql
 fi
 if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_content_resources') IS NOT NULL")" = "t" ]; then
   TERAS_MIGRATION_ACTOR=post-merge-upgrade \
@@ -31,8 +35,11 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/schema-check.sql
 pnpm --filter @workspace/api-server run test:resource-uri
 pnpm --filter @workspace/scripts run test:resource-uri-audit
 pnpm --filter @workspace/scripts run test:resource-uri-upgrade
+pnpm --filter @workspace/scripts run test:admin-management-upgrade
+pnpm --filter @workspace/scripts run test:admin-management
 pnpm --filter @workspace/scripts run test:deployment-hardening
 pnpm --filter @workspace/scripts run test:safety
 pnpm --filter @workspace/api-server run test:pathway-isolation
 pnpm --filter @workspace/api-server run test:safety-blockers
+pnpm --filter @workspace/api-server run test:admin-management
 pnpm run typecheck

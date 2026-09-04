@@ -13,6 +13,8 @@
     "test:learning-transition": "NODE_ENV=test tsx ./src/learning-transition.integration.ts",
     "test:identity-isolation": "NODE_ENV=test tsx ./src/identity-isolation.integration.ts",
     "test:learner-isolation": "NODE_ENV=test tsx ./src/learner-isolation.integration.ts",
+    "test:admin-authorization": "NODE_ENV=test tsx ./src/admin-authorization.integration.ts",
+    "test:admin-management": "NODE_ENV=test tsx ./src/admin-management.integration.ts",
     "test:resource-uri": "NODE_ENV=test tsx ./src/lib/resource-uri.test.ts",
     "test:browser-idempotency-guard": "tsx ./src/browser-idempotency-guard.test.ts",
     "test:browser-idempotency-workflow-contract": "tsx ./src/browser-idempotency-workflow-contract.test.ts",

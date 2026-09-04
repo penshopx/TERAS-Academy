@@ -262,6 +262,243 @@ export interface LearningTransitionRejection {
   currentState: LearningState;
 }
 
+export type AdminUserStatus = typeof AdminUserStatus[keyof typeof AdminUserStatus];
+
+
+export const AdminUserStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export type AdminUserRolesItem = typeof AdminUserRolesItem[keyof typeof AdminUserRolesItem];
+
+
+export const AdminUserRolesItem = {
+  admin: 'admin',
+  trainer: 'trainer',
+  assessor: 'assessor',
+  learner: 'learner',
+} as const;
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  initials: string;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  organization: string | null;
+  /** @nullable */
+  clerkUserId: string | null;
+  status: AdminUserStatus;
+  roles: AdminUserRolesItem[];
+}
+
+export type AdminUserInput = AdminUser;
+
+export type AdminUserUpdateStatus = typeof AdminUserUpdateStatus[keyof typeof AdminUserUpdateStatus];
+
+
+export const AdminUserUpdateStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export interface AdminUserUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  initials?: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  organization?: string | null;
+  /** @nullable */
+  clerkUserId?: string | null;
+  status?: AdminUserUpdateStatus;
+}
+
+export type RoleAssignmentInputRolesItem = typeof RoleAssignmentInputRolesItem[keyof typeof RoleAssignmentInputRolesItem];
+
+
+export const RoleAssignmentInputRolesItem = {
+  admin: 'admin',
+  trainer: 'trainer',
+  assessor: 'assessor',
+  learner: 'learner',
+} as const;
+
+export interface RoleAssignmentInput {
+  /** @minItems 1 */
+  roles: RoleAssignmentInputRolesItem[];
+}
+
+export type AdminProgramStatus = typeof AdminProgramStatus[keyof typeof AdminProgramStatus];
+
+
+export const AdminProgramStatus = {
+  active: 'active',
+  archived: 'archived',
+} as const;
+
+export interface AdminProgram {
+  id: string;
+  domain: string;
+  name: string;
+  description: string;
+  status: AdminProgramStatus;
+}
+
+export type AdminProgramInput = AdminProgram;
+
+export type AdminProgramUpdateStatus = typeof AdminProgramUpdateStatus[keyof typeof AdminProgramUpdateStatus];
+
+
+export const AdminProgramUpdateStatus = {
+  active: 'active',
+  archived: 'archived',
+} as const;
+
+export interface AdminProgramUpdate {
+  /** @minLength 1 */
+  domain?: string;
+  /** @minLength 1 */
+  name?: string;
+  description?: string;
+  status?: AdminProgramUpdateStatus;
+}
+
+export type AdminPathwayStatus = typeof AdminPathwayStatus[keyof typeof AdminPathwayStatus];
+
+
+export const AdminPathwayStatus = {
+  active: 'active',
+  archived: 'archived',
+} as const;
+
+export interface AdminPathway {
+  id: string;
+  programId: string;
+  name: string;
+  type: string;
+  outcome: string;
+  status: AdminPathwayStatus;
+}
+
+export type AdminPathwayInput = AdminPathway;
+
+export type AdminPathwayUpdateStatus = typeof AdminPathwayUpdateStatus[keyof typeof AdminPathwayUpdateStatus];
+
+
+export const AdminPathwayUpdateStatus = {
+  active: 'active',
+  archived: 'archived',
+} as const;
+
+export interface AdminPathwayUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  type?: string;
+  outcome?: string;
+  status?: AdminPathwayUpdateStatus;
+}
+
+export type AdminCohortStatus = typeof AdminCohortStatus[keyof typeof AdminCohortStatus];
+
+
+export const AdminCohortStatus = {
+  active: 'active',
+  archived: 'archived',
+} as const;
+
+export interface AdminCohort {
+  id: string;
+  programId: string;
+  name: string;
+  status: AdminCohortStatus;
+  /** @nullable */
+  startsOn: string | null;
+  /** @nullable */
+  endsOn: string | null;
+}
+
+export type AdminCohortInput = AdminCohort;
+
+export type AdminCohortUpdateStatus = typeof AdminCohortUpdateStatus[keyof typeof AdminCohortUpdateStatus];
+
+
+export const AdminCohortUpdateStatus = {
+  active: 'active',
+  archived: 'archived',
+} as const;
+
+export interface AdminCohortUpdate {
+  /** @minLength 1 */
+  name?: string;
+  status?: AdminCohortUpdateStatus;
+  /** @nullable */
+  startsOn?: string | null;
+  /** @nullable */
+  endsOn?: string | null;
+}
+
+export type AdminEnrollmentStatus = typeof AdminEnrollmentStatus[keyof typeof AdminEnrollmentStatus];
+
+
+export const AdminEnrollmentStatus = {
+  active: 'active',
+  inactive: 'inactive',
+  completed: 'completed',
+} as const;
+
+export interface AdminEnrollment {
+  id: string;
+  learnerId: string;
+  programId: string;
+  pathwayId: string;
+  /** @nullable */
+  trainerId: string | null;
+  /** @nullable */
+  assessorId: string | null;
+  /** @nullable */
+  cohortId: string | null;
+  status: AdminEnrollmentStatus;
+}
+
+export type AdminEnrollmentInput = AdminEnrollment;
+
+export type AdminEnrollmentUpdateStatus = typeof AdminEnrollmentUpdateStatus[keyof typeof AdminEnrollmentUpdateStatus];
+
+
+export const AdminEnrollmentUpdateStatus = {
+  active: 'active',
+  inactive: 'inactive',
+  completed: 'completed',
+} as const;
+
+export interface AdminEnrollmentUpdate {
+  pathwayId?: string;
+  /** @nullable */
+  trainerId?: string | null;
+  /** @nullable */
+  assessorId?: string | null;
+  /** @nullable */
+  cohortId?: string | null;
+  status?: AdminEnrollmentUpdateStatus;
+}
+
+export interface AdminAuditEvent {
+  id: string;
+  actorClerkUserId: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  before: unknown;
+  after: unknown;
+  createdAt: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -727,6 +964,11 @@ export interface AssessorDashboard {
   blockedGateCount: number;
   recentActivity: ReviewQueueItem[];
 }
+
+/**
+ * A lifecycle or uniqueness conflict
+ */
+export type ConflictResponse = ErrorResponse;
 
 /**
  * Invalid request

@@ -14,16 +14,27 @@ const audit = {
 export const peopleTable = pgTable("teras_people", {
   id: text("id").primaryKey(), name: text("name").notNull(), initials: text("initials").notNull(),
   email: text("email").unique(), role: text("role").notNull(), organization: text("organization"),
+  /** Clerk is the identity authority; no credential material is stored locally. */
+  clerkUserId: text("clerk_user_id").unique(), status: text("status").notNull().default("active"),
   ...audit,
 });
+export const personRolesTable = pgTable("teras_person_roles", {
+  personId: text("person_id").notNull().references(() => peopleTable.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), ...audit,
+}, table => [primaryKey({ columns: [table.personId, table.role] })]);
 export const programsTable = pgTable("teras_programs", {
   id: text("id").primaryKey(), domain: text("domain").notNull(), name: text("name").notNull(),
   description: text("description").notNull(), status: text("status").notNull(), ...audit,
 });
 export const pathwaysTable = pgTable("teras_pathways", {
   id: text("id").primaryKey(), programId: text("program_id").notNull().references(() => programsTable.id),
-  name: text("name").notNull(), type: text("type").notNull(), outcome: text("outcome").notNull(), ...audit,
+  name: text("name").notNull(), type: text("type").notNull(), outcome: text("outcome").notNull(), status: text("status").notNull().default("active"), ...audit,
 }, table => [unique("teras_pathways_id_program_unique").on(table.id, table.programId)]);
+export const cohortsTable = pgTable("teras_cohorts", {
+  id: text("id").primaryKey(), programId: text("program_id").notNull().references(() => programsTable.id),
+  name: text("name").notNull(), status: text("status").notNull().default("active"),
+  startsOn: timestamp("starts_on", { withTimezone: true }), endsOn: timestamp("ends_on", { withTimezone: true }), ...audit,
+}, table => [unique("teras_cohorts_program_name_unique").on(table.programId, table.name)]);
 export const modulesTable = pgTable("teras_modules", {
   id: text("id").primaryKey(), programId: text("program_id").notNull().references(() => programsTable.id),
   pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id),
@@ -54,8 +65,16 @@ export const enrollmentsTable = pgTable("teras_enrollments", {
   id: text("id").primaryKey(), learnerId: text("learner_id").notNull().references(() => peopleTable.id),
   programId: text("program_id").notNull().references(() => programsTable.id),
   pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id), trainerId: text("trainer_id").references(() => peopleTable.id),
-  assessorId: text("assessor_id").references(() => peopleTable.id), ...audit,
+  assessorId: text("assessor_id").references(() => peopleTable.id), cohortId: text("cohort_id").references(() => cohortsTable.id),
+  status: text("status").notNull().default("active"), ...audit,
 }, table => [unique("teras_enrollments_id_program_unique").on(table.id, table.programId)]);
+/** Immutable administrative history; write an event for every admin mutation. */
+export const adminAuditEventsTable = pgTable("teras_admin_audit_events", {
+  id: text("id").primaryKey(), actorPersonId: text("actor_person_id").references(() => peopleTable.id),
+  actorClerkUserId: text("actor_clerk_user_id").notNull(), action: text("action").notNull(),
+  entityType: text("entity_type").notNull(), entityId: text("entity_id").notNull(),
+  before: jsonb("before"), after: jsonb("after"), ...audit,
+});
 /** Pathway changes are immutable learner decisions; the enrollment row remains the original assignment. */
 export const enrollmentPathwayEventsTable = pgTable("teras_enrollment_pathway_events", {
   id: text("id").primaryKey(), enrollmentId: text("enrollment_id").notNull().references(() => enrollmentsTable.id),
@@ -137,7 +156,7 @@ export const readinessEventsTable = pgTable("teras_readiness_events", {
 export const programRelations = relations(programsTable, ({ many }) => ({ modules: many(modulesTable), pathways: many(pathwaysTable) }));
 export const moduleRelations = relations(modulesTable, ({ many }) => ({ tasks: many(practiceTasksTable), assessments: many(assessmentsTable) }));
 
-const tables = { peopleTable, programsTable, pathwaysTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, enrollmentPathwayEventsTable, practiceAttemptsTable, practiceReviewsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable };
+const tables = { peopleTable, personRolesTable, programsTable, pathwaysTable, cohortsTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, adminAuditEventsTable, enrollmentPathwayEventsTable, practiceAttemptsTable, practiceReviewsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable };
 export const insertSchemas = Object.fromEntries(Object.entries(tables).map(([name, table]) => [name, createInsertSchema(table).omit({ createdAt: true })]));
 export type Person = typeof peopleTable.$inferSelect;
 export type Program = typeof programsTable.$inferSelect;

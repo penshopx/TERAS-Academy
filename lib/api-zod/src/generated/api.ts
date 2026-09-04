@@ -1150,3 +1150,324 @@ export const TransitionLearningStateResponse = zod.object({
 })
 
 
+export const ListAdminUsersResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().nullable(),
+  "organization": zod.string().nullable(),
+  "clerkUserId": zod.string().nullable(),
+  "status": zod.enum(['active', 'inactive']),
+  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner']))
+})
+export const ListAdminUsersResponse = zod.array(ListAdminUsersResponseItem)
+
+
+export const CreateAdminUserBody = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().nullable(),
+  "organization": zod.string().nullable(),
+  "clerkUserId": zod.string().nullable(),
+  "status": zod.enum(['active', 'inactive']),
+  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner']))
+})
+
+export const CreateAdminUserResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().nullable(),
+  "organization": zod.string().nullable(),
+  "clerkUserId": zod.string().nullable(),
+  "status": zod.enum(['active', 'inactive']),
+  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner']))
+})
+
+
+export const UpdateAdminUserParams = zod.object({
+  "personId": zod.coerce.string()
+})
+
+
+
+
+
+export const UpdateAdminUserBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "initials": zod.string().min(1).optional(),
+  "email": zod.email().nullish(),
+  "organization": zod.string().nullish(),
+  "clerkUserId": zod.string().nullish(),
+  "status": zod.enum(['active', 'inactive']).optional()
+})
+
+export const UpdateAdminUserResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().nullable(),
+  "organization": zod.string().nullable(),
+  "clerkUserId": zod.string().nullable(),
+  "status": zod.enum(['active', 'inactive']),
+  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner']))
+})
+
+
+export const ReplaceAdminUserRolesParams = zod.object({
+  "personId": zod.coerce.string()
+})
+
+
+
+
+export const ReplaceAdminUserRolesBody = zod.object({
+  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner'])).min(1)
+})
+
+export const ReplaceAdminUserRolesResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().nullable(),
+  "organization": zod.string().nullable(),
+  "clerkUserId": zod.string().nullable(),
+  "status": zod.enum(['active', 'inactive']),
+  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner']))
+})
+
+
+export const ListAdminProgramsResponseItem = zod.object({
+  "id": zod.string(),
+  "domain": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['active', 'archived'])
+})
+export const ListAdminProgramsResponse = zod.array(ListAdminProgramsResponseItem)
+
+
+export const CreateAdminProgramBody = zod.object({
+  "id": zod.string(),
+  "domain": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['active', 'archived'])
+})
+
+export const CreateAdminProgramResponse = zod.object({
+  "id": zod.string(),
+  "domain": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['active', 'archived'])
+})
+
+
+export const UpdateAdminProgramParams = zod.object({
+  "programId": zod.coerce.string()
+})
+
+
+
+
+
+export const UpdateAdminProgramBody = zod.object({
+  "domain": zod.string().min(1).optional(),
+  "name": zod.string().min(1).optional(),
+  "description": zod.string().optional(),
+  "status": zod.enum(['active', 'archived']).optional()
+})
+
+export const UpdateAdminProgramResponse = zod.object({
+  "id": zod.string(),
+  "domain": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['active', 'archived'])
+})
+
+
+export const ListAdminPathwaysResponseItem = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "outcome": zod.string(),
+  "status": zod.enum(['active', 'archived'])
+})
+export const ListAdminPathwaysResponse = zod.array(ListAdminPathwaysResponseItem)
+
+
+export const CreateAdminPathwayBody = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "outcome": zod.string(),
+  "status": zod.enum(['active', 'archived'])
+})
+
+export const CreateAdminPathwayResponse = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "outcome": zod.string(),
+  "status": zod.enum(['active', 'archived'])
+})
+
+
+export const UpdateAdminPathwayParams = zod.object({
+  "pathwayId": zod.coerce.string()
+})
+
+
+
+
+
+export const UpdateAdminPathwayBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "type": zod.string().min(1).optional(),
+  "outcome": zod.string().optional(),
+  "status": zod.enum(['active', 'archived']).optional()
+})
+
+export const UpdateAdminPathwayResponse = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "outcome": zod.string(),
+  "status": zod.enum(['active', 'archived'])
+})
+
+
+export const ListAdminCohortsResponseItem = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "name": zod.string(),
+  "status": zod.enum(['active', 'archived']),
+  "startsOn": zod.coerce.date().nullable(),
+  "endsOn": zod.coerce.date().nullable()
+})
+export const ListAdminCohortsResponse = zod.array(ListAdminCohortsResponseItem)
+
+
+export const CreateAdminCohortBody = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "name": zod.string(),
+  "status": zod.enum(['active', 'archived']),
+  "startsOn": zod.coerce.date().nullable(),
+  "endsOn": zod.coerce.date().nullable()
+})
+
+export const CreateAdminCohortResponse = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "name": zod.string(),
+  "status": zod.enum(['active', 'archived']),
+  "startsOn": zod.coerce.date().nullable(),
+  "endsOn": zod.coerce.date().nullable()
+})
+
+
+export const UpdateAdminCohortParams = zod.object({
+  "cohortId": zod.coerce.string()
+})
+
+
+
+
+export const UpdateAdminCohortBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "status": zod.enum(['active', 'archived']).optional(),
+  "startsOn": zod.coerce.date().nullish(),
+  "endsOn": zod.coerce.date().nullish()
+})
+
+export const UpdateAdminCohortResponse = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "name": zod.string(),
+  "status": zod.enum(['active', 'archived']),
+  "startsOn": zod.coerce.date().nullable(),
+  "endsOn": zod.coerce.date().nullable()
+})
+
+
+export const ListAdminEnrollmentsResponseItem = zod.object({
+  "id": zod.string(),
+  "learnerId": zod.string(),
+  "programId": zod.string(),
+  "pathwayId": zod.string(),
+  "trainerId": zod.string().nullable(),
+  "assessorId": zod.string().nullable(),
+  "cohortId": zod.string().nullable(),
+  "status": zod.enum(['active', 'inactive', 'completed'])
+})
+export const ListAdminEnrollmentsResponse = zod.array(ListAdminEnrollmentsResponseItem)
+
+
+export const CreateAdminEnrollmentBody = zod.object({
+  "id": zod.string(),
+  "learnerId": zod.string(),
+  "programId": zod.string(),
+  "pathwayId": zod.string(),
+  "trainerId": zod.string().nullable(),
+  "assessorId": zod.string().nullable(),
+  "cohortId": zod.string().nullable(),
+  "status": zod.enum(['active', 'inactive', 'completed'])
+})
+
+export const CreateAdminEnrollmentResponse = zod.object({
+  "id": zod.string(),
+  "learnerId": zod.string(),
+  "programId": zod.string(),
+  "pathwayId": zod.string(),
+  "trainerId": zod.string().nullable(),
+  "assessorId": zod.string().nullable(),
+  "cohortId": zod.string().nullable(),
+  "status": zod.enum(['active', 'inactive', 'completed'])
+})
+
+
+export const UpdateAdminEnrollmentParams = zod.object({
+  "enrollmentId": zod.coerce.string()
+})
+
+export const UpdateAdminEnrollmentBody = zod.object({
+  "pathwayId": zod.string().optional(),
+  "trainerId": zod.string().nullish(),
+  "assessorId": zod.string().nullish(),
+  "cohortId": zod.string().nullish(),
+  "status": zod.enum(['active', 'inactive', 'completed']).optional()
+})
+
+export const UpdateAdminEnrollmentResponse = zod.object({
+  "id": zod.string(),
+  "learnerId": zod.string(),
+  "programId": zod.string(),
+  "pathwayId": zod.string(),
+  "trainerId": zod.string().nullable(),
+  "assessorId": zod.string().nullable(),
+  "cohortId": zod.string().nullable(),
+  "status": zod.enum(['active', 'inactive', 'completed'])
+})
+
+
+export const ListAdminAuditEventsResponseItem = zod.object({
+  "id": zod.string(),
+  "actorClerkUserId": zod.string(),
+  "action": zod.string(),
+  "entityType": zod.string(),
+  "entityId": zod.string(),
+  "before": zod.unknown(),
+  "after": zod.unknown(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminAuditEventsResponse = zod.array(ListAdminAuditEventsResponseItem)
+
+

@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useClerk, useUser } from "@clerk/react";
 import { cn } from "@/lib/utils";
 import { 
-  Activity, BookOpen, CheckCircle, Target, ListTodo, Map, Award, UserSquare2, Layers, Briefcase, FileSignature, ShieldAlert
+  Activity, BookOpen, CheckCircle, Target, ListTodo, Map, Award, UserSquare2, Layers, Briefcase, FileSignature, ShieldAlert, Settings
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -101,6 +101,26 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             })}
           </nav>
         </div>
+
+        <div>
+            <h2 className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-3 px-2">Administration</h2>
+            <nav className="space-y-1">
+              <Link
+                href="/admin"
+                onClick={onNavigate}
+                data-testid="link-admin-control-room"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  location.startsWith("/admin")
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                )}
+              >
+                <Settings className={cn("w-4 h-4", location.startsWith("/admin") ? "text-primary" : "text-sidebar-foreground/50")} />
+                Admin Control Room (akses server)
+              </Link>
+            </nav>
+          </div>
       </div>
 
       <div className="p-4 border-t border-sidebar-border mt-auto shrink-0">

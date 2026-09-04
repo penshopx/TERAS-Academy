@@ -20,6 +20,8 @@ tags:
     description: Capability programs and curriculum
   - name: learning
     description: LMS learning-layer contracts and centralized transitions
+  - name: admin
+    description: Authorized operational administration; Clerk remains the identity boundary
 paths:
   /healthz:
     get:
@@ -571,6 +573,114 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LearningTransitionRejection"
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      responses:
+        "200": { description: Users, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AdminUser" } } } } }
+    post:
+      operationId: createAdminUser
+      tags: [admin]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdminUserInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AdminUser" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /admin/users/{personId}:
+    patch:
+      operationId: updateAdminUser
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/PersonId" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdminUserUpdate" } } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminUser" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /admin/users/{personId}/roles:
+    put:
+      operationId: replaceAdminUserRoles
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/PersonId" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RoleAssignmentInput" } } } }
+      responses:
+        "200": { description: Updated roles, content: { application/json: { schema: { $ref: "#/components/schemas/AdminUser" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /admin/programs:
+    get:
+      operationId: listAdminPrograms
+      tags: [admin]
+      responses:
+        "200": { description: Programs, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AdminProgram" } } } } }
+    post:
+      operationId: createAdminProgram
+      tags: [admin]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdminProgramInput" } } } }
+      responses: { "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AdminProgram" } } } }, "409": { $ref: "#/components/responses/Conflict" } }
+  /admin/programs/{programId}:
+    patch:
+      operationId: updateAdminProgram
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/ProgramId" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdminProgramUpdate" } } } }
+      responses: { "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminProgram" } } } }, "404": { $ref: "#/components/responses/NotFound" } }
+  /admin/pathways:
+    get:
+      operationId: listAdminPathways
+      tags: [admin]
+      responses: { "200": { description: Pathways, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AdminPathway" } } } } } }
+    post:
+      operationId: createAdminPathway
+      tags: [admin]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdminPathwayInput" } } } }
+      responses: { "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AdminPathway" } } } }, "409": { $ref: "#/components/responses/Conflict" } }
+  /admin/pathways/{pathwayId}:
+    patch:
+      operationId: updateAdminPathway
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/PathwayId" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdminPathwayUpdate" } } } }
+      responses: { "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminPathway" } } } }, "404": { $ref: "#/components/responses/NotFound" } }
+  /admin/cohorts:
+    get:
+      operationId: listAdminCohorts
+      tags: [admin]
+      responses: { "200": { description: Cohorts, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AdminCohort" } } } } } }
+    post:
+      operationId: createAdminCohort
+      tags: [admin]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdminCohortInput" } } } }
+      responses: { "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AdminCohort" } } } }, "409": { $ref: "#/components/responses/Conflict" } }
+  /admin/cohorts/{cohortId}:
+    patch:
+      operationId: updateAdminCohort
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/CohortId" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdminCohortUpdate" } } } }
+      responses: { "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminCohort" } } } }, "404": { $ref: "#/components/responses/NotFound" } }
+  /admin/enrollments:
+    get:
+      operationId: listAdminEnrollments
+      tags: [admin]
+      responses: { "200": { description: Enrollments, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AdminEnrollment" } } } } } }
+    post:
+      operationId: createAdminEnrollment
+      tags: [admin]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdminEnrollmentInput" } } } }
+      responses: { "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AdminEnrollment" } } } }, "409": { $ref: "#/components/responses/Conflict" } }
+  /admin/enrollments/{enrollmentId}:
+    patch:
+      operationId: updateAdminEnrollment
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/EnrollmentId" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdminEnrollmentUpdate" } } } }
+      responses: { "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminEnrollment" } } } }, "404": { $ref: "#/components/responses/NotFound" }, "409": { $ref: "#/components/responses/Conflict" } }
+  /admin/audit:
+    get:
+      operationId: listAdminAuditEvents
+      tags: [admin]
+      responses: { "200": { description: Audit history, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AdminAuditEvent" } } } } } }
 x-pathway-selection-components:
   parameters:
     ProgramId:
@@ -615,6 +725,26 @@ x-pathway-selection-components:
       required: true
       schema:
         type: string
+    PersonId:
+      name: personId
+      in: path
+      required: true
+      schema: { type: string }
+    PathwayId:
+      name: pathwayId
+      in: path
+      required: true
+      schema: { type: string }
+    CohortId:
+      name: cohortId
+      in: path
+      required: true
+      schema: { type: string }
+    EnrollmentId:
+      name: enrollmentId
+      in: path
+      required: true
+      schema: { type: string }
   responses:
     BadRequest:
       description: Invalid request
@@ -636,6 +766,12 @@ x-pathway-selection-components:
             $ref: "#/components/schemas/ErrorResponse"
     NotFound:
       description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: A unique constraint or lifecycle rule prevents this change
       content:
         application/json:
           schema:
@@ -1096,6 +1232,146 @@ x-pathway-selection-components:
           items:
             $ref: "#/components/schemas/ReviewQueueItem"
       required: [assessor, pendingAssessmentCount, pendingEvidenceCount, reassessmentCount, blockedGateCount, recentActivity]
+    LegacyAdminUser:
+      type: object
+      required: [id, name, initials, email, organization, clerkUserId, status, roles]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        initials: { type: string }
+        email: { type: ["string", "null"] }
+        organization: { type: ["string", "null"] }
+        clerkUserId: { type: ["string", "null"] }
+        status: { type: string, enum: [active, inactive] }
+        roles: { type: array, items: { type: string, enum: [admin, trainer, assessor, learner] } }
+    LegacyAdminUserInput:
+      allOf: [{ $ref: "#/components/schemas/AdminUser" }]
+    LegacyAdminUserUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        initials: { type: string, minLength: 1 }
+        email: { type: ["string", "null"], format: email }
+        organization: { type: ["string", "null"] }
+        clerkUserId: { type: ["string", "null"] }
+        status: { type: string, enum: [active, inactive] }
+    LegacyRoleAssignmentInput:
+      type: object
+      required: [roles]
+      properties: { roles: { type: array, minItems: 1, items: { type: string, enum: [admin, trainer, assessor, learner] } } }
+    LegacyAdminProgram:
+      type: object
+      required: [id, domain, name, description, status]
+      properties: { id: { type: string }, domain: { type: string }, name: { type: string }, description: { type: string }, status: { type: string, enum: [active, archived] } }
+    AdminProgramInput: { allOf: [{ $ref: "#/components/schemas/AdminProgram" }] }
+    AdminProgramUpdate:
+      type: object
+      properties: { domain: { type: string, minLength: 1 }, name: { type: string, minLength: 1 }, description: { type: string }, status: { type: string, enum: [active, archived] } }
+    AdminPathway:
+      type: object
+      required: [id, programId, name, type, outcome, status]
+      properties: { id: { type: string }, programId: { type: string }, name: { type: string }, type: { type: string }, outcome: { type: string }, status: { type: string, enum: [active, archived] } }
+    AdminPathwayInput: { allOf: [{ $ref: "#/components/schemas/AdminPathway" }] }
+    AdminPathwayUpdate:
+      type: object
+      properties: { name: { type: string, minLength: 1 }, type: { type: string, minLength: 1 }, outcome: { type: string }, status: { type: string, enum: [active, archived] } }
+    AdminCohort:
+      type: object
+      required: [id, programId, name, status, startsOn, endsOn]
+      properties: { id: { type: string }, programId: { type: string }, name: { type: string }, status: { type: string, enum: [active, archived] }, startsOn: { type: ["string", "null"], format: date-time }, endsOn: { type: ["string", "null"], format: date-time } }
+    AdminCohortInput: { allOf: [{ $ref: "#/components/schemas/AdminCohort" }] }
+    AdminCohortUpdate:
+      type: object
+      properties: { name: { type: string, minLength: 1 }, status: { type: string, enum: [active, archived] }, startsOn: { type: ["string", "null"], format: date-time }, endsOn: { type: ["string", "null"], format: date-time } }
+    AdminEnrollment:
+      type: object
+      required: [id, learnerId, programId, pathwayId, trainerId, assessorId, cohortId, status]
+      properties: { id: { type: string }, learnerId: { type: string }, programId: { type: string }, pathwayId: { type: string }, trainerId: { type: ["string", "null"] }, assessorId: { type: ["string", "null"] }, cohortId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive, completed] } }
+    AdminEnrollmentInput: { allOf: [{ $ref: "#/components/schemas/AdminEnrollment" }] }
+    AdminEnrollmentUpdate:
+      type: object
+      properties: { pathwayId: { type: string }, trainerId: { type: ["string", "null"] }, assessorId: { type: ["string", "null"] }, cohortId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive, completed] } }
+    AdminAuditEvent:
+      type: object
+      required: [id, actorClerkUserId, action, entityType, entityId, before, after, createdAt]
+      properties: { id: { type: string }, actorClerkUserId: { type: string }, action: { type: string }, entityType: { type: string }, entityId: { type: string }, before: {}, after: {}, createdAt: { type: string, format: date-time } }
+    AdminUser:
+      type: object
+      required: [id, name, initials, email, organization, clerkUserId, status, roles]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        initials: { type: string }
+        email: { type: ["string", "null"] }
+        organization: { type: ["string", "null"] }
+        clerkUserId: { type: ["string", "null"] }
+        status: { type: string, enum: [active, inactive] }
+        roles: { type: array, items: { type: string, enum: [admin, trainer, assessor, learner] } }
+    AdminUserInput:
+      type: object
+      required: [id, name, initials, status, roles]
+      properties:
+        id: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        initials: { type: string, minLength: 1 }
+        email: { type: ["string", "null"], format: email }
+        organization: { type: ["string", "null"] }
+        clerkUserId: { type: ["string", "null"] }
+        status: { type: string, enum: [active, inactive] }
+        roles: { type: array, minItems: 1, items: { type: string, enum: [admin, trainer, assessor, learner] } }
+    AdminUserUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        initials: { type: string, minLength: 1 }
+        email: { type: ["string", "null"], format: email }
+        organization: { type: ["string", "null"] }
+        clerkUserId: { type: ["string", "null"] }
+        status: { type: string, enum: [active, inactive] }
+    RoleAssignmentInput:
+      type: object
+      required: [roles]
+      properties: { roles: { type: array, minItems: 1, items: { type: string, enum: [admin, trainer, assessor, learner] } } }
+    AdminProgram:
+      type: object
+      required: [id, domain, name, description, status]
+      properties: { id: { type: string }, domain: { type: string }, name: { type: string }, description: { type: string }, status: { type: string, enum: [active, archived] } }
+    LegacyAdminProgramInput:
+      allOf: [{ $ref: "#/components/schemas/AdminProgram" }]
+    LegacyAdminProgramUpdate:
+      type: object
+      properties: { domain: { type: string, minLength: 1 }, name: { type: string, minLength: 1 }, description: { type: string }, status: { type: string, enum: [active, archived] } }
+    LegacyAdminPathway:
+      type: object
+      required: [id, programId, name, type, outcome, status]
+      properties: { id: { type: string }, programId: { type: string }, name: { type: string }, type: { type: string }, outcome: { type: string }, status: { type: string, enum: [active, archived] } }
+    LegacyAdminPathwayInput:
+      allOf: [{ $ref: "#/components/schemas/AdminPathway" }]
+    LegacyAdminPathwayUpdate:
+      type: object
+      properties: { name: { type: string, minLength: 1 }, type: { type: string, minLength: 1 }, outcome: { type: string }, status: { type: string, enum: [active, archived] } }
+    LegacyAdminCohort:
+      type: object
+      required: [id, programId, name, status, startsOn, endsOn]
+      properties: { id: { type: string }, programId: { type: string }, name: { type: string }, status: { type: string, enum: [active, archived] }, startsOn: { type: ["string", "null"], format: date-time }, endsOn: { type: ["string", "null"], format: date-time } }
+    LegacyAdminCohortInput:
+      allOf: [{ $ref: "#/components/schemas/AdminCohort" }]
+    LegacyAdminCohortUpdate:
+      type: object
+      properties: { name: { type: string, minLength: 1 }, status: { type: string, enum: [active, archived] }, startsOn: { type: ["string", "null"], format: date-time }, endsOn: { type: ["string", "null"], format: date-time } }
+    LegacyAdminEnrollment:
+      type: object
+      required: [id, learnerId, programId, pathwayId, trainerId, assessorId, cohortId, status]
+      properties: { id: { type: string }, learnerId: { type: string }, programId: { type: string }, pathwayId: { type: string }, trainerId: { type: ["string", "null"] }, assessorId: { type: ["string", "null"] }, cohortId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive, completed] } }
+    LegacyAdminEnrollmentInput:
+      allOf: [{ $ref: "#/components/schemas/AdminEnrollment" }]
+    LegacyAdminEnrollmentUpdate:
+      type: object
+      properties: { pathwayId: { type: string }, trainerId: { type: ["string", "null"] }, assessorId: { type: ["string", "null"] }, cohortId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive, completed] } }
+    LegacyAdminAuditEvent:
+      type: object
+      required: [id, actorClerkUserId, action, entityType, entityId, before, after, createdAt]
+      properties: { id: { type: string }, actorClerkUserId: { type: string }, action: { type: string }, entityType: { type: string }, entityId: { type: string }, before: {}, after: {}, createdAt: { type: string, format: date-time } }
     LegacyVerboseLearningState:
       type: string
       enum: [NOT_STARTED, IN_PROGRESS, LEARNING_COMPLETED, OUTCOME_VERIFIED, PRACTICE_REQUIRED, PRACTICE_IN_PROGRESS, EVIDENCE_SUBMITTED, UNDER_REVIEW, REVISION_REQUIRED, REMEDIATION, REASSESSMENT, READY, NOT_READY]
@@ -1434,6 +1710,10 @@ x-pathway-selection-components:
       required: [status, reason, message, currentState]
 components:
   parameters:
+    PersonId: { name: personId, in: path, required: true, schema: { type: string } }
+    PathwayId: { name: pathwayId, in: path, required: true, schema: { type: string } }
+    CohortId: { name: cohortId, in: path, required: true, schema: { type: string } }
+    EnrollmentId: { name: enrollmentId, in: path, required: true, schema: { type: string } }
     ProgramId:
       name: programId
       in: path
@@ -1477,6 +1757,11 @@ components:
       schema:
         type: string
   responses:
+    Conflict:
+      description: A lifecycle or uniqueness conflict
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
     BadRequest:
       description: Invalid request
       content:
@@ -1680,6 +1965,46 @@ components:
         currentState:
           $ref: "#/components/schemas/LearningState"
       required: [status, reason, message, currentState]
+    AdminUser:
+      type: object
+      required: [id, name, initials, email, organization, clerkUserId, status, roles]
+      properties: { id: { type: string }, name: { type: string }, initials: { type: string }, email: { type: ["string", "null"] }, organization: { type: ["string", "null"] }, clerkUserId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive] }, roles: { type: array, items: { type: string, enum: [admin, trainer, assessor, learner] } } }
+    AdminUserInput: { allOf: [{ $ref: "#/components/schemas/AdminUser" }] }
+    AdminUserUpdate:
+      type: object
+      properties: { name: { type: string, minLength: 1 }, initials: { type: string, minLength: 1 }, email: { type: ["string", "null"], format: email }, organization: { type: ["string", "null"] }, clerkUserId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive] } }
+    RoleAssignmentInput:
+      type: object
+      required: [roles]
+      properties: { roles: { type: array, minItems: 1, items: { type: string, enum: [admin, trainer, assessor, learner] } } }
+    AdminProgram:
+      type: object
+      required: [id, domain, name, description, status]
+      properties: { id: { type: string }, domain: { type: string }, name: { type: string }, description: { type: string }, status: { type: string, enum: [active, archived] } }
+    AdminProgramInput: { allOf: [{ $ref: "#/components/schemas/AdminProgram" }] }
+    AdminProgramUpdate: { type: object, properties: { domain: { type: string, minLength: 1 }, name: { type: string, minLength: 1 }, description: { type: string }, status: { type: string, enum: [active, archived] } } }
+    AdminPathway:
+      type: object
+      required: [id, programId, name, type, outcome, status]
+      properties: { id: { type: string }, programId: { type: string }, name: { type: string }, type: { type: string }, outcome: { type: string }, status: { type: string, enum: [active, archived] } }
+    AdminPathwayInput: { allOf: [{ $ref: "#/components/schemas/AdminPathway" }] }
+    AdminPathwayUpdate: { type: object, properties: { name: { type: string, minLength: 1 }, type: { type: string, minLength: 1 }, outcome: { type: string }, status: { type: string, enum: [active, archived] } } }
+    AdminCohort:
+      type: object
+      required: [id, programId, name, status, startsOn, endsOn]
+      properties: { id: { type: string }, programId: { type: string }, name: { type: string }, status: { type: string, enum: [active, archived] }, startsOn: { type: ["string", "null"], format: date-time }, endsOn: { type: ["string", "null"], format: date-time } }
+    AdminCohortInput: { allOf: [{ $ref: "#/components/schemas/AdminCohort" }] }
+    AdminCohortUpdate: { type: object, properties: { name: { type: string, minLength: 1 }, status: { type: string, enum: [active, archived] }, startsOn: { type: ["string", "null"], format: date-time }, endsOn: { type: ["string", "null"], format: date-time } } }
+    AdminEnrollment:
+      type: object
+      required: [id, learnerId, programId, pathwayId, trainerId, assessorId, cohortId, status]
+      properties: { id: { type: string }, learnerId: { type: string }, programId: { type: string }, pathwayId: { type: string }, trainerId: { type: ["string", "null"] }, assessorId: { type: ["string", "null"] }, cohortId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive, completed] } }
+    AdminEnrollmentInput: { allOf: [{ $ref: "#/components/schemas/AdminEnrollment" }] }
+    AdminEnrollmentUpdate: { type: object, properties: { pathwayId: { type: string }, trainerId: { type: ["string", "null"] }, assessorId: { type: ["string", "null"] }, cohortId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive, completed] } } }
+    AdminAuditEvent:
+      type: object
+      required: [id, actorClerkUserId, action, entityType, entityId, before, after, createdAt]
+      properties: { id: { type: string }, actorClerkUserId: { type: string }, action: { type: string }, entityType: { type: string }, entityId: { type: string }, before: {}, after: {}, createdAt: { type: string, format: date-time } }
     HealthStatus:
       type: object
       properties:

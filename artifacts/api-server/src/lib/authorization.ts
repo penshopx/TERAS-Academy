@@ -1,15 +1,16 @@
 import { clerkClient, getAuth } from "@clerk/express";
 import type { Request, Response } from "express";
 import { learnerContext } from "./teras";
-import { db, peopleTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, peopleTable, personRolesTable } from "@workspace/db";
+import { and, eq, sql } from "drizzle-orm";
 
 type WorkspaceRole = "trainer" | "assessor";
+type AdminRole = "admin";
 export type LearningActorRole = WorkspaceRole | "learner";
 export type LearningActor = { id: string; role: LearningActorRole };
 export type TestAuthorizationIdentity = {
   userId: string | null;
-  role: WorkspaceRole | "learner" | null;
+  role: WorkspaceRole | "learner" | AdminRole | null;
   /** Test-only server injected learner identity; never accepted from HTTP. */
   learnerId?: string;
 };
@@ -26,6 +27,34 @@ function integrationIdentity(req: Request): TestAuthorizationIdentity | undefine
   return (req as Request & {
     [testAuthorizationIdentity]?: TestAuthorizationIdentity;
   })[testAuthorizationIdentity];
+}
+
+export type AdminActor = { clerkUserId: string; personId: string | null };
+
+/** Administrative authority is a local, active role assignment, never a Clerk
+ * public-metadata claim supplied by the browser. */
+export async function authorizeAdmin(req: Request, res: Response): Promise<AdminActor | null> {
+  const identity = integrationIdentity(req);
+  if (identity) {
+    if (identity.userId && identity.role === "admin") return { clerkUserId: identity.userId, personId: null };
+    res.status(identity.userId ? 403 : 401).json({ error: "Administrator role required" });
+    return null;
+  }
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return null;
+  }
+  const [assignment] = await db.select({ personId: peopleTable.id }).from(peopleTable)
+    .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+    .where(and(eq(peopleTable.clerkUserId, userId), eq(peopleTable.status, "active"), eq(personRolesTable.role, "admin")))
+    .limit(1);
+  if (!assignment) {
+    req.log.warn({ userId }, "Unauthorized admin mutation");
+    res.status(403).json({ error: "Administrator role required" });
+    return null;
+  }
+  return { clerkUserId: userId, personId: assignment.personId };
 }
 
 /**
