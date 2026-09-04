@@ -118,6 +118,20 @@ export const contentResourcesTable = pgTable("teras_content_resources", {
   uniqueIndex("teras_content_resources_activity_sequence_unique").on(table.activityId, table.sequence),
 ]);
 
+export const contentResourceUriAuditTable = pgTable("teras_content_resource_uri_audit", {
+  id: text("id").primaryKey(),
+  resourceId: text("resource_id").notNull().references(() => contentResourcesTable.id),
+  originalUri: text("original_uri").notNull(),
+  finding: text("finding").notNull(),
+  action: text("action").notNull(),
+  actor: text("actor").notNull(),
+  auditedAt: timestamp("audited_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolutionNote: text("resolution_note"),
+}, table => [
+  index("teras_content_resource_uri_audit_resource_idx").on(table.resourceId, table.auditedAt),
+]);
+
 export const learningOutcomesTable = pgTable("teras_learning_outcomes", {
   id: text("id").primaryKey(),
   activityId: text("activity_id").notNull().references(() => learningActivitiesTable.id),

@@ -17,8 +17,11 @@ if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_people') IS
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/post-merge.sql
 fi
 pnpm --filter @workspace/db run push
+TERAS_MIGRATION_ACTOR=post-merge-upgrade \
+  bash scripts/apply-resource-uri-upgrade.sh
 pnpm --filter @workspace/scripts run seed:demo
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/schema-check.sql
+pnpm --filter @workspace/scripts run test:resource-uri-upgrade
 pnpm --filter @workspace/scripts run test:deployment-hardening
 pnpm --filter @workspace/scripts run test:safety
 pnpm --filter @workspace/api-server run test:pathway-isolation

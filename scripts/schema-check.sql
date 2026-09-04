@@ -20,6 +20,7 @@ BEGIN
       ('teras_course_modules', 'module_id', 'NO'),
       ('teras_lessons', 'course_module_id', 'NO'),
       ('teras_learning_activities', 'pathway_id', 'NO'),
+      ('teras_content_resource_uri_audit', 'original_uri', 'NO'),
       ('teras_learning_outcomes', 'activity_id', 'NO'),
       ('teras_activity_completion_events', 'learner_id', 'NO'),
       ('teras_outcome_verification_events', 'learner_id', 'NO'),
@@ -69,6 +70,7 @@ BEGIN
     OR to_regclass('public.teras_lessons') IS NULL
     OR to_regclass('public.teras_learning_activities') IS NULL
     OR to_regclass('public.teras_content_resources') IS NULL
+    OR to_regclass('public.teras_content_resource_uri_audit') IS NULL
     OR to_regclass('public.teras_learning_outcomes') IS NULL
     OR to_regclass('public.teras_activity_completion_events') IS NULL
     OR to_regclass('public.teras_outcome_verification_events') IS NULL
@@ -77,6 +79,15 @@ BEGIN
     OR to_regclass('public.teras_readiness_transfer_events') IS NULL
     OR to_regclass('public.teras_learning_transition_events') IS NULL THEN
     RAISE EXCEPTION 'Phase 1 LMS foundation tables are missing';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM teras_content_resources
+    WHERE uri IS NOT NULL
+      AND uri !~* '^https?://'
+  ) THEN
+    RAISE EXCEPTION 'Unsafe content resource URI remains after quarantine';
   END IF;
 
   IF to_regclass('public.teras_learning_transition_idempotency_unique') IS NULL THEN
