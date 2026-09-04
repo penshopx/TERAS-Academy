@@ -8,6 +8,7 @@ import express from "express";
 import pg from "pg";
 import { chromium } from "playwright";
 import type { Express } from "express";
+import { requiredTestDatabaseUrl } from "./browser-idempotency-guard.js";
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(import.meta.dirname, "../../..");
@@ -18,24 +19,6 @@ function chromiumExecutablePath() {
   const configuredPath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
   if (configuredPath) return configuredPath;
   return existsSync(replitChromiumPath) ? replitChromiumPath : undefined;
-}
-
-function requiredTestDatabaseUrl(): URL {
-  if (process.env.NODE_ENV !== "test") {
-    throw new Error("The browser idempotency harness may only run with NODE_ENV=test.");
-  }
-  const value = process.env.INTEGRATION_TEST_POSTGRES_URL;
-  if (!value) {
-    throw new Error("INTEGRATION_TEST_POSTGRES_URL is required; it must point at a PostgreSQL server used only to create disposable test databases.");
-  }
-  if (value === process.env.DATABASE_URL) {
-    throw new Error("INTEGRATION_TEST_POSTGRES_URL must not equal DATABASE_URL; refusing to touch the configured application database.");
-  }
-  const url = new URL(value);
-  if (!["postgres:", "postgresql:"].includes(url.protocol)) {
-    throw new Error("INTEGRATION_TEST_POSTGRES_URL must be a PostgreSQL URL.");
-  }
-  return url;
 }
 
 async function run(command: string, args: string[], databaseUrl: string, extraEnvironment: NodeJS.ProcessEnv = {}) {
