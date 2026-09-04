@@ -1,6 +1,7 @@
-import { CourseValidationReport, CourseVersion, usePublishAuthoredCourse, getListAuthoredCoursesQueryKey, getPreviewAuthoredCourseQueryKey, useValidateAuthoredCourse, useListAuthoredCourseVersions, useListCourseAuthoringAudit, getListAuthoredCourseVersionsQueryKey, getListCourseAuthoringAuditQueryKey, getValidateAuthoredCourseQueryKey } from "@workspace/api-client-react";
+import { CourseVersion, usePublishAuthoredCourse, getListAuthoredCoursesQueryKey, getPreviewAuthoredCourseQueryKey, useValidateAuthoredCourse, useListAuthoredCourseVersions, useListCourseAuthoringAudit, getListAuthoredCourseVersionsQueryKey, getListCourseAuthoringAuditQueryKey, getValidateAuthoredCourseQueryKey } from "@workspace/api-client-react";
 import { AlertCircle, CheckCircle2, AlertTriangle, Send, Clock, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { QueryKey } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import React, { useState } from "react";
@@ -10,6 +11,29 @@ import { format } from "date-fns";
 
 interface ValidationPanelProps {
   courseId: string;
+}
+
+interface PublishAndRefreshDependencies {
+  courseId: string;
+  publish: (input: { courseId: string }) => Promise<CourseVersion>;
+  invalidateQueries: (queryKey: QueryKey) => Promise<unknown>;
+}
+
+export async function publishAuthoredCourseAndRefresh({
+  courseId,
+  publish,
+  invalidateQueries,
+}: PublishAndRefreshDependencies): Promise<CourseVersion> {
+  const version = await publish({ courseId });
+
+  await Promise.all([
+    invalidateQueries(getListAuthoredCoursesQueryKey()),
+    invalidateQueries(getPreviewAuthoredCourseQueryKey(courseId)),
+    invalidateQueries(getListAuthoredCourseVersionsQueryKey(courseId)),
+    invalidateQueries(getListCourseAuthoringAuditQueryKey(courseId)),
+  ]);
+
+  return version;
 }
 
 export function PublishSuccessMessage({ version }: { version: CourseVersion }) {
@@ -49,13 +73,11 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
 
   const handlePublish = async () => {
     try {
-      const version = await publishMutation.mutateAsync({
-        courseId: courseId
+      const version = await publishAuthoredCourseAndRefresh({
+        courseId,
+        publish: publishMutation.mutateAsync,
+        invalidateQueries: (queryKey) => queryClient.invalidateQueries({ queryKey }),
       });
-      queryClient.invalidateQueries({ queryKey: getListAuthoredCoursesQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getPreviewAuthoredCourseQueryKey(courseId) });
-      queryClient.invalidateQueries({ queryKey: getListAuthoredCourseVersionsQueryKey(courseId) });
-      queryClient.invalidateQueries({ queryKey: getListCourseAuthoringAuditQueryKey(courseId) });
       setPublishedVersion(version);
       toast({ title: "Course Published", description: `Authoring revision ${version.authoringRevision} was published as version ${version.version}.` });
     } catch (err: any) {

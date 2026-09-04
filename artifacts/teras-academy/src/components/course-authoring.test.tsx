@@ -5,8 +5,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { CourseVersion } from "@workspace/api-client-react";
-import { PublishedVersionHistory, PublishSuccessMessage } from "./trainer/authoring/validation-panel";
+import {
+  getListAuthoredCourseVersionsQueryKey,
+  getListCourseAuthoringAuditQueryKey,
+  type CourseVersion,
+} from "@workspace/api-client-react";
+import {
+  PublishedVersionHistory,
+  PublishSuccessMessage,
+  publishAuthoredCourseAndRefresh,
+} from "./trainer/authoring/validation-panel";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,4 +118,56 @@ test("published version history labels revision zero as a legacy version", () =>
   assert.match(markup, /data-testid="text-authoring-revision-version-legacy"/);
   assert.match(markup, /Authoring revision: Legacy version/);
   assert.doesNotMatch(markup, /Authoring revision: 0/);
+});
+
+test("successful publish refetches version and audit history and shows the latest revision without reload", async () => {
+  const courseId = "course-1";
+  const previousVersion = courseVersion({
+    id: "version-previous",
+    version: 2,
+    authoringRevision: 16,
+  });
+  const publishedVersion = courseVersion({
+    id: "version-latest",
+    version: 3,
+    authoringRevision: 17,
+  });
+  let versions = [previousVersion];
+  let versionHistoryRequests = 0;
+  let auditHistoryRequests = 0;
+  const invalidatedKeys: unknown[] = [];
+
+  const returnedVersion = await publishAuthoredCourseAndRefresh({
+    courseId,
+    publish: async ({ courseId: publishedCourseId }) => {
+      assert.equal(publishedCourseId, courseId);
+      return publishedVersion;
+    },
+    invalidateQueries: async (queryKey) => {
+      invalidatedKeys.push(queryKey);
+
+      if (JSON.stringify(queryKey) === JSON.stringify(getListAuthoredCourseVersionsQueryKey(courseId))) {
+        versionHistoryRequests += 1;
+        versions = [publishedVersion, previousVersion];
+      }
+
+      if (JSON.stringify(queryKey) === JSON.stringify(getListCourseAuthoringAuditQueryKey(courseId))) {
+        auditHistoryRequests += 1;
+      }
+    },
+  });
+
+  assert.equal(returnedVersion, publishedVersion);
+  assert.equal(versionHistoryRequests, 1);
+  assert.equal(auditHistoryRequests, 1);
+  assert.ok(invalidatedKeys.some((key) =>
+    JSON.stringify(key) === JSON.stringify(getListAuthoredCourseVersionsQueryKey(courseId))
+  ));
+  assert.ok(invalidatedKeys.some((key) =>
+    JSON.stringify(key) === JSON.stringify(getListCourseAuthoringAuditQueryKey(courseId))
+  ));
+
+  const historyMarkup = renderToStaticMarkup(<PublishedVersionHistory versions={versions} />);
+  assert.match(historyMarkup, /data-testid="version-item-version-latest"/);
+  assert.match(historyMarkup, /Authoring revision: 17/);
 });
