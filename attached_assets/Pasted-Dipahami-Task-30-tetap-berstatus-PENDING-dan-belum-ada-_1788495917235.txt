@@ -1,0 +1,99 @@
+Dipahami. **Task #30 tetap berstatus PENDING** dan belum ada alasan untuk mengubah status tersebut.
+
+Acceptance brief yang kamu tetapkan sudah cukup lengkap untuk langsung menjadi **implementation gate**. Jadi pada tahap ini **tidak perlu membuat perubahan arsitektur atau menambah scope**.
+
+Status proyek sekarang:
+
+```text
+Phase 1                         ✅ PASS
+Task #25                        ✅ PASS
+Task #26                        ✅ PASS
+Task #27                        ✅ PASS
+Phase 2 Entry Gate              🟢 GO
+
+Task #30 — Learner Orientation  🟡 PENDING
+                                      ↓
+                              IMPLEMENTASI
+                                      ↓
+                              GATE REVIEW
+                                      ↓
+                         Phase 2 berikutnya
+                                      ↓
+Task #28 — Learning → Practice
+            → Evidence             ⏳ PHASE 3
+```
+
+### Instruksi kerja untuk Task #30
+
+Saya sarankan **jangan menambahkan requirement baru** saat implementasi. Gunakan acceptance brief tersebut apa adanya.
+
+Kriteria paling penting yang nanti akan saya cek dari laporan Replit adalah:
+
+**1. Server-side authority**
+
+```text
+Persisted State
+      ↓
+Current Learning
+      ↓
+Next Action
+      ↓
+UI
+```
+
+bukan:
+
+```text
+Frontend index
+localStorage
+hardcoded ID
+      ↓
+Next Action
+```
+
+**2. Learner orientation**
+
+Learner harus selalu tahu:
+
+> **Where am I? → What have I completed? → What next? → Why?**
+
+**3. Separation**
+
+```text
+Learning Progress
+       ≠
+Learning Achievement
+       ≠
+Capability
+       ≠
+Readiness
+```
+
+**4. Boundary protection**
+
+Task #30 tidak boleh mengubah:
+
+* Transition Contract
+* Identity Integrity
+* Path A/B Isolation
+* Safety Engine
+* Readiness Formula
+* Passport
+* Practice
+* Evidence
+* Remediation
+* Reassessment
+
+**5. Tidak ada dashboard creep**
+
+Kalau Replit mulai membangun dashboard Instructor/Admin/Assessor atau analytics besar dalam Task #30, itu harus dianggap **scope deviation**, bukan bonus implementasi.
+
+---
+
+Jadi sekarang cukup:
+
+> **Implementasikan Task #30 sesuai acceptance brief.**
+
+Setelah Replit selesai, **jangan langsung menerima label PASS dari Replit**. Kirimkan final report-nya ke saya, dan saya akan melakukan **Gate Review Task #30** dengan membandingkan hasil implementasi terhadap acceptance criteria satu per satu.
+
+**Status resmi saat ini: TASK #30 — PENDING IMPLEMENTATION.**
