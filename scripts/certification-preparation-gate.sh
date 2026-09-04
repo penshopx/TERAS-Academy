@@ -32,7 +32,7 @@ write_report() {
     checks_json+="{\"name\":$(json_escape "$name"),\"status\":$(json_escape "$status"),\"detail\":$(json_escape "$detail")}"
   done
   cat >"$json_report" <<EOF
-{"gate":"certification-preparation","runId":$(json_escape "$run_id"),"testStatus":"$test_status","gateReview":"$([[ "$test_status" == PASS ]] && echo PENDING || echo NO-GO)","reviewer":null,"reviewedAt":null,"rationale":null,"storageEvidence":{"adapter":"test-only in-process ObjectStorageService adapter","namespace":$(json_escape "$storage_namespace"),"note":"Object-storage evidence is from the test adapter, not production storage."},"database":{"name":$(json_escape "$test_database"),"isolated":true},"cleanup":{"status":"${cleanup_status:-NOT_RUN}"},"checks":[$checks_json],"failure":$(json_escape "$failure")}
+{"gate":"certification-preparation","runId":$(json_escape "$run_id"),"testStatus":"$test_status","gateReview":"$([[ "$test_status" == PASS ]] && echo PENDING || echo NO-GO)","reviewer":null,"reviewedAt":null,"rationale":null,"storageEvidence":{"adapter":{"kind":"test-only in-process ObjectStorageService adapter","namespace":$(json_escape "$storage_namespace"),"coveredByThisReport":true},"realAppStorage":{"kind":"Replit App Storage sidecar integration","command":"pnpm --filter @workspace/api-server run test:app-storage-sidecar","coveredByThisReport":false},"note":"Adapter evidence and disposable real-storage evidence are intentionally reported and executed separately."},"database":{"name":$(json_escape "$test_database"),"isolated":true},"cleanup":{"status":"${cleanup_status:-NOT_RUN}"},"checks":[$checks_json],"failure":$(json_escape "$failure")}
 EOF
   {
     echo "# Certification-preparation release gate"
@@ -41,7 +41,8 @@ EOF
     echo "- Automated test status: **$test_status**"
     echo "- Gate review: **$([[ "$test_status" == PASS ]] && echo PENDING || echo NO-GO)** (tests never auto-GO)"
     echo "- Database: isolated disposable \`$test_database\`"
-    echo "- Object storage evidence: **test adapter only**, namespace \`$storage_namespace\`"
+    echo "- Adapter evidence in this report: **test-only in-process adapter**, namespace \`$storage_namespace\`"
+    echo "- Real App Storage evidence: **separate disposable sidecar test**, run with \`pnpm --filter @workspace/api-server run test:app-storage-sidecar\`"
     echo
     echo "## Checks"
     echo

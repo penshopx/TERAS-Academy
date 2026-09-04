@@ -23,7 +23,8 @@
     "test:browser-idempotency-workflow-contract": "tsx ./src/browser-idempotency-workflow-contract.test.ts",
     "setup:browser-idempotency": "playwright install --with-deps chromium",
     "test:browser-idempotency": "NODE_ENV=test tsx ./src/browser-idempotency.integration.ts",
-    "test:certification-preparation-journey": "NODE_ENV=test tsx ./src/certification-preparation-journey.integration.ts"
+    "test:certification-preparation-journey": "NODE_ENV=test tsx ./src/certification-preparation-journey.integration.ts",
+    "test:app-storage-sidecar": "NODE_ENV=test tsx ./src/app-storage-sidecar.integration.ts"
   },
   "dependencies": {
     "@clerk/express": "^2.1.65",

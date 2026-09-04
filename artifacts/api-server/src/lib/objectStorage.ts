@@ -35,7 +35,7 @@ export class ObjectStorageService {
   normalizeObjectEntityPath(url: string) {
     if (!url.startsWith("https://storage.googleapis.com/")) return url;
     const pathname = new URL(url).pathname;
-    const prefix = `/${privateDir()}/`;
+    const prefix = `/${privateDir().replace(/^\/+/, "")}/`;
     return pathname.startsWith(prefix) ? `/objects/${pathname.slice(prefix.length)}` : pathname;
   }
   async getObjectEntityFile(objectPath: string): Promise<File> {
