@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Activity, Plus, FileText, CheckCircle, Clock, XCircle } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { clearDraftIdempotencyKey, getDraftIdempotencyKey } from "@/lib/draft-idempotency";
 
 export default function Evidence() {
   const { data: evidenceList, isLoading, error } = useListEvidence();
@@ -23,7 +24,6 @@ export default function Evidence() {
   const [title, setTitle] = useState("");
   const [type, setType] = useState("DOCUMENT");
   const [description, setDescription] = useState("");
-  const submission = useRef<{ fingerprint: string; key: string } | null>(null);
   const selectedTask = tasks?.find(task => task.id === taskId);
 
   const handleSubmit = () => {
@@ -31,10 +31,9 @@ export default function Evidence() {
       toast({ title: "Causal link required", description: "Open Evidence from a recorded practice attempt and complete all fields.", variant: "destructive" });
       return;
     }
-    const fingerprint = JSON.stringify({ taskId: selectedTask.id, sourceActivityId, practiceAttemptId, title: title.trim(), type, description: description.trim() });
-    if (submission.current?.fingerprint !== fingerprint) {
-      submission.current = { fingerprint, key: crypto.randomUUID() };
-    }
+    const flow = `evidence:${sourceActivityId}:${practiceAttemptId}:${selectedTask.id}`;
+    const payload = JSON.stringify({ taskId: selectedTask.id, sourceActivityId, practiceAttemptId, title: title.trim(), type, description: description.trim() });
+    const idempotencyKey = getDraftIdempotencyKey(window.localStorage, flow, payload);
     createEvidence.mutate({
       data: {
         moduleId: selectedTask.moduleId,
@@ -45,14 +44,14 @@ export default function Evidence() {
         type,
         description: description.trim(),
         fileName: null,
-        idempotencyKey: submission.current.key,
+        idempotencyKey,
       },
     }, {
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: getListEvidenceQueryKey() });
         setTitle("");
         setDescription("");
-        submission.current = null;
+        clearDraftIdempotencyKey(window.localStorage, flow);
         setShowForm(false);
         toast({ title: "Evidence submitted", description: "Evidence is linked to the practice attempt and is now awaiting review. Readiness has not changed." });
       },
