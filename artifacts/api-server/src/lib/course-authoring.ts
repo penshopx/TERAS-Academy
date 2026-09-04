@@ -1,12 +1,31 @@
-import { and, eq, gt, max, sql } from "drizzle-orm";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { and, count, eq, gt, max, ne, sql } from "drizzle-orm";
 import {
   contentResourcesTable, courseAuthoringAuditTable, courseModulesTable, coursesTable, courseVersionsTable,
-  db, enrollmentsTable, learningActivitiesTable, learningOutcomesTable, lessonsTable, managedResourceUploadsTable, modulesTable, practiceTasksTable, readinessGatesTable,
+  db as rootDb, enrollmentsTable, learningActivitiesTable, learningOutcomesTable, lessonsTable, managedResourceUploadsTable, modulesTable, practiceTasksTable, readinessGatesTable,
 } from "@workspace/db";
 import { validateResourceUri } from "./resource-uri";
 import { ObjectStorageService } from "./objectStorage";
 
 const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
+const authoringTransaction = new AsyncLocalStorage<typeof rootDb>();
+const db = new Proxy(rootDb, {
+  get(_target, property) {
+    const target = authoringTransaction.getStore() ?? rootDb;
+    const value = Reflect.get(target, property, target);
+    return typeof value === "function" ? value.bind(target) : value;
+  },
+});
+
+async function withCourseAuthoringLock<T>(courseId: string, work: () => Promise<T>) {
+  if (authoringTransaction.getStore()) return work();
+  return rootDb.transaction(async tx => authoringTransaction.run(tx as unknown as typeof rootDb, async () => {
+    // A transaction-scoped advisory lock covers both existing courses and
+    // concurrent create attempts, and is shared by every edit/publish path.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${courseId}, 0))`);
+    return work();
+  }));
+}
 type Entity = "COURSE" | "COURSE_MODULE" | "LESSON" | "ACTIVITY" | "OUTCOME" | "RESOURCE";
 type Issue = { code: string; message: string; entityId: string | null };
 type Command = { action: "CREATE" | "UPDATE" | "REORDER" | "DUPLICATE" | "ARCHIVE"; entity: Entity; id?: string; courseId: string; data?: Record<string, unknown> };
@@ -118,14 +137,14 @@ async function reorderEntity(aggregate: NonNullable<Awaited<ReturnType<typeof au
 export async function authoredCourse(courseId: string) {
   const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, courseId)).limit(1);
   if (!course) return null;
-  const [links, lessons, activities, outcomes, resources, modules] = await Promise.all([
-    db.select().from(courseModulesTable).where(eq(courseModulesTable.courseId, courseId)),
-    db.select().from(lessonsTable).where(eq(lessonsTable.pathwayId, course.pathwayId)),
-    db.select().from(learningActivitiesTable).where(eq(learningActivitiesTable.pathwayId, course.pathwayId)),
-    db.select().from(learningOutcomesTable),
-    db.select().from(contentResourcesTable),
-    db.select().from(modulesTable).where(eq(modulesTable.pathwayId, course.pathwayId)),
-  ]);
+  // These queries also run while a publish transaction owns one connection, so
+  // keep them sequential instead of issuing concurrent client.query calls.
+  const links = await db.select().from(courseModulesTable).where(eq(courseModulesTable.courseId, courseId));
+  const lessons = await db.select().from(lessonsTable).where(eq(lessonsTable.pathwayId, course.pathwayId));
+  const activities = await db.select().from(learningActivitiesTable).where(eq(learningActivitiesTable.pathwayId, course.pathwayId));
+  const outcomes = await db.select().from(learningOutcomesTable);
+  const resources = await db.select().from(contentResourcesTable);
+  const modules = await db.select().from(modulesTable).where(eq(modulesTable.pathwayId, course.pathwayId));
   const linkIds = new Set(links.map(row => row.id));
   const courseLessons = lessons.filter(row => linkIds.has(row.courseModuleId));
   const lessonIds = new Set(courseLessons.map(row => row.id));
@@ -241,7 +260,7 @@ async function duplicateCourse(source: NonNullable<Awaited<ReturnType<typeof aut
   return courseId;
 }
 
-export async function applyCourseAuthoring(command: Command, actorId: string) {
+async function applyCourseAuthoringLocked(command: Command, actorId: string) {
   const aggregate = await authoredCourse(command.courseId);
   const data = command.data ?? {};
   if (!aggregate && !(command.action === "CREATE" && command.entity === "COURSE")) return { error: "Course not found" as const };
@@ -261,7 +280,7 @@ export async function applyCourseAuthoring(command: Command, actorId: string) {
     if (!aggregate) return { error: "Course not found" as const };
     if (existing && command.entity === "COURSE" && existing !== command.courseId) return { error: "Course id does not match courseId" as const };
     // Never allow a naked descendant id to mutate another course sharing a pathway.
-    if (existing && command.entity !== "COURSE") {
+    if (existing && command.action !== "CREATE" && command.entity !== "COURSE") {
       const owned = command.entity === "COURSE_MODULE" ? aggregate.links.some(row => row.id === existing)
         : command.entity === "LESSON" ? aggregate.lessons.some(row => row.id === existing)
           : command.entity === "ACTIVITY" ? aggregate.activities.some(row => row.id === existing)
@@ -375,21 +394,26 @@ export async function applyCourseAuthoring(command: Command, actorId: string) {
   return { id: entityId, entity: command.entity, action: command.action, status: command.action === "ARCHIVE" ? "ARCHIVED" : "DRAFT" };
 }
 
+export async function applyCourseAuthoring(command: Command, actorId: string) {
+  return withCourseAuthoringLock(command.courseId, () => applyCourseAuthoringLocked(command, actorId));
+}
+
 export async function publishCourse(courseId: string, actorId: string) {
-  const preview = await coursePreview(courseId);
-  if (!preview) return { error: "Course not found" as const };
-  if (!preview.validation.valid) return { error: "Course validation failed", report: preview.validation };
-  return db.transaction(async tx => {
-    // Publish numbering and pointer updates must be serialized per course. The
-    // unique version constraint remains a final safeguard, while this row lock
-    // lets concurrent legitimate publishes complete with sequential versions.
-    await tx.execute(sql`SELECT id FROM teras_courses WHERE id = ${courseId} FOR UPDATE`);
+  return withCourseAuthoringLock(courseId, async () => {
+    const preview = await coursePreview(courseId);
+    if (!preview) return { error: "Course not found" as const };
+    if (!preview.validation.valid) return { error: "Course validation failed", report: preview.validation };
+    const tx = db;
     const [{ value: currentVersion }] = await tx.select({ value: max(courseVersionsTable.version) }).from(courseVersionsTable).where(eq(courseVersionsTable.courseId, courseId));
+    const [{ value: authoringRevision }] = await tx.select({ value: count() }).from(courseAuthoringAuditTable).where(and(
+      eq(courseAuthoringAuditTable.courseId, courseId),
+      ne(courseAuthoringAuditTable.action, "PUBLISH"),
+    ));
     const version = (currentVersion ?? 0) + 1, versionId = id("course-version"), publishedAt = new Date();
-    await tx.insert(courseVersionsTable).values({ id: versionId, courseId, version, lifecycle: "PUBLISHED", snapshot: preview.course, validationReport: preview.validation, publishedAt, publishedBy: actorId });
+    await tx.insert(courseVersionsTable).values({ id: versionId, courseId, version, lifecycle: "PUBLISHED", snapshot: { ...preview.course, authoringRevision }, validationReport: preview.validation, publishedAt, publishedBy: actorId });
     await tx.update(coursesTable).set({ status: "PUBLISHED", publishedVersionId: versionId }).where(eq(coursesTable.id, courseId));
-    await tx.insert(courseAuthoringAuditTable).values({ id: id("course-audit"), courseId, versionId, action: "PUBLISH", actorId, details: { version }, createdBy: actorId });
-    return { id: versionId, courseId, version, lifecycle: "PUBLISHED" as const, publishedAt };
+    await tx.insert(courseAuthoringAuditTable).values({ id: id("course-audit"), courseId, versionId, action: "PUBLISH", actorId, details: { version, authoringRevision }, createdBy: actorId });
+    return { id: versionId, courseId, version, authoringRevision, lifecycle: "PUBLISHED" as const, publishedAt };
   });
 }
 
@@ -400,7 +424,14 @@ export async function listAuthoredCourses() {
 export async function courseVersions(courseId: string) {
   return (await db.select().from(courseVersionsTable).where(eq(courseVersionsTable.courseId, courseId)))
     .sort((a, b) => b.version - a.version)
-    .map(({ id, courseId: versionCourseId, version, lifecycle, publishedAt }) => ({ id, courseId: versionCourseId, version, lifecycle: lifecycle as "PUBLISHED", publishedAt }));
+    .map(({ id, courseId: versionCourseId, version, lifecycle, snapshot, publishedAt }) => ({
+      id,
+      courseId: versionCourseId,
+      version,
+      authoringRevision: typeof snapshot.authoringRevision === "number" ? snapshot.authoringRevision : 0,
+      lifecycle: lifecycle as "PUBLISHED",
+      publishedAt,
+    }));
 }
 export async function courseAudit(courseId: string) {
   return (await db.select().from(courseAuthoringAuditTable).where(eq(courseAuthoringAuditTable.courseId, courseId)))

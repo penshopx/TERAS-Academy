@@ -11,6 +11,8 @@ export interface CourseVersion {
   id: string;
   courseId: string;
   version: number;
+  /** @minimum 0 */
+  authoringRevision: number;
   lifecycle: CourseVersionLifecycle;
   publishedAt: Date;
 }

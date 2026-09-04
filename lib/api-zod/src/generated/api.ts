@@ -1500,10 +1500,15 @@ export const PublishAuthoredCourseParams = zod.object({
   "courseId": zod.coerce.string()
 })
 
+export const publishAuthoredCourseResponseAuthoringRevisionMin = 0;
+
+
+
 export const PublishAuthoredCourseResponse = zod.object({
   "id": zod.string(),
   "courseId": zod.string(),
   "version": zod.int(),
+  "authoringRevision": zod.int().min(publishAuthoredCourseResponseAuthoringRevisionMin),
   "lifecycle": zod.enum(['PUBLISHED']),
   "publishedAt": zod.coerce.date()
 })
@@ -1513,10 +1518,15 @@ export const ListAuthoredCourseVersionsParams = zod.object({
   "courseId": zod.coerce.string()
 })
 
+export const listAuthoredCourseVersionsResponseAuthoringRevisionMin = 0;
+
+
+
 export const ListAuthoredCourseVersionsResponseItem = zod.object({
   "id": zod.string(),
   "courseId": zod.string(),
   "version": zod.int(),
+  "authoringRevision": zod.int().min(listAuthoredCourseVersionsResponseAuthoringRevisionMin),
   "lifecycle": zod.enum(['PUBLISHED']),
   "publishedAt": zod.coerce.date()
 })

@@ -30,7 +30,7 @@ import {
 } from "../lib/learning-transition";
 import { learnerContext } from "../lib/teras";
 import { RESOURCE_URI_ERROR, validateResourceUri } from "../lib/resource-uri";
-import { claimManagedObject } from "../lib/course-authoring";
+import { applyCourseAuthoring, trainerHasAssignment } from "../lib/course-authoring";
 
 const router: IRouter = Router();
 export const learnerCourseAvailable = (course: { status: string; publishedVersionId: string | null }) =>
@@ -213,31 +213,49 @@ router.post("/learning/resources", async (req, res): Promise<void> => {
   }
 
   const [activity] = await db
-    .select({ id: learningActivitiesTable.id })
+    .select({
+      id: learningActivitiesTable.id,
+      courseId: coursesTable.id,
+      programId: coursesTable.programId,
+      pathwayId: coursesTable.pathwayId,
+    })
     .from(learningActivitiesTable)
+    .innerJoin(lessonsTable, eq(lessonsTable.id, learningActivitiesTable.lessonId))
+    .innerJoin(courseModulesTable, eq(courseModulesTable.id, lessonsTable.courseModuleId))
+    .innerJoin(coursesTable, eq(coursesTable.id, courseModulesTable.courseId))
     .where(eq(learningActivitiesTable.id, parsed.data.activityId))
     .limit(1);
   if (!activity) {
     res.status(404).json({ error: "Learning activity not found" });
     return;
   }
-  try {
-    await claimManagedObject(parsed.data.objectPath ?? null, trainerId);
-  } catch (error) {
-    res.status(400).json({ error: error instanceof Error ? error.message : "Managed resource could not be claimed" });
+  if (!await trainerHasAssignment(trainerId, activity.programId, activity.pathwayId)) {
+    res.status(403).json({ error: "You are not assigned to this course pathway" });
     return;
   }
 
-  const [resource] = await db
-    .insert(contentResourcesTable)
-    .values({
+  const result = await applyCourseAuthoring({
+    action: "CREATE",
+    entity: "RESOURCE",
+    id: parsed.data.id,
+    courseId: activity.courseId,
+    data: {
       ...parsed.data,
-      uri: parsed.data.uri ?? null,
-      objectPath: parsed.data.objectPath ?? null,
-      mimeType: parsed.data.mimeType ?? null,
-      content: parsed.data.content ?? null,
-    })
-    .returning();
+      uri: parsed.data.uri ?? undefined,
+      objectPath: parsed.data.objectPath ?? undefined,
+      mimeType: parsed.data.mimeType ?? undefined,
+      content: parsed.data.content ?? undefined,
+    },
+  }, trainerId);
+  if ("error" in result) {
+    res.status(409).json({ error: result.error });
+    return;
+  }
+  const [resource] = await db.select().from(contentResourcesTable).where(eq(contentResourcesTable.id, result.id)).limit(1);
+  if (!resource) {
+    res.status(500).json({ error: "Created learning resource could not be loaded" });
+    return;
+  }
 
   req.log.info(
     { resourceId: resource.id, activityId: resource.activityId, trainerId },

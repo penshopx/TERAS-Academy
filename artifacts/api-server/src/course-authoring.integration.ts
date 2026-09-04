@@ -156,6 +156,41 @@ async function run() {
 
     await command({ action: "UPDATE", entity: "LESSON", id: lessonOne.id, courseId: ids.courseA, data: { title: "Edited after publish" } }, 200);
     assert.deepEqual((await db.select().from(courseVersionsTable).where(eq(courseVersionsTable.id, firstVersion.id)))[0].snapshot, firstSnapshot, "editing after publish must not mutate snapshot");
+
+    await db.execute(sql`CREATE FUNCTION delay_authoring_edit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.2); RETURN NEW; END $$`);
+    await db.execute(sql`CREATE TRIGGER delay_authoring_edit BEFORE UPDATE ON teras_lessons FOR EACH ROW WHEN (NEW.title = 'Edit racing publish') EXECUTE FUNCTION delay_authoring_edit()`);
+    const racingEdit = command({ action: "UPDATE", entity: "LESSON", id: lessonOne.id, courseId: ids.courseA, data: { title: "Edit racing publish" } }, 200);
+    await new Promise(resolve => setTimeout(resolve, 40));
+    const racingPublishResponse = await request(`/trainer/authoring/courses/${ids.courseA}/publish`, {});
+    await racingEdit;
+    const racingPublish = await racingPublishResponse.json() as { id: string; authoringRevision: number };
+    assert.equal(racingPublishResponse.status, 201, JSON.stringify(racingPublish));
+    const racingVersion = (await db.select().from(courseVersionsTable).where(eq(courseVersionsTable.id, racingPublish.id)))[0];
+    assert.equal(
+      (racingVersion.snapshot as { modules: Array<{ lessons: Array<{ title: string }> }> }).modules[0].lessons.some(lesson => lesson.title === "Edit racing publish"),
+      true,
+      "publish waiting behind an edit must snapshot that completed authoring revision",
+    );
+    assert.equal((racingVersion.snapshot as { authoringRevision: number }).authoringRevision, racingPublish.authoringRevision, "published snapshot must identify the authoring revision reported to the trainer");
+    await db.execute(sql`DROP TRIGGER delay_authoring_edit ON teras_lessons`);
+
+    const legacyResourceId = `legacy-resource-${suffix}`;
+    await db.execute(sql`CREATE FUNCTION delay_legacy_resource_edit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.2); RETURN NEW; END $$`);
+    await db.execute(sql`CREATE TRIGGER delay_legacy_resource_edit BEFORE INSERT ON teras_content_resources FOR EACH ROW EXECUTE FUNCTION delay_legacy_resource_edit()`);
+    active = "B";
+    response = await request("/learning/resources", { id: `forbidden-resource-${suffix}`, activityId: activity.id, type: "TEXT", title: "Forbidden", content: "Forbidden", sequence: 99 });
+    assert.equal(response.status, 403, "legacy resource creation must enforce owning course scope");
+    active = "A";
+    const legacyResourceEdit = request("/learning/resources", { id: legacyResourceId, activityId: activity.id, type: "TEXT", title: "Legacy route resource", content: "Serialized", sequence: 99 });
+    await new Promise(resolve => setTimeout(resolve, 40));
+    const legacyPublishResponse = await request(`/trainer/authoring/courses/${ids.courseA}/publish`, {});
+    assert.equal((await legacyResourceEdit).status, 201, "legacy resource route must create through the locked authoring path");
+    const legacyPublish = await legacyPublishResponse.json() as { id: string };
+    assert.equal(legacyPublishResponse.status, 201, JSON.stringify(legacyPublish));
+    const legacyVersion = (await db.select().from(courseVersionsTable).where(eq(courseVersionsTable.id, legacyPublish.id)))[0];
+    assert.equal(JSON.stringify(legacyVersion.snapshot).includes(legacyResourceId), true, "publish must wait for resource writes through the legacy endpoint");
+    await db.execute(sql`DROP TRIGGER delay_legacy_resource_edit ON teras_content_resources`);
+
     const parallelPublishes = await Promise.all([
       request(`/trainer/authoring/courses/${ids.courseA}/publish`, {}),
       request(`/trainer/authoring/courses/${ids.courseA}/publish`, {}),
@@ -165,14 +200,14 @@ async function run() {
       assert.equal(publishResponse.status, 201, JSON.stringify(publishPayload));
       return publishPayload;
     }));
-    assert.deepEqual(parallelPayloads.map(row => row.version).sort(), [2, 3], "parallel publishes must receive sequential versions");
+    assert.deepEqual(parallelPayloads.map(row => row.version).sort(), [4, 5], "parallel publishes must receive sequential versions");
     const versions = await (await request(`/trainer/authoring/courses/${ids.courseA}/versions`)).json() as Array<{ id: string; version: number }>;
-    assert.deepEqual(versions.map(row => row.version), [3, 2, 1]);
+    assert.deepEqual(versions.map(row => row.version), [5, 4, 3, 2, 1]);
     assert.equal(new Set(versions.map(row => row.version)).size, versions.length, "published versions must remain unique");
     const publishedCourse = (await db.select().from(coursesTable).where(eq(coursesTable.id, ids.courseA)))[0];
     assert.equal(
       publishedCourse.publishedVersionId,
-      versions.find(row => row.version === 3)?.id,
+      versions.find(row => row.version === 5)?.id,
       "course must point at the latest serialized publish",
     );
     const audit = await (await request(`/trainer/authoring/courses/${ids.courseA}/audit`)).json() as Array<{ action: string }>;

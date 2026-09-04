@@ -2029,9 +2029,10 @@ components:
         id: { type: string }
         courseId: { type: string }
         version: { type: integer }
+        authoringRevision: { type: integer, minimum: 0 }
         lifecycle: { type: string, enum: [PUBLISHED] }
         publishedAt: { type: string, format: date-time }
-      required: [id, courseId, version, lifecycle, publishedAt]
+      required: [id, courseId, version, authoringRevision, lifecycle, publishedAt]
     CourseAuthoringAuditEvent:
       type: object
       properties:
