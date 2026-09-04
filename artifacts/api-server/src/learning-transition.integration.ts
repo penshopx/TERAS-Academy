@@ -38,6 +38,9 @@ const fixtureIds = {
   gap: `${fixturePrefix}-gap-a`,
   remediation: `${fixturePrefix}-remediation-a`,
   reassessment: `${fixturePrefix}-reassessment-a`,
+  rolledBackPractice: `${fixturePrefix}-practice-rollback`,
+  rolledBackEvidence: `${fixturePrefix}-evidence-rollback`,
+  rolledBackReview: `${fixturePrefix}-review-rollback`,
 };
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -100,11 +103,13 @@ async function removeTransitionRecords() {
 async function cleanup() {
   await removeTransitionRecords();
   await db.delete(evidenceReviewsTable).where(eq(evidenceReviewsTable.id, fixtureIds.review));
+  await db.delete(evidenceReviewsTable).where(eq(evidenceReviewsTable.id, fixtureIds.rolledBackReview));
   await db.delete(remediationPlansTable).where(eq(remediationPlansTable.id, fixtureIds.remediation));
   await db.delete(gapsTable).where(eq(gapsTable.id, fixtureIds.gap));
   await db.delete(assessmentAttemptsTable).where(eq(assessmentAttemptsTable.id, fixtureIds.reassessment));
   await db.delete(evidenceTable).where(inArray(evidenceTable.id, [fixtureIds.evidence, fixtureIds.pathBEvidence]));
-  await db.delete(practiceAttemptsTable).where(eq(practiceAttemptsTable.id, fixtureIds.practice));
+  await db.delete(evidenceTable).where(eq(evidenceTable.id, fixtureIds.rolledBackEvidence));
+  await db.delete(practiceAttemptsTable).where(inArray(practiceAttemptsTable.id, [fixtureIds.practice, fixtureIds.rolledBackPractice]));
   await db.delete(enrollmentPathwayEventsTable).where(eq(enrollmentPathwayEventsTable.id, fixtureIds.pathwaySelection));
   await db.delete(learningOutcomesTable).where(eq(learningOutcomesTable.id, fixtureIds.outcome));
   await db.delete(learningActivitiesTable).where(eq(learningActivitiesTable.id, activityId));
@@ -282,6 +287,59 @@ async function run() {
       actorLearner,
     );
     assert(!wrongPath.ok && wrongPath.value.reason === "PATHWAY_MISMATCH", "Path B activity was accepted in Path A");
+
+    try {
+      await db.transaction(async (tx) => {
+        await tx.insert(practiceAttemptsTable).values({
+          id: fixtureIds.rolledBackPractice,
+          taskId: "task-m03",
+          learnerId: "learner-demo",
+          pathwayId: "path-a",
+          reflection: "Must roll back",
+          outputSummary: "Must roll back",
+          status: "Submitted",
+        });
+        const rejected = await transitionLearningState(command("NOT_STARTED", "PRACTICE_IN_PROGRESS", "rollback-practice", {
+          practiceAttemptId: fixtureIds.rolledBackPractice,
+        }), actorLearner, tx);
+        assert(!rejected.ok, "Invalid atomic practice transition unexpectedly succeeded");
+        throw new Error("ROLLBACK_EXPECTED");
+      });
+    } catch (error) {
+      assert(error instanceof Error && error.message === "ROLLBACK_EXPECTED", "Unexpected atomic practice rollback error");
+    }
+    assert(!(await db.select().from(practiceAttemptsTable).where(eq(practiceAttemptsTable.id, fixtureIds.rolledBackPractice)))[0], "Rejected practice transition left an orphan attempt");
+
+    try {
+      await db.transaction(async (tx) => {
+        await tx.insert(evidenceTable).values({
+          id: fixtureIds.rolledBackEvidence,
+          learnerId: "learner-demo",
+          pathwayId: "path-a",
+          moduleId: "m03",
+          taskId: "task-m03",
+          title: "Must roll back",
+          type: "Checklist",
+          description: "Must roll back",
+        });
+        await tx.insert(evidenceReviewsTable).values({
+          id: fixtureIds.rolledBackReview,
+          evidenceId: fixtureIds.rolledBackEvidence,
+          status: "Under review",
+          quality: { valid: false, relevant: false, sufficient: false, traceable: false },
+        });
+        const rejected = await transitionLearningState(command("NOT_STARTED", "EVIDENCE_SUBMITTED", "rollback-evidence", {
+          practiceAttemptId: fixtureIds.practice,
+          evidenceId: fixtureIds.rolledBackEvidence,
+        }), actorLearner, tx);
+        assert(!rejected.ok, "Invalid atomic evidence transition unexpectedly succeeded");
+        throw new Error("ROLLBACK_EXPECTED");
+      });
+    } catch (error) {
+      assert(error instanceof Error && error.message === "ROLLBACK_EXPECTED", "Unexpected atomic evidence rollback error");
+    }
+    assert(!(await db.select().from(evidenceTable).where(eq(evidenceTable.id, fixtureIds.rolledBackEvidence)))[0], "Rejected evidence transition left orphan evidence");
+    assert(!(await db.select().from(evidenceReviewsTable).where(eq(evidenceReviewsTable.id, fixtureIds.rolledBackReview)))[0], "Rejected evidence transition left an orphan initial review");
 
     const concurrent = await Promise.all([
       transitionLearningState(command("NOT_STARTED", "IN_PROGRESS", "concurrent-a"), actorLearner),

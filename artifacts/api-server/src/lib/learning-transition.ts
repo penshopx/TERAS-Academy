@@ -103,6 +103,8 @@ export type LearningTransitionResult =
   | { ok: true; statusCode: 200 | 201; value: LearningTransitionSuccess }
   | { ok: false; statusCode: 403 | 404 | 409; value: LearningTransitionRejection };
 
+export type LearningTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export type LearningNextAction = {
   action: "START_ACTIVITY" | "COMPLETE_ACTIVITY" | "WAIT_FOR_VERIFICATION" | "WAIT_FOR_PRACTICE" | "START_PRACTICE" | "SUBMIT_EVIDENCE" | "WAIT_FOR_REVIEW" | "FOLLOW_FEEDBACK" | "VIEW_READINESS";
   title: string;
@@ -207,6 +209,7 @@ function successFromEvent(
 export async function transitionLearningState(
   command: LearningTransitionCommand,
   actor: LearningActor,
+  transaction?: LearningTransaction,
 ): Promise<LearningTransitionResult> {
   const context = await learnerContext(actor.role === "learner" ? actor.id : command.learnerId);
   if (command.learnerId !== context.learner.id || (actor.role === "learner" && actor.id !== command.learnerId)) {
@@ -233,7 +236,7 @@ export async function transitionLearningState(
 
   const readinessSnapshot = command.targetState === "READY" ? await readiness(context) : null;
 
-  return db.transaction(async (tx): Promise<LearningTransitionResult> => {
+  const execute = async (tx: LearningTransaction): Promise<LearningTransitionResult> => {
     const lockKey = `${command.learnerId}:${command.pathwayId}:${command.activityId}`;
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`);
 
@@ -498,5 +501,7 @@ export async function transitionLearningState(
     }
 
     return { ok: true, statusCode: 201, value: successFromEvent(event, false) };
-  });
+  };
+
+  return transaction ? execute(transaction) : db.transaction(execute);
 }
