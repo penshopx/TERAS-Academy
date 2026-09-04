@@ -15,6 +15,7 @@
     "test:admin-management": "bash ./admin-management.integration.test.sh",
     "test:safety": "tsx ../artifacts/api-server/src/lib/safety.test.ts",
     "test:deployment-hardening": "bash ./deployment-hardening.test.sh",
+    "test:certification-preparation-release-workflow": "bash ./certification-preparation-release-workflow.test.sh",
     "gate:certification-preparation": "bash ./certification-preparation-gate.sh",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

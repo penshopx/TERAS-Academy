@@ -1,0 +1,155 @@
+name: Certification preparation release gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Release tag to create after Gate Review GO
+        required: true
+        type: string
+      target_ref:
+        description: Commit SHA or branch to test and release
+        required: true
+        default: main
+        type: string
+      release_name:
+        description: Optional release title (defaults to the tag)
+        required: false
+        type: string
+      prerelease:
+        description: Create as a prerelease
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  actions: read
+  contents: write
+  deployments: write
+
+concurrency:
+  group: certification-preparation-release-${{ inputs.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify-approval-control:
+    name: Verify required human reviewers
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require protected Gate Review environment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const environment = await github.rest.repos.getEnvironment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              environment_name: "release-gate-review",
+            });
+            const reviewerRule = environment.data.protection_rules?.find(
+              (rule) =>
+                rule.type === "required_reviewers" &&
+                Array.isArray(rule.reviewers) &&
+                rule.reviewers.length > 0,
+            );
+            if (!reviewerRule) {
+              core.setFailed(
+                "The release-gate-review environment must have at least one required reviewer.",
+              );
+            }
+
+  certification-preparation-evidence:
+    name: Produce certification-preparation evidence
+    needs: verify-approval-control
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      candidate_sha: ${{ steps.candidate.outputs.sha }}
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      TERAS_GATE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+      TERAS_GATE_REPORT_DIR: ${{ github.workspace }}/release-gate-reports
+      TERAS_GATE_STORAGE_ADAPTER: test
+      TERAS_GATE_STORAGE_NAMESPACE: release-gate/${{ github.run_id }}/${{ github.run_attempt }}
+    steps:
+      - name: Check out release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_ref }}
+
+      - name: Lock release candidate SHA
+        id: candidate
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run certification-preparation release gate
+        run: pnpm run gate:certification-preparation
+
+      - name: Upload PASS or FAIL evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: certification-preparation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-gate-reports/
+          if-no-files-found: error
+          retention-days: 30
+
+  gate-review:
+    name: Gate Review GO/NO-GO
+    needs: certification-preparation-evidence
+    runs-on: ubuntu-latest
+    environment: release-gate-review
+    env:
+      RELEASE_TAG: ${{ inputs.tag_name }}
+    steps:
+      - name: Record manual GO
+        run: echo "Gate Review GO recorded for ${RELEASE_TAG}."
+
+  publish-release:
+    name: Publish approved release
+    needs:
+      - certification-preparation-evidence
+      - gate-review
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag_name }}
+      RELEASE_NAME: ${{ inputs.release_name || inputs.tag_name }}
+      TARGET_SHA: ${{ needs.certification-preparation-evidence.outputs.candidate_sha }}
+      PRERELEASE: ${{ inputs.prerelease }}
+    steps:
+      - name: Check out release publisher
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Create locked tag and release
+        run: bash scripts/publish-approved-release.sh

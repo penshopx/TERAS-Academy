@@ -9,6 +9,7 @@
     "typecheck": "pnpm --filter @workspace/api-spec run test && pnpm --filter @workspace/api-spec run validate && pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "setup:browser-idempotency": "pnpm --filter @workspace/api-server run setup:browser-idempotency",
     "test:browser-idempotency": "pnpm --filter @workspace/api-server run test:browser-idempotency",
+    "test:certification-preparation-release-workflow": "pnpm --filter @workspace/scripts run test:certification-preparation-release-workflow",
     "gate:certification-preparation": "pnpm --filter @workspace/scripts run gate:certification-preparation"
   },
   "private": true,

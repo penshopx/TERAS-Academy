@@ -59,6 +59,7 @@ EOF
 }
 
 cleanup() {
+  local cleanup_exit=0
   if [[ -n "$test_database_url" ]]; then
     if dropdb --maintenance-db="$DATABASE_URL" --if-exists "$test_database" >/dev/null 2>&1; then
       cleanup_status="PASS"
@@ -66,13 +67,22 @@ cleanup() {
       cleanup_status="FAIL"
       test_status="FAIL"
       failure="${failure:+$failure; }disposable database cleanup failed"
+      cleanup_exit=1
     fi
   else
     cleanup_status="NOT_REQUIRED"
   fi
   write_report
+  return "$cleanup_exit"
 }
-trap cleanup EXIT
+
+finish() {
+  local gate_exit=$?
+  trap - EXIT
+  cleanup || gate_exit=1
+  exit "$gate_exit"
+}
+trap finish EXIT
 
 fail() {
   failure="$1"
