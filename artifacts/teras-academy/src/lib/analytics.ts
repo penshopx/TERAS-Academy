@@ -57,3 +57,22 @@ export function trackLearningAction({
     ...(activityId ? { activity_id: activityId } : {}),
   });
 }
+
+type ResourceOpenedData = {
+  activityId: string;
+  resourceId: string;
+  resourceType: string;
+};
+
+export function trackResourceOpened({
+  activityId,
+  resourceId,
+  resourceType,
+}: ResourceOpenedData): void {
+  trackEvent("learning_resource_opened", {
+    activity_id: activityId,
+    resource_id: resourceId,
+    resource_type: resourceType,
+    location: "lesson_activity_resources",
+  });
+}

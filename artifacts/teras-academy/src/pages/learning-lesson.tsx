@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { trackLearningAction } from "@/lib/analytics";
+import { trackLearningAction, trackResourceOpened } from "@/lib/analytics";
 
 export default function LearningLessonDetail() {
   const { lessonId } = useParams();
@@ -240,6 +240,11 @@ export default function LearningLessonDetail() {
                           <a
                             key={res.id}
                             href={res.uri || "#"}
+                            onClick={() => trackResourceOpened({
+                              activityId: activity.id,
+                              resourceId: res.id,
+                              resourceType: res.type,
+                            })}
                             target="_blank"
                             rel="noreferrer"
                             className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-background/50 hover:bg-muted/30 hover:border-primary/30 transition-all group/link"
