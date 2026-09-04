@@ -46,6 +46,7 @@ jobs:
 
   browser-idempotency:
     name: Browser idempotency
+    needs: browser-idempotency-guard
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
