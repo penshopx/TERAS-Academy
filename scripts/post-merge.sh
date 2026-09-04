@@ -16,6 +16,13 @@ pnpm install --frozen-lockfile
 if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_people') IS NOT NULL")" = "t" ]; then
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/post-merge.sql
 fi
+if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_content_resources') IS NOT NULL")" = "t" ]; then
+  TERAS_MIGRATION_ACTOR=post-merge-upgrade \
+    bash scripts/apply-resource-uri-upgrade.sh
+else
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+    -f lib/db/migrations/0004_content_resource_uri_http_check.sql
+fi
 pnpm --filter @workspace/db run push
 TERAS_MIGRATION_ACTOR=post-merge-upgrade \
   bash scripts/apply-resource-uri-upgrade.sh

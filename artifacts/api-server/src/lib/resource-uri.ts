@@ -3,6 +3,7 @@ export const RESOURCE_URI_ERROR =
 
 export function validateResourceUri(uri: string | null | undefined): string | null | undefined {
   if (uri == null) return uri;
+  if (/\s/.test(uri)) throw new Error(RESOURCE_URI_ERROR);
 
   let parsed: URL;
   try {

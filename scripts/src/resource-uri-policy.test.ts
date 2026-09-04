@@ -5,6 +5,9 @@ import { classifyUnsafeResourceUri } from "./resource-uri-policy.js";
 for (const uri of [
   "http://example.com/material.pdf",
   "https://academy.example.com/lesson?id=1#intro",
+  "http://192.0.2.10/material.pdf",
+  "https://[2001:db8::1]/lesson",
+  "https://[9999::1]/",
 ]) {
   assert.equal(classifyUnsafeResourceUri(uri), null);
 }
@@ -17,11 +20,21 @@ for (const uri of [
   assert.equal(classifyUnsafeResourceUri(uri), "UNSAFE_PROTOCOL");
 }
 
-for (const uri of ["/materials/lesson.pdf", "materials/lesson.pdf", "not a url"]) {
+for (const uri of ["/materials/lesson.pdf", "materials/lesson.pdf"]) {
   assert.equal(classifyUnsafeResourceUri(uri), "RELATIVE_URI");
 }
 
-for (const uri of ["", "   ", "https://"]) {
+for (const uri of [
+  "",
+  "   ",
+  "not a url",
+  "https://",
+  "https://example.com/has space",
+  "https://example.com:65536/material.pdf",
+  "https://[example]/x",
+  "https://%",
+  "https://999.1.1.1/x",
+]) {
   assert.equal(classifyUnsafeResourceUri(uri), "MALFORMED_URI");
 }
 

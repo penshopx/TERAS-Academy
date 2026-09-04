@@ -14,3 +14,5 @@ pnpm --filter @workspace/scripts run audit:resource-uris -- \
   --quarantine "--actor=${actor}"
 pnpm --filter @workspace/scripts run audit:resource-uris -- \
   --fail-on-findings
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+  -f lib/db/migrations/0004_content_resource_uri_http_check.sql

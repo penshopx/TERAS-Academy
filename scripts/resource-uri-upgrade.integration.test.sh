@@ -7,7 +7,9 @@ cd "$repo_root"
 : "${DATABASE_URL:?DATABASE_URL must be set}"
 
 schema="teras_uri_upgrade_test_$$"
+test_database="teras_uri_upgrade_db_$$"
 cleanup() {
+  dropdb --maintenance-db="$DATABASE_URL" --if-exists "$test_database" >/dev/null 2>&1 || true
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
     -c "DROP SCHEMA IF EXISTS \"$schema\" CASCADE" >/dev/null
 }
@@ -26,7 +28,8 @@ INSERT INTO "$schema".teras_content_resources (id, uri) VALUES
   ('unsafe-javascript', 'javascript:alert(1)'),
   ('unsafe-data', 'data:text/html,<script>alert(1)</script>'),
   ('unsafe-relative', '/material.pdf'),
-  ('unsafe-malformed', 'https://');
+  ('unsafe-malformed', 'https://'),
+  ('unsafe-whitespace', 'https://example.com/has space');
 SQL
 
 export PGOPTIONS="-c search_path=$schema"
@@ -46,12 +49,13 @@ WHERE action = 'QUARANTINED'
     'javascript:alert(1)',
     'data:text/html,<script>alert(1)</script>',
     '/material.pdf',
-    'https://'
+    'https://',
+    'https://example.com/has space'
   );
 SQL
 )"
 
-if [ "$result" != $'4|2\n4' ]; then
+if [ "$result" != $'5|2\n5' ]; then
   echo "Resource URI upgrade did not quarantine and audit the expected records: $result" >&2
   exit 1
 fi
@@ -61,7 +65,93 @@ TERAS_MIGRATION_ACTOR=integration-test \
   bash scripts/apply-resource-uri-upgrade.sh >/dev/null
 audit_count="$(psql "$DATABASE_URL" -Atqc \
   "SELECT count(*) FROM teras_content_resource_uri_audit")"
-if [ "$audit_count" != "4" ]; then
+if [ "$audit_count" != "5" ]; then
   echo "Repeated resource URI upgrade created duplicate audit records." >&2
+  exit 1
+fi
+
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL' >/dev/null
+INSERT INTO teras_content_resources (id, uri) VALUES
+  ('allowed-null', NULL),
+  ('allowed-http-after-upgrade', 'http://example.com/new'),
+  ('allowed-https-after-upgrade', 'https://academy.example.com/new?id=1#intro'),
+  ('allowed-ipv4-after-upgrade', 'http://192.0.2.10/new'),
+  ('allowed-ipv6-after-upgrade', 'https://[2001:db8::1]/new'),
+  ('allowed-ipv6-high-hextet', 'https://[9999::1]/new');
+SQL
+
+for unsafe_uri in \
+  'javascript:alert(1)' \
+  'data:text/html,unsafe' \
+  'ftp://example.com/material.pdf' \
+  '/material.pdf' \
+  'material.pdf' \
+  'not a url' \
+  'https://' \
+  'https://example.com/has space' \
+  'https://example.com:65536/material.pdf' \
+  'https://[example]/x' \
+  'https://%' \
+  'https://999.1.1.1/x'; do
+  if psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+    -v unsafe_uri="$unsafe_uri" >/dev/null 2>&1 <<'SQL'
+INSERT INTO teras_content_resources (id, uri)
+VALUES ('rejected-' || md5(:'unsafe_uri'), :'unsafe_uri');
+SQL
+  then
+    echo "Database accepted unsafe resource URI: $unsafe_uri" >&2
+    exit 1
+  fi
+done
+
+accepted_count="$(psql "$DATABASE_URL" -Atqc \
+  "SELECT count(*) FROM teras_content_resources WHERE id LIKE 'allowed-%'")"
+if [ "$accepted_count" != "6" ]; then
+  echo "Database rejected an allowed HTTP(S) or NULL resource URI." >&2
+  exit 1
+fi
+
+# Match post-merge ordering on an isolated copy of an existing, unupgraded
+# database. Drizzle targets public explicitly, so a separate database is needed.
+unset PGOPTIONS
+createdb --maintenance-db="$DATABASE_URL" "$test_database"
+test_database_url="$(node -e '
+  const url = new URL(process.env.DATABASE_URL);
+  url.pathname = `/${process.argv[1]}`;
+  process.stdout.write(url.href);
+' "$test_database")"
+pg_dump "$DATABASE_URL" --schema-only --no-owner --no-privileges \
+  | psql "$test_database_url" -v ON_ERROR_STOP=1 >/dev/null
+psql "$test_database_url" -v ON_ERROR_STOP=1 <<'SQL' >/dev/null
+ALTER TABLE teras_content_resources
+  DROP CONSTRAINT IF EXISTS teras_content_resources_uri_http_check;
+DROP FUNCTION IF EXISTS teras_is_valid_resource_uri(text);
+SQL
+TERAS_MIGRATION_ACTOR=integration-test \
+  DATABASE_URL="$test_database_url" bash scripts/apply-resource-uri-upgrade.sh >/dev/null
+if ! push_output="$(DATABASE_URL="$test_database_url" pnpm --filter @workspace/db run push 2>&1)"; then
+  echo "Database push failed after the resource URI upgrade." >&2
+  exit 1
+fi
+if grep -q '^error:' <<<"$push_output"; then
+  echo "Database push reported an error after the resource URI upgrade." >&2
+  exit 1
+fi
+TERAS_MIGRATION_ACTOR=integration-test \
+  DATABASE_URL="$test_database_url" bash scripts/apply-resource-uri-upgrade.sh >/dev/null
+
+fresh_state="$(psql "$test_database_url" -Atqc "
+  SELECT
+    to_regprocedure('teras_is_valid_resource_uri(text)') IS NOT NULL,
+    EXISTS (
+      SELECT 1
+      FROM pg_constraint
+      WHERE conrelid = 'teras_content_resources'::regclass
+        AND conname = 'teras_content_resources_uri_http_check'
+        AND convalidated
+    )
+")"
+if [ "$fresh_state" != "t|t" ]; then
+  echo "Existing-schema reconciliation did not establish the URI validator and CHECK constraint: $fresh_state" >&2
   exit 1
 fi

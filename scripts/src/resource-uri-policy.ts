@@ -5,7 +5,7 @@ export type UnsafeResourceUriFinding =
 
 export function classifyUnsafeResourceUri(uri: string): UnsafeResourceUriFinding | null {
   const value = uri.trim();
-  if (!value) return "MALFORMED_URI";
+  if (!value || /\s/.test(uri)) return "MALFORMED_URI";
 
   let parsed: URL;
   try {

@@ -8,3 +8,4 @@
 - [Learner identity isolation](learner-identity-isolation.md) — derive learner ownership server-side from authenticated identity; never trust learner IDs supplied by clients.
 - [Workflow database isolation](workflow-database-isolation.md) — browser workflows and agent shells may target different development databases; verify the environment before asserting shared records.
 - [Security data remediation](security-data-remediation.md) — cleanup tools must run in the real upgrade path and prove results against an isolated database schema.
+- [Drizzle push isolation](drizzle-push-isolation.md) — test schema pushes in a separate database and inspect output because search_path and exit status can mislead.

@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -9,6 +10,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import {
@@ -115,6 +117,10 @@ export const contentResourcesTable = pgTable("teras_content_resources", {
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
   ...catalogueAudit,
 }, table => [
+  check(
+    "teras_content_resources_uri_http_check",
+    sql`${table.uri} IS NULL OR teras_is_valid_resource_uri(${table.uri})`,
+  ),
   uniqueIndex("teras_content_resources_activity_sequence_unique").on(table.activityId, table.sequence),
 ]);
 

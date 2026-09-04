@@ -61,6 +61,13 @@ BEGIN
   ) OR NOT EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'teras_readiness_gates_pathway_id_teras_pathways_id_fk' AND contype = 'f'
+  ) OR to_regprocedure('teras_is_valid_resource_uri(text)') IS NULL
+    OR NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conrelid = 'teras_content_resources'::regclass
+        AND conname = 'teras_content_resources_uri_http_check'
+        AND contype = 'c'
+        AND convalidated
   ) THEN
     RAISE EXCEPTION 'Critical TERAS runtime constraints are missing';
   END IF;
@@ -85,7 +92,7 @@ BEGIN
     SELECT 1
     FROM teras_content_resources
     WHERE uri IS NOT NULL
-      AND uri !~* '^https?://'
+      AND NOT teras_is_valid_resource_uri(uri)
   ) THEN
     RAISE EXCEPTION 'Unsafe content resource URI remains after quarantine';
   END IF;
