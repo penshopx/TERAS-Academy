@@ -32,6 +32,7 @@ function integrationIdentity(req: Request): TestAuthorizationIdentity | undefine
 export type AdminActor = { clerkUserId: string; personId: string | null };
 export type KnowledgeRole = "admin" | "trainer" | "assessor" | "learner";
 export type KnowledgeActor = { clerkUserId: string; roles: KnowledgeRole[] };
+export type CurrentSession = { personId: string; name: string; roles: KnowledgeRole[] };
 
 async function ensureConfiguredBootstrapAdmin(userId: string): Promise<void> {
   if (process.env.TERAS_BOOTSTRAP_ADMIN_CLERK_USER_ID !== userId) return;
@@ -65,6 +66,46 @@ async function ensureConfiguredBootstrapAdmin(userId: string): Promise<void> {
       createdBy: "configured-admin-bootstrap",
     }).onConflictDoNothing();
   });
+}
+
+export async function authorizeCurrentSession(req: Request, res: Response): Promise<CurrentSession | null> {
+  const identity = integrationIdentity(req);
+  if (identity) {
+    if (identity.userId && identity.role) {
+      return {
+        personId: identity.learnerId ?? identity.userId,
+        name: "Test user",
+        roles: [identity.role],
+      };
+    }
+    res.status(identity.userId ? 403 : 401).json({
+      error: identity.userId ? "A local TERAS role is required" : "Authentication required",
+    });
+    return null;
+  }
+
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return null;
+  }
+
+  await ensureConfiguredBootstrapAdmin(userId);
+  const assignments = await db.select({
+    personId: peopleTable.id,
+    name: peopleTable.name,
+    role: personRolesTable.role,
+  }).from(peopleTable)
+    .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+    .where(and(eq(peopleTable.clerkUserId, userId), eq(peopleTable.status, "active")));
+  const roles = [...new Set(assignments.map(assignment => assignment.role).filter((role): role is KnowledgeRole =>
+    ["admin", "trainer", "assessor", "learner"].includes(role),
+  ))];
+  if (!assignments[0] || !roles.length) {
+    res.status(403).json({ error: "A local TERAS role is required" });
+    return null;
+  }
+  return { personId: assignments[0].personId, name: assignments[0].name, roles };
 }
 
 /** Authenticated, local-role-derived visibility scope for assistant content. */

@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef } from 'react';
-import { ClerkProvider, Show, SignIn, SignUp, useClerk } from '@clerk/react';
+import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,8 @@ import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } fr
 import { AppLayout } from '@/components/layout/app-layout';
 import { FloatingAssistants } from '@/components/floating-assistants';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { getGetCurrentSessionQueryKey, useGetCurrentSession } from '@workspace/api-client-react';
+import { homeForRoles } from '@/lib/role-navigation';
 
 import Dashboard from '@/pages/dashboard';
 import Journey from '@/pages/journey';
@@ -557,7 +559,30 @@ function ProtectedPageMessage() {
 }
 
 function HomeRedirect() {
-  return <><Show when="signed-in"><Redirect to="/dashboard" /></Show><Show when="signed-out"><PublicHome /></Show></>;
+  const { isLoaded, isSignedIn, user } = useUser();
+  const session = useGetCurrentSession({
+    query: {
+      enabled: Boolean(isSignedIn && user),
+      queryKey: getGetCurrentSessionQueryKey(),
+      retry: false,
+      staleTime: 60_000,
+    },
+  });
+
+  if (!isLoaded || (isSignedIn && session.isLoading)) {
+    return <main className="flex min-h-[100dvh] items-center justify-center bg-background text-foreground"><Activity className="h-8 w-8 animate-pulse text-primary" aria-label="Memeriksa akses" /></main>;
+  }
+  if (!isSignedIn) return <PublicHome />;
+  const destination = homeForRoles(session.data?.roles ?? []);
+  if (destination) return <Redirect to={destination} />;
+  return (
+    <main className="flex min-h-[100dvh] items-center justify-center bg-background px-6 text-foreground">
+      <div className="max-w-lg rounded-2xl border border-amber-500/40 bg-card p-8 text-center shadow-xl">
+        <h1 className="text-2xl font-bold">Akses TERAS belum ditetapkan</h1>
+        <p className="mt-3 text-muted-foreground">Akun Anda sudah berhasil masuk, tetapi belum memiliki role aktif. Administrator perlu menetapkan role dan enrollment sebelum workspace dapat digunakan.</p>
+      </div>
+    </main>
+  );
 }
 
 function WorkspaceRoutes() {

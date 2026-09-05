@@ -804,6 +804,23 @@ export interface HealthStatus {
   status: string;
 }
 
+export type CurrentSessionRolesItem = typeof CurrentSessionRolesItem[keyof typeof CurrentSessionRolesItem];
+
+
+export const CurrentSessionRolesItem = {
+  admin: 'admin',
+  trainer: 'trainer',
+  assessor: 'assessor',
+  learner: 'learner',
+} as const;
+
+export interface CurrentSession {
+  personId: string;
+  name: string;
+  /** @minItems 1 */
+  roles: CurrentSessionRolesItem[];
+}
+
 export interface ErrorResponse {
   error: string;
 }

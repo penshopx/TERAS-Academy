@@ -59,6 +59,8 @@ export * from './courseValidationIssue';
 export * from './courseValidationReport';
 export * from './courseVersion';
 export * from './courseVersionLifecycle';
+export * from './currentSession';
+export * from './currentSessionRolesItem';
 export * from './enrollmentInput';
 export * from './errorResponse';
 export * from './evidenceCounts';

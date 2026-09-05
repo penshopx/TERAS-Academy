@@ -18,6 +18,20 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Returns active local roles derived server-side from the authenticated Clerk identity.
+ * @summary Get the current authenticated TERAS session
+ */
+
+
+
+export const GetCurrentSessionResponse = zod.object({
+  "personId": zod.string(),
+  "name": zod.string(),
+  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner'])).min(1)
+})
+
+
+/**
  * @summary List capability programs
  */
 export const ListProgramsResponseItem = zod.object({

@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: session
+    description: Authenticated TERAS identity and role context
   - name: learner
     description: Learner journey and capability records
   - name: trainer
@@ -38,6 +40,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /session:
+    get:
+      operationId: getCurrentSession
+      tags: [session]
+      summary: Get the current authenticated TERAS session
+      description: Returns active local roles derived server-side from the authenticated Clerk identity.
+      responses:
+        "200":
+          description: Current TERAS session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /programs:
     get:
       operationId: listPrograms
@@ -2394,6 +2413,17 @@ components:
           type: string
       required:
         - status
+    CurrentSession:
+      type: object
+      required: [personId, name, roles]
+      properties:
+        personId: { type: string }
+        name: { type: string }
+        roles:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, enum: [admin, trainer, assessor, learner] }
     ErrorResponse:
       type: object
       properties:

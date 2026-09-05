@@ -9,10 +9,12 @@ import adminRouter from "./admin";
 import courseAuthoringRouter from "./course-authoring";
 import storageRouter from "./storage";
 import knowledgeRouter from "./knowledge";
+import sessionRouter from "./session";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(sessionRouter);
 router.use(programsRouter);
 router.use(learnerRouter);
 router.use(assessorRouter);
