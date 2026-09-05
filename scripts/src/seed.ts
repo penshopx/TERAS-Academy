@@ -1,4 +1,5 @@
-import { db, peopleTable, programsTable, pathwaysTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable, coursesTable, courseModulesTable, lessonsTable, learningActivitiesTable, contentResourcesTable, learningOutcomesTable } from "@workspace/db";
+import { db, programsTable, pathwaysTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable, coursesTable, courseModulesTable, lessonsTable, learningActivitiesTable, contentResourcesTable, learningOutcomesTable } from "@workspace/db";
+import { seedManagedPeople } from "@workspace/db/admin-membership";
 import { eq } from "drizzle-orm";
 
 const now = new Date("2025-02-14T10:00:00.000Z");
@@ -26,16 +27,15 @@ async function seed(): Promise<void> {
   if (productionLike && includeDemoFixtures) {
     throw new Error("Refusing to seed TERAS demo learner fixtures in a production environment");
   }
+  if (includeDemoFixtures) {
+    await seedManagedPeople([
+      { id:"learner-demo", name:"Demo Learner", initials:"DL", email:"learner@teras.academy", role:"Solar PV Technician", organization:"TERAS Academy" },
+      { id:"trainer-aria", name:"Aria Trainer", initials:"AT", role:"Trainer", organization:"TERAS Academy" },
+      { id:"assessor-sam", name:"Sam Assessor", initials:"SA", role:"Assessor", organization:"TERAS Academy" },
+    ]);
+  }
   await db.transaction(async tx => {
   const insert = async (table: any, values: any[]) => tx.insert(table).values(values).onConflictDoNothing();
-  if (includeDemoFixtures) {
-    await insert(peopleTable, [
-    { id:"learner-demo", name:"Demo Learner", initials:"DL", email:"learner@teras.academy", role:"Solar PV Technician", organization:"TERAS Academy" },
-    { id:"trainer-aria", name:"Aria Trainer", initials:"AT", role:"Trainer", organization:"TERAS Academy" },
-    { id:"assessor-sam", name:"Sam Assessor", initials:"SA", role:"Assessor", organization:"TERAS Academy" },
-    ]);
-    await tx.update(peopleTable).set({email:"learner@teras.academy"}).where(eq(peopleTable.id,"learner-demo"));
-  }
   await insert(programsTable, [{ id:"solar-pv-tech", domain:"Renewable Energy", name:"Solar PV Technician", description:"Capability pathway for safe residential Solar PV installation.", status:"Active" }]);
   await insert(pathwaysTable, [
     {id:"path-a",programId:"solar-pv-tech",name:"Path A — Installation",type:"Primary",outcome:"Install and commission residential PV systems"},

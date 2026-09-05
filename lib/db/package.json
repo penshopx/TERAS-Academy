@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./admin-membership": "./src/admin-membership.ts",
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {

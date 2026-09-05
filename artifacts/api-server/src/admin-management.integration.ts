@@ -1,6 +1,7 @@
 import { createIntegrationTestApp } from "./integration-test-app";
 import { adminAuditEventsTable, cohortsTable, db, enrollmentsTable, pathwaysTable, peopleTable, personRolesTable, programsTable } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { updateManagedUser } from "@workspace/db/admin-membership";
 
 const suffix = crypto.randomUUID();
 const ids = {
@@ -52,6 +53,16 @@ async function run() {
         eq(personRolesTable.role, "admin"),
       ));
     assert(activeFixtureAdmins.length === 1, `Concurrent admin changes must leave exactly one active administrator fixture, received ${activeFixtureAdmins.length}`);
+    const directServiceOutcome = await updateManagedUser(
+      activeFixtureAdmins[0].id,
+      { status: "inactive" },
+      { clerkUserId: `admin-${suffix}`, personId: null },
+      { activeAdminFixtureIds: [ids.administrator, ids.controlAdministrator] },
+    );
+    assert(
+      directServiceOutcome.kind === "last_admin",
+      "A direct job/script service call must not deactivate the final active administrator",
+    );
     response = await request(`/admin/users/${ids.learner}`, { status: "inactive" }, "PATCH");
     assert(response.status === 200 && (await response.json() as any).status === "inactive", "Admin did not deactivate user");
     response = await request(`/admin/users/${ids.learner}/roles`, { roles: ["learner", "assessor"] }, "PUT");

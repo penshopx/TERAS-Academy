@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { learnerContext } from "./teras";
 import { db, peopleTable, personRolesTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
+import { ensureConfiguredAdmin } from "@workspace/db/admin-membership";
 
 type WorkspaceRole = "trainer" | "assessor";
 type AdminRole = "admin";
@@ -36,36 +37,7 @@ export type CurrentSession = { personId: string; name: string; roles: KnowledgeR
 
 async function ensureConfiguredBootstrapAdmin(userId: string): Promise<void> {
   if (process.env.TERAS_BOOTSTRAP_ADMIN_CLERK_USER_ID !== userId) return;
-
-  await db.transaction(async (tx) => {
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('teras-admin-bootstrap'))`);
-    let [person] = await tx.select({ id: peopleTable.id }).from(peopleTable)
-      .where(eq(peopleTable.clerkUserId, userId))
-      .limit(1);
-
-    if (!person) {
-      [person] = await tx.insert(peopleTable).values({
-        id: `bootstrap-admin-${userId}`,
-        name: "TERAS Administrator",
-        initials: "TA",
-        role: "Administrator",
-        organization: "TERAS Academy",
-        clerkUserId: userId,
-        status: "active",
-        createdBy: "configured-admin-bootstrap",
-      }).returning({ id: peopleTable.id });
-    } else {
-      await tx.update(peopleTable)
-        .set({ status: "active", role: "Administrator", organization: "TERAS Academy" })
-        .where(eq(peopleTable.id, person.id));
-    }
-
-    await tx.insert(personRolesTable).values({
-      personId: person.id,
-      role: "admin",
-      createdBy: "configured-admin-bootstrap",
-    }).onConflictDoNothing();
-  });
+  await ensureConfiguredAdmin(userId);
 }
 
 export async function authorizeCurrentSession(req: Request, res: Response): Promise<CurrentSession | null> {
