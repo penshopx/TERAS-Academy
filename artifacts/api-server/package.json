@@ -18,6 +18,7 @@
     "test:readiness-dashboard-isolation": "NODE_ENV=test tsx ./src/readiness-dashboard-isolation.integration.ts",
     "test:admin-authorization": "NODE_ENV=test tsx ./src/admin-authorization.integration.ts",
     "test:admin-management": "NODE_ENV=test tsx ./src/admin-management.integration.ts",
+    "test:admin-operational-summary": "NODE_ENV=test tsx ./src/admin-operational-summary.integration.ts",
     "test:resource-uri": "NODE_ENV=test tsx ./src/lib/resource-uri.test.ts",
     "test:learning-resume": "NODE_ENV=test tsx --test ./src/lib/learning-resume.test.ts",
     "test:knowledge-safety": "NODE_ENV=test tsx ./src/lib/knowledge-safety.test.ts",

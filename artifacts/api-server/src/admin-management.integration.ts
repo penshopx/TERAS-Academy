@@ -58,6 +58,13 @@ async function run() {
     assert(response.status === 409, "Cross-program cohort must return 409");
     response = await request(`/admin/enrollments/${ids.enrollment}`, { pathwayId: ids.otherPathway }, "PATCH");
     assert(response.status === 409, "Enrollment update to cross-program pathway must return 409");
+    response = await request("/admin/summary", undefined, "GET");
+    const summary = await response.json() as any;
+    assert(response.status === 200, "Admin operational summary must return 200");
+    assert(summary.metrics.some((metric: any) => metric.id === "enrollments" && metric.value >= 1), "Summary must count active enrollments");
+    assert(summary.incompleteAssignments.assessor >= 1, "Summary must expose incomplete assessor assignments");
+    assert(summary.queues.map((queue: any) => queue.id).join(",") === "evidence,assessment,remediation,reassessment", "Summary must expose every operational queue");
+    assert(summary.bottleneck && Array.isArray(summary.actions), "Summary must expose bottleneck and quick actions");
     response = await request("/admin/audit", undefined, "GET"); const audit = await response.json() as any[];
     assert(response.status === 200 && audit.some((event: any) => event.entityId === ids.enrollment && event.action === "create"), "Admin audit event was not recorded");
   } finally {

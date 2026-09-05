@@ -6,11 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type AdminControlRoomAssignmentGaps = {
+export type AdminOperationalSummaryIncompleteAssignments = {
   /** @minimum 0 */
-  missingTrainer: number;
+  trainer: number;
   /** @minimum 0 */
-  missingAssessor: number;
+  assessor: number;
   /** @minimum 0 */
-  both: number;
+  total: number;
 };

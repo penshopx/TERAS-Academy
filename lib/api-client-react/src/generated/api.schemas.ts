@@ -445,6 +445,124 @@ export interface AdminUser {
   roles: AdminUserRolesItem[];
 }
 
+export type AdminOperationalMetricId = typeof AdminOperationalMetricId[keyof typeof AdminOperationalMetricId];
+
+
+export const AdminOperationalMetricId = {
+  learners: 'learners',
+  programs: 'programs',
+  cohorts: 'cohorts',
+  enrollments: 'enrollments',
+} as const;
+
+export interface AdminOperationalMetric {
+  id: AdminOperationalMetricId;
+  label: string;
+  /** @minimum 0 */
+  value: number;
+  description: string;
+}
+
+export type AdminOperationalQueueId = typeof AdminOperationalQueueId[keyof typeof AdminOperationalQueueId];
+
+
+export const AdminOperationalQueueId = {
+  evidence: 'evidence',
+  assessment: 'assessment',
+  remediation: 'remediation',
+  reassessment: 'reassessment',
+} as const;
+
+export type AdminOperationalQueueTargetTab = typeof AdminOperationalQueueTargetTab[keyof typeof AdminOperationalQueueTargetTab];
+
+
+export const AdminOperationalQueueTargetTab = {
+  enrollments: 'enrollments',
+} as const;
+
+export interface AdminOperationalQueue {
+  id: AdminOperationalQueueId;
+  label: string;
+  /** @minimum 0 */
+  count: number;
+  description: string;
+  targetTab: AdminOperationalQueueTargetTab;
+}
+
+export type AdminOperationalActionTargetTab = typeof AdminOperationalActionTargetTab[keyof typeof AdminOperationalActionTargetTab];
+
+
+export const AdminOperationalActionTargetTab = {
+  users: 'users',
+  programs: 'programs',
+  cohorts: 'cohorts',
+  enrollments: 'enrollments',
+} as const;
+
+export type AdminOperationalActionUrgency = typeof AdminOperationalActionUrgency[keyof typeof AdminOperationalActionUrgency];
+
+
+export const AdminOperationalActionUrgency = {
+  normal: 'normal',
+  attention: 'attention',
+  critical: 'critical',
+} as const;
+
+export interface AdminOperationalAction {
+  id: string;
+  label: string;
+  description: string;
+  /** @minimum 0 */
+  count: number;
+  targetTab: AdminOperationalActionTargetTab;
+  urgency: AdminOperationalActionUrgency;
+}
+
+export type AdminOperationalBottleneckStage = typeof AdminOperationalBottleneckStage[keyof typeof AdminOperationalBottleneckStage];
+
+
+export const AdminOperationalBottleneckStage = {
+  evidence: 'evidence',
+  assessment: 'assessment',
+  remediation: 'remediation',
+  reassessment: 'reassessment',
+  clear: 'clear',
+} as const;
+
+export type AdminOperationalBottleneckTargetTab = typeof AdminOperationalBottleneckTargetTab[keyof typeof AdminOperationalBottleneckTargetTab];
+
+
+export const AdminOperationalBottleneckTargetTab = {
+  enrollments: 'enrollments',
+} as const;
+
+export interface AdminOperationalBottleneck {
+  stage: AdminOperationalBottleneckStage;
+  label: string;
+  /** @minimum 0 */
+  count: number;
+  description: string;
+  targetTab: AdminOperationalBottleneckTargetTab;
+}
+
+export type AdminOperationalSummaryIncompleteAssignments = {
+  /** @minimum 0 */
+  trainer: number;
+  /** @minimum 0 */
+  assessor: number;
+  /** @minimum 0 */
+  total: number;
+};
+
+export interface AdminOperationalSummary {
+  metrics: AdminOperationalMetric[];
+  incompleteAssignments: AdminOperationalSummaryIncompleteAssignments;
+  queues: AdminOperationalQueue[];
+  bottleneck: AdminOperationalBottleneck;
+  actions: AdminOperationalAction[];
+  generatedAt: string;
+}
+
 export type AdminUserInput = AdminUser;
 
 export type AdminUserUpdateStatus = typeof AdminUserUpdateStatus[keyof typeof AdminUserUpdateStatus];
@@ -648,87 +766,6 @@ export interface AdminAuditEvent {
   before: unknown;
   after: unknown;
   createdAt: string;
-}
-
-export type AdminControlRoomCounts = {
-  /** @minimum 0 */
-  activeLearners: number;
-  /** @minimum 0 */
-  activePrograms: number;
-  /** @minimum 0 */
-  activeCohorts: number;
-  /** @minimum 0 */
-  activeEnrollments: number;
-};
-
-export type AdminControlRoomAssignmentGaps = {
-  /** @minimum 0 */
-  missingTrainer: number;
-  /** @minimum 0 */
-  missingAssessor: number;
-  /** @minimum 0 */
-  both: number;
-};
-
-export type AdminControlRoomQueues = {
-  /** @minimum 0 */
-  evidence: number;
-  /** @minimum 0 */
-  assessment: number;
-  /** @minimum 0 */
-  remediation: number;
-  /** @minimum 0 */
-  reassessment: number;
-};
-
-/**
- * @nullable
- */
-export type AdminControlRoomBottlenecksMostStalled = typeof AdminControlRoomBottlenecksMostStalled[keyof typeof AdminControlRoomBottlenecksMostStalled] | null;
-
-
-export const AdminControlRoomBottlenecksMostStalled = {
-  Learning: 'Learning',
-  Practice: 'Practice',
-  Feedback: 'Feedback',
-  Evidence: 'Evidence',
-  Remediation: 'Remediation',
-  Reassessment: 'Reassessment',
-  Readiness: 'Readiness',
-} as const;
-
-export type AdminControlRoomBottlenecksCounts = {
-  /** @minimum 0 */
-  Learning: number;
-  /** @minimum 0 */
-  Practice: number;
-  /** @minimum 0 */
-  Feedback: number;
-  /** @minimum 0 */
-  Evidence: number;
-  /** @minimum 0 */
-  Remediation: number;
-  /** @minimum 0 */
-  Reassessment: number;
-  /** @minimum 0 */
-  Readiness: number;
-};
-
-export type AdminControlRoomBottlenecks = {
-  /** @nullable */
-  mostStalled: AdminControlRoomBottlenecksMostStalled;
-  counts: AdminControlRoomBottlenecksCounts;
-  /** @minimum 0 */
-  assignedContextCount: number;
-  asOf: string;
-};
-
-export interface AdminControlRoom {
-  asOf: string;
-  counts: AdminControlRoomCounts;
-  assignmentGaps: AdminControlRoomAssignmentGaps;
-  queues: AdminControlRoomQueues;
-  bottlenecks: AdminControlRoomBottlenecks;
 }
 
 export type KnowledgeArticleCategory = typeof KnowledgeArticleCategory[keyof typeof KnowledgeArticleCategory];

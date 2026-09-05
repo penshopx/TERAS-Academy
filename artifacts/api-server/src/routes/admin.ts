@@ -2,25 +2,24 @@
 // types; runtime operations are constrained by the generated Zod contracts.
 // @ts-nocheck
 import { Router, type IRouter } from "express";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import {
   CreateAdminCohortBody, CreateAdminCohortResponse, CreateAdminEnrollmentBody, CreateAdminEnrollmentResponse,
   CreateAdminPathwayBody, CreateAdminPathwayResponse, CreateAdminProgramBody, CreateAdminProgramResponse,
-  CreateAdminUserBody, CreateAdminUserResponse, ListAdminAuditEventsResponse, ListAdminCohortsResponse,
+  CreateAdminUserBody, CreateAdminUserResponse, GetAdminOperationalSummaryResponse, ListAdminAuditEventsResponse, ListAdminCohortsResponse,
   ListAdminEnrollmentsResponse, ListAdminPathwaysResponse, ListAdminProgramsResponse, ListAdminUsersResponse,
   ReplaceAdminUserRolesBody, ReplaceAdminUserRolesParams, ReplaceAdminUserRolesResponse,
   UpdateAdminCohortBody, UpdateAdminCohortParams, UpdateAdminCohortResponse, UpdateAdminEnrollmentBody,
   UpdateAdminEnrollmentParams, UpdateAdminEnrollmentResponse, UpdateAdminPathwayBody, UpdateAdminPathwayParams,
   UpdateAdminPathwayResponse, UpdateAdminProgramBody, UpdateAdminProgramParams, UpdateAdminProgramResponse,
-  UpdateAdminUserBody, UpdateAdminUserParams, UpdateAdminUserResponse, GetAdminControlRoomResponse,
+  UpdateAdminUserBody, UpdateAdminUserParams, UpdateAdminUserResponse,
 } from "@workspace/api-zod";
 import {
   adminAuditEventsTable, assessmentAttemptsTable, cohortsTable, db, enrollmentsTable, evidenceReviewsTable,
-  evidenceTable, pathwaysTable, peopleTable, personRolesTable, programsTable, reassessmentLinksTable,
+  evidenceTable, gapsTable, pathwaysTable, peopleTable, personRolesTable, programsTable, reassessmentLinksTable,
   remediationActivitiesTable, remediationEventsTable, remediationPlansTable,
 } from "@workspace/db";
 import { authorizeAdmin, type AdminActor } from "../lib/authorization";
-import { latestBy, trainerBottlenecks } from "../lib/trainer-bottlenecks";
 
 const router: IRouter = Router();
 const conflict = (error: unknown) => String(error).includes("duplicate") || String(error).includes("unique");
@@ -53,6 +52,96 @@ async function enrollmentValid(input: { learnerId: string; programId: string; pa
   }
   return null;
 }
+const latestBy = <T extends { createdAt: Date }>(rows: T[], key: (row: T) => string) => {
+  const result = new Map<string, T>();
+  for (const row of rows) {
+    const previous = result.get(key(row));
+    if (!previous || row.createdAt > previous.createdAt) result.set(key(row), row);
+  }
+  return result;
+};
+const latestAssessmentAttempts = <T extends { assessmentId: string; learnerId: string; pathwayId: string; number: number; createdAt: Date }>(rows: T[]) => {
+  const result = new Map<string, T>();
+  for (const row of rows) {
+    const key = `${row.assessmentId}:${row.learnerId}:${row.pathwayId}`;
+    const previous = result.get(key);
+    if (!previous || row.number > previous.number || (row.number === previous.number && row.createdAt > previous.createdAt)) result.set(key, row);
+  }
+  return result;
+};
+
+router.get("/admin/summary", async (req, res): Promise<void> => {
+  if (!await authorizeAdmin(req, res)) return;
+  const [
+    roles, people, programs, cohorts, enrollments, evidence, evidenceReviews, attempts,
+    gaps, remediationPlans, remediationActivities, remediationEvents, reassessmentLinks,
+  ] = await Promise.all([
+    db.select().from(personRolesTable), db.select().from(peopleTable), db.select().from(programsTable),
+    db.select().from(cohortsTable), db.select().from(enrollmentsTable), db.select().from(evidenceTable),
+    db.select().from(evidenceReviewsTable), db.select().from(assessmentAttemptsTable),
+    db.select().from(gapsTable),
+    db.select().from(remediationPlansTable), db.select().from(remediationActivitiesTable),
+    db.select().from(remediationEventsTable), db.select().from(reassessmentLinksTable),
+  ]);
+  const activePeople = new Set(people.filter(person => person.status === "active").map(person => person.id));
+  const activeEnrollments = enrollments.filter(enrollment => enrollment.status === "active" && activePeople.has(enrollment.learnerId));
+  const activeContexts = new Set(activeEnrollments.map(enrollment => `${enrollment.learnerId}:${enrollment.pathwayId}`));
+  const inActiveContext = (row: { learnerId: string; pathwayId: string }) => activeContexts.has(`${row.learnerId}:${row.pathwayId}`);
+  const learners = new Set(roles.filter(role => role.role === "learner" && activePeople.has(role.personId)).map(role => role.personId)).size;
+  const latestEvidenceReviews = latestBy(evidenceReviews, review => review.evidenceId);
+  const evidenceCount = evidence.filter(item => inActiveContext(item) && latestEvidenceReviews.get(item.id)?.status === "Under review").length;
+  const activeAttempts = attempts.filter(inActiveContext);
+  const latestAttempts = latestAssessmentAttempts(activeAttempts);
+  const assessmentCount = [...latestAttempts.values()].filter(attempt => !attempt.decision).length;
+  const latestRemediationEvents = latestBy(remediationEvents, event => event.activityId);
+  const planActivities = new Map<string, typeof remediationActivities>();
+  for (const activity of remediationActivities) planActivities.set(activity.planId, [...(planActivities.get(activity.planId) ?? []), activity]);
+  const activeGapIds = new Set(gaps.filter(inActiveContext).map(gap => gap.id));
+  const openRemediationPlanIds = new Set(remediationPlans.filter(plan => activeGapIds.has(plan.gapId) && (() => {
+    const activities = planActivities.get(plan.id) ?? [];
+    return activities.length > 0 && activities.some(activity => latestRemediationEvents.get(activity.id)?.status !== "Completed");
+  })()).map(plan => plan.id));
+  const remediationCount = openRemediationPlanIds.size;
+  const attemptById = new Map(attempts.map(attempt => [attempt.id, attempt]));
+  const latestReassessmentByPlan = new Map<string, typeof reassessmentLinks[number]>();
+  for (const link of reassessmentLinks.filter(link => inActiveContext(link) && activeGapIds.has(link.originalGapId))) {
+    const attempt = attemptById.get(link.reassessmentAttemptId);
+    if (!attempt) continue;
+    const previousLink = latestReassessmentByPlan.get(link.remediationPlanId);
+    const previous = previousLink ? attemptById.get(previousLink.reassessmentAttemptId) : undefined;
+    if (!previous || attempt.number > previous.number || (attempt.number === previous.number && attempt.createdAt > previous.createdAt)) latestReassessmentByPlan.set(link.remediationPlanId, link);
+  }
+  const reassessmentCount = [...latestReassessmentByPlan.values()].filter(link => attemptById.get(link.reassessmentAttemptId)?.decision !== "Competent").length;
+  const trainerMissing = activeEnrollments.filter(enrollment => !enrollment.trainerId).length;
+  const assessorMissing = activeEnrollments.filter(enrollment => !enrollment.assessorId).length;
+  const queues = [
+    { id: "evidence", label: "Evidence menunggu review", count: evidenceCount, description: "Evidence dengan review terbaru masih Under review.", targetTab: "enrollments" },
+    { id: "assessment", label: "Assessment menunggu keputusan", count: assessmentCount, description: "Attempt terbaru belum memiliki keputusan assessor.", targetTab: "enrollments" },
+    { id: "remediation", label: "Remediation aktif", count: remediationCount, description: "Rencana dengan aktivitas yang belum seluruhnya selesai.", targetTab: "enrollments" },
+    { id: "reassessment", label: "Reassessment belum kompeten", count: reassessmentCount, description: "Reassessment terhubung yang masih perlu keputusan kompeten.", targetTab: "enrollments" },
+  ] as const;
+  const largestQueue = queues.reduce((largest, queue) => queue.count > largest.count ? queue : largest, queues[0]);
+  const bottleneck = largestQueue.count > 0
+    ? { stage: largestQueue.id, label: largestQueue.label, count: largestQueue.count, description: `Tahap ${largestQueue.label.toLowerCase()} adalah antrean lifecycle terbesar saat ini.`, targetTab: "enrollments" as const }
+    : { stage: "clear" as const, label: "Tidak ada antrean lifecycle", count: 0, description: "Tidak ada pekerjaan lifecycle yang tertahan saat ringkasan dibuat.", targetTab: "enrollments" as const };
+  const actions = [
+    ...(trainerMissing ? [{ id: "assign-trainers", label: "Lengkapi assignment trainer", description: `${trainerMissing} enrollment aktif belum memiliki trainer.`, count: trainerMissing, targetTab: "enrollments" as const, urgency: "critical" as const }] : []),
+    ...(assessorMissing ? [{ id: "assign-assessors", label: "Lengkapi assignment assessor", description: `${assessorMissing} enrollment aktif belum memiliki assessor.`, count: assessorMissing, targetTab: "enrollments" as const, urgency: "critical" as const }] : []),
+    ...queues.filter(queue => queue.count > 0).map(queue => ({ id: `resolve-${queue.id}`, label: `Tindak lanjuti ${queue.label.toLowerCase()}`, description: queue.description, count: queue.count, targetTab: "enrollments" as const, urgency: queue.count === largestQueue.count ? "attention" as const : "normal" as const })),
+    ...(!programs.some(program => program.status === "active") ? [{ id: "create-program", label: "Aktifkan program pertama", description: "Belum ada program aktif untuk enrollment baru.", count: 0, targetTab: "programs" as const, urgency: "attention" as const }] : []),
+    ...(!cohorts.some(cohort => cohort.status === "active") ? [{ id: "create-cohort", label: "Siapkan cohort aktif", description: "Belum ada cohort aktif untuk pengelompokan learner.", count: 0, targetTab: "cohorts" as const, urgency: "normal" as const }] : []),
+  ].slice(0, 6);
+  res.json(GetAdminOperationalSummaryResponse.parse({
+    metrics: [
+      { id: "learners", label: "Learner aktif", value: learners, description: "Pengguna aktif dengan peran learner." },
+      { id: "programs", label: "Program aktif", value: programs.filter(program => program.status === "active").length, description: "Program yang siap menerima enrollment." },
+      { id: "cohorts", label: "Cohort aktif", value: cohorts.filter(cohort => cohort.status === "active").length, description: "Cohort yang saat ini aktif." },
+      { id: "enrollments", label: "Enrollment aktif", value: activeEnrollments.length, description: "Learner yang masih berada dalam lifecycle aktif." },
+    ],
+    incompleteAssignments: { trainer: trainerMissing, assessor: assessorMissing, total: activeEnrollments.filter(enrollment => !enrollment.trainerId || !enrollment.assessorId).length },
+    queues, bottleneck, actions, generatedAt: new Date(),
+  }));
+});
 router.get("/admin/users", async (req, res): Promise<void> => { if (!await authorizeAdmin(req, res)) return; const people = await db.select().from(peopleTable); res.json(ListAdminUsersResponse.parse((await Promise.all(people.map(p => user(p.id)))).filter(Boolean))); });
 router.post("/admin/users", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); if (!actor) return; const input = parsed(CreateAdminUserBody, req.body, res); if (!input) return; try { const value = await db.transaction(async tx => { await tx.insert(peopleTable).values({ ...input, role: input.roles[0], createdBy: actor.clerkUserId }); await tx.insert(personRolesTable).values(input.roles.map(role => ({ personId: input.id, role, createdBy: actor.clerkUserId }))); const result = { ...input }; await audit(tx, actor, "create", "user", input.id, null, result); return result; }); res.status(201).json(CreateAdminUserResponse.parse(value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: conflict(error) ? "User or Clerk identity already exists" : "Could not create user" }); } });
 router.patch("/admin/users/:personId", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(UpdateAdminUserParams, req.params, res); const input = parsed(UpdateAdminUserBody, req.body, res); if (!actor || !params || !input) return; const before = await user(params.personId); if (!before) { res.status(404).json({ error: "User not found" }); return; } if (input.status === "inactive" && before.roles.includes("admin") && await activeAdminCount() === 1) { res.status(409).json({ error: "Cannot deactivate the last active administrator" }); return; } try { const value = await db.transaction(async tx => { const [updated] = await tx.update(peopleTable).set(input).where(eq(peopleTable.id, params.personId)).returning(); const result = { ...updated, roles: before.roles }; await audit(tx as typeof db, actor, "update", "user", params.personId, before, result); return result; }); res.json(UpdateAdminUserResponse.parse(value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: "Clerk identity or email already exists" }); } });
@@ -70,68 +159,4 @@ router.get("/admin/enrollments", async (req, res): Promise<void> => { if (!await
 router.post("/admin/enrollments", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const input = parsed(CreateAdminEnrollmentBody, req.body, res); if (!actor || !input) return; const error = await enrollmentValid(input); if (error) { res.status(409).json({ error }); return; } try { const value = await db.transaction(async tx => { const [record] = await tx.insert(enrollmentsTable).values({ ...input, createdBy: actor.clerkUserId }).returning(); await audit(tx as typeof db, actor, "create", "enrollment", record.id, null, record); return record; }); res.status(201).json(CreateAdminEnrollmentResponse.parse(value)); } catch { res.status(409).json({ error: "Enrollment conflicts with existing lifecycle data" }); } });
 router.patch("/admin/enrollments/:enrollmentId", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(UpdateAdminEnrollmentParams, req.params, res); const input = parsed(UpdateAdminEnrollmentBody, req.body, res); if (!actor || !params || !input) return; const [before] = await db.select().from(enrollmentsTable).where(eq(enrollmentsTable.id, params.enrollmentId)); if (!before) { res.status(404).json({ error: "Enrollment not found" }); return; } const candidate = { ...before, ...input }; const error = await enrollmentValid(candidate); if (error) { res.status(409).json({ error }); return; } try { const value = await db.transaction(async tx => { const [record] = await tx.update(enrollmentsTable).set(input).where(eq(enrollmentsTable.id, params.enrollmentId)).returning(); await audit(tx as typeof db, actor, "update", "enrollment", record.id, before, record); return record; }); res.json(UpdateAdminEnrollmentResponse.parse(value)); } catch { res.status(409).json({ error: "Enrollment conflicts with existing lifecycle data" }); } });
 router.get("/admin/audit", async (req, res): Promise<void> => { if (!await authorizeAdmin(req, res)) return; res.json(ListAdminAuditEventsResponse.parse(await db.select().from(adminAuditEventsTable).orderBy(desc(adminAuditEventsTable.createdAt)))); });
-router.get("/admin/control-room", async (req, res): Promise<void> => {
-  if (!await authorizeAdmin(req, res)) return;
-  const [
-    learnerRoles, programs, cohorts, activeEnrollments, evidence, evidenceReviews,
-    assessments, plans, activities, remediationEvents, reassessmentLinks,
-  ] = await Promise.all([
-    db.select({ personId: peopleTable.id }).from(peopleTable).innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
-      .where(and(eq(peopleTable.status, "active"), eq(personRolesTable.role, "learner"))),
-    db.select({ status: programsTable.status }).from(programsTable),
-    db.select({ status: cohortsTable.status }).from(cohortsTable),
-    db.select({
-      enrollment: { id: enrollmentsTable.id, trainerId: enrollmentsTable.trainerId, assessorId: enrollmentsTable.assessorId },
-      learner: { id: peopleTable.id },
-      pathway: { id: pathwaysTable.id },
-    }).from(enrollmentsTable)
-      .innerJoin(peopleTable, eq(peopleTable.id, enrollmentsTable.learnerId))
-      .innerJoin(pathwaysTable, eq(pathwaysTable.id, enrollmentsTable.pathwayId))
-      .where(and(eq(enrollmentsTable.status, "active"), eq(peopleTable.status, "active"), sql`lower(${pathwaysTable.status}) = 'active'`)),
-    db.select().from(evidenceTable),
-    db.select().from(evidenceReviewsTable),
-    db.select().from(assessmentAttemptsTable),
-    db.select().from(remediationPlansTable),
-    db.select().from(remediationActivitiesTable),
-    db.select().from(remediationEventsTable),
-    db.select().from(reassessmentLinksTable),
-  ]);
-  const evidenceState = latestBy(evidenceReviews, row => row.evidenceId);
-  const activityState = latestBy(remediationEvents, row => row.activityId);
-  const assessmentById = new Map(assessments.map(attempt => [attempt.id, attempt]));
-  const planIdsWithOpenActivity = new Set(activities
-    .filter(activity => activityState.get(activity.id)?.status !== "Completed")
-    .map(activity => activity.planId));
-  const active = activeEnrollments.map(context => ({
-    enrollment: { id: context.enrollment.id },
-    learner: context.learner,
-    pathway: context.pathway,
-  }));
-  const bottlenecks = await trainerBottlenecks(active);
-  const value = {
-    asOf: new Date(),
-    counts: {
-      activeLearners: new Set(learnerRoles.map(row => row.personId)).size,
-      activePrograms: programs.filter(row => row.status.toLowerCase() === "active").length,
-      activeCohorts: cohorts.filter(row => row.status.toLowerCase() === "active").length,
-      activeEnrollments: activeEnrollments.length,
-    },
-    assignmentGaps: {
-      missingTrainer: activeEnrollments.filter(row => !row.enrollment.trainerId).length,
-      missingAssessor: activeEnrollments.filter(row => !row.enrollment.assessorId).length,
-      both: activeEnrollments.filter(row => !row.enrollment.trainerId && !row.enrollment.assessorId).length,
-    },
-    queues: {
-      evidence: evidence.filter(row => evidenceState.get(row.id)?.status !== "Valid").length,
-      assessment: assessments.filter(row => row.status !== "Completed").length,
-      remediation: plans.filter(plan => planIdsWithOpenActivity.has(plan.id)).length,
-      reassessment: reassessmentLinks.filter(link => {
-        const attempt = assessmentById.get(link.reassessmentAttemptId);
-        return !attempt || attempt.status !== "Completed" || attempt.decision !== "Competent";
-      }).length,
-    },
-    bottlenecks,
-  };
-  res.json(GetAdminControlRoomResponse.parse(value));
-});
 export default router;

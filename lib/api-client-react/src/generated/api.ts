@@ -24,10 +24,10 @@ import type {
   AdminCohort,
   AdminCohortInput,
   AdminCohortUpdate,
-  AdminControlRoom,
   AdminEnrollment,
   AdminEnrollmentInput,
   AdminEnrollmentUpdate,
+  AdminOperationalSummary,
   AdminPathway,
   AdminPathwayInput,
   AdminPathwayUpdate,
@@ -3272,6 +3272,77 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateAdminUserMutationOptions(options));
     }
 
+export const getGetAdminOperationalSummaryUrl = () => {
+
+
+
+
+  return `/api/admin/summary`
+}
+
+export const getAdminOperationalSummary = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminOperationalSummary> => {
+
+  return customFetch<AdminOperationalSummary>(getGetAdminOperationalSummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminOperationalSummaryQueryKey = () => {
+    return [
+    `/api/admin/summary`
+    ] as const;
+    }
+
+
+export const getGetAdminOperationalSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getAdminOperationalSummary>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminOperationalSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminOperationalSummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminOperationalSummary>>> = ({ signal }) => getAdminOperationalSummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminOperationalSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminOperationalSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminOperationalSummary>>>
+export type GetAdminOperationalSummaryQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+
+export function useGetAdminOperationalSummary<TData = Awaited<ReturnType<typeof getAdminOperationalSummary>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminOperationalSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminOperationalSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getUpdateAdminUserUrl = (personId: string,) => {
 
 
@@ -4271,77 +4342,6 @@ export function useListAdminAuditEvents<TData = Awaited<ReturnType<typeof listAd
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListAdminAuditEventsQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getGetAdminControlRoomUrl = () => {
-
-
-
-
-  return `/api/admin/control-room`
-}
-
-export const getAdminControlRoom = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminControlRoom> => {
-
-  return customFetch<AdminControlRoom>(getGetAdminControlRoomUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetAdminControlRoomQueryKey = () => {
-    return [
-    `/api/admin/control-room`
-    ] as const;
-    }
-
-
-export const getGetAdminControlRoomQueryOptions = <TData = Awaited<ReturnType<typeof getAdminControlRoom>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminControlRoom>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetAdminControlRoomQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminControlRoom>>> = ({ signal }) => getAdminControlRoom({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminControlRoom>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetAdminControlRoomQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminControlRoom>>>
-export type GetAdminControlRoomQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
-
-
-
-export function useGetAdminControlRoom<TData = Awaited<ReturnType<typeof getAdminControlRoom>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminControlRoom>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetAdminControlRoomQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
