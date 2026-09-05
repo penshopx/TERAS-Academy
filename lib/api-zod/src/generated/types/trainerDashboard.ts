@@ -7,6 +7,7 @@
  */
 import type { LearnerProfile } from './learnerProfile';
 import type { ReviewQueueItem } from './reviewQueueItem';
+import type { TrainerBottleneckSummary } from './trainerBottleneckSummary';
 import type { TrainerReviewHistoryEvent } from './trainerReviewHistoryEvent';
 
 export interface TrainerDashboard {
@@ -16,6 +17,7 @@ export interface TrainerDashboard {
   pendingEvidenceCount: number;
   activeRemediationCount: number;
   blockedLearnerCount: number;
+  bottlenecks: TrainerBottleneckSummary;
   recentActivity: ReviewQueueItem[];
   reviewHistory: TrainerReviewHistoryEvent[];
 }

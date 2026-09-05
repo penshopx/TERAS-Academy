@@ -87,6 +87,21 @@ export function ReviewQueue({ dashboard }: { dashboard: TrainerDashboard }) {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {metrics.map(({ label, value, Icon, color }) => <Card key={label} className={label === "Blocked" ? "border-destructive/50 bg-destructive/5" : "border-border bg-card"}><CardContent className="p-6"><div className="flex items-center justify-between pb-2"><p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">{label}</p><Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} /></div><div className={`text-3xl font-bold font-mono ${color}`}>{value}</div></CardContent></Card>)}
       </div>
+      <Card data-testid="trainer-bottleneck-summary">
+        <CardHeader className="pb-2"><CardTitle className="text-base">Readiness lifecycle bottleneck</CardTitle></CardHeader>
+        <CardContent>
+          {dashboard.bottlenecks.assignedContextCount > 0 && dashboard.bottlenecks.mostStalled ? (() => {
+            const stage = dashboard.bottlenecks.mostStalled;
+            const count = dashboard.bottlenecks.counts[stage];
+            const denominator = dashboard.bottlenecks.assignedContextCount;
+            return <div aria-live="polite">
+              <p className="text-lg font-semibold">{stage} <span className="font-mono text-sm text-muted-foreground">{count}/{denominator} ({Math.round(count / denominator * 100)}%)</span></p>
+              <p className="mt-1 text-sm text-muted-foreground">Most frequently stalled across your assigned active learner pathways. This is operational handoff context only and does not issue certification, clearance, or a final readiness decision.</p>
+              <p className="mt-2 text-xs text-muted-foreground">Calculated {new Date(dashboard.bottlenecks.asOf).toLocaleString()}</p>
+            </div>;
+          })() : <p className="text-sm text-muted-foreground">No assigned active learner pathways are available to identify a lifecycle bottleneck.</p>}
+        </CardContent>
+      </Card>
       <Card className="cockpit-panel mt-6">
         <CardHeader><CardTitle data-testid="trainer-role-queue-title">Trainer review queue</CardTitle><p className="text-sm text-muted-foreground">Review submitted practice for feedback and evidence for verification. Remediation and readiness counts are handoff context only; this contract does not expose actions for them here.</p></CardHeader>
         <CardContent className="p-0">

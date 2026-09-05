@@ -827,6 +827,20 @@ export const GetTrainerDashboardResponse = zod.object({
   "pendingEvidenceCount": zod.int(),
   "activeRemediationCount": zod.int(),
   "blockedLearnerCount": zod.int(),
+  "bottlenecks": zod.object({
+  "mostStalled": zod.union([zod.literal('Learning'),zod.literal('Practice'),zod.literal('Feedback'),zod.literal('Evidence'),zod.literal('Remediation'),zod.literal('Reassessment'),zod.literal('Readiness'),zod.literal(null)]).nullable(),
+  "counts": zod.object({
+  "Learning": zod.int(),
+  "Practice": zod.int(),
+  "Feedback": zod.int(),
+  "Evidence": zod.int(),
+  "Remediation": zod.int(),
+  "Reassessment": zod.int(),
+  "Readiness": zod.int()
+}),
+  "assignedContextCount": zod.int(),
+  "asOf": zod.coerce.date()
+}),
   "recentActivity": zod.array(zod.object({
   "id": zod.string(),
   "kind": zod.string(),

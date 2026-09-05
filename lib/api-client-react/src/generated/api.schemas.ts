@@ -1264,6 +1264,40 @@ export interface ReviewQueueItem {
   updatedAt: string;
 }
 
+/**
+ * @nullable
+ */
+export type TrainerBottleneckSummaryMostStalled = typeof TrainerBottleneckSummaryMostStalled[keyof typeof TrainerBottleneckSummaryMostStalled] | null;
+
+
+export const TrainerBottleneckSummaryMostStalled = {
+  Learning: 'Learning',
+  Practice: 'Practice',
+  Feedback: 'Feedback',
+  Evidence: 'Evidence',
+  Remediation: 'Remediation',
+  Reassessment: 'Reassessment',
+  Readiness: 'Readiness',
+} as const;
+
+export type TrainerBottleneckSummaryCounts = {
+  Learning: number;
+  Practice: number;
+  Feedback: number;
+  Evidence: number;
+  Remediation: number;
+  Reassessment: number;
+  Readiness: number;
+};
+
+export interface TrainerBottleneckSummary {
+  /** @nullable */
+  mostStalled: TrainerBottleneckSummaryMostStalled;
+  counts: TrainerBottleneckSummaryCounts;
+  assignedContextCount: number;
+  asOf: string;
+}
+
 export type TrainerReviewHistoryEventKind = typeof TrainerReviewHistoryEventKind[keyof typeof TrainerReviewHistoryEventKind];
 
 
@@ -1295,6 +1329,7 @@ export interface TrainerDashboard {
   pendingEvidenceCount: number;
   activeRemediationCount: number;
   blockedLearnerCount: number;
+  bottlenecks: TrainerBottleneckSummary;
   recentActivity: ReviewQueueItem[];
   reviewHistory: TrainerReviewHistoryEvent[];
 }

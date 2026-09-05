@@ -18,6 +18,11 @@ test("trainer dashboard separates its review remit from readiness handoff", asyn
   assert.match(source, /getGetTrainerDashboardQueryKey\(\)/);
   assert.match(source, /getGetLearnerReadinessQueryKey\(\)/);
   assert.match(source, /data-testid="trainer-mutation-history"/);
+  assert.match(source, /Readiness lifecycle bottleneck/);
+  assert.match(source, /dashboard\.bottlenecks/);
+  assert.match(source, /dashboard\.bottlenecks\.asOf/);
+  assert.match(source, /Most frequently stalled across your assigned active learner pathways/);
+  assert.match(source, /data-testid="trainer-bottleneck-summary"/);
 });
 
 test("assessor dashboard records internal recommendations without claiming certification", async () => {

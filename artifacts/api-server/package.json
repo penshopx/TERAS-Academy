@@ -22,6 +22,7 @@
     "test:learning-resume": "NODE_ENV=test tsx --test ./src/lib/learning-resume.test.ts",
     "test:knowledge-safety": "NODE_ENV=test tsx ./src/lib/knowledge-safety.test.ts",
     "test:knowledge-lifecycle": "NODE_ENV=test tsx ./src/knowledge-lifecycle.integration.ts",
+    "test:trainer-bottlenecks": "NODE_ENV=test tsx --test ./src/lib/trainer-bottlenecks.test.ts",
     "test:browser-idempotency-guard": "tsx ./src/browser-idempotency-guard.test.ts",
     "test:browser-idempotency-workflow-contract": "tsx ./src/browser-idempotency-workflow-contract.test.ts",
     "setup:browser-idempotency": "playwright install --with-deps chromium",

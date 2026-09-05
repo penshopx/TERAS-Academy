@@ -2897,6 +2897,8 @@ components:
         pendingEvidenceCount: { type: integer }
         activeRemediationCount: { type: integer }
         blockedLearnerCount: { type: integer }
+        bottlenecks:
+          $ref: "#/components/schemas/TrainerBottleneckSummary"
         recentActivity:
           type: array
           items:
@@ -2905,7 +2907,27 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TrainerReviewHistoryEvent"
-      required: [trainer, assignedLearnerCount, pendingFeedbackCount, pendingEvidenceCount, activeRemediationCount, blockedLearnerCount, recentActivity, reviewHistory]
+      required: [trainer, assignedLearnerCount, pendingFeedbackCount, pendingEvidenceCount, activeRemediationCount, blockedLearnerCount, bottlenecks, recentActivity, reviewHistory]
+    TrainerBottleneckSummary:
+      type: object
+      properties:
+        mostStalled:
+          type: ["string", "null"]
+          enum: [Learning, Practice, Feedback, Evidence, Remediation, Reassessment, Readiness, null]
+        counts:
+          type: object
+          properties:
+            Learning: { type: integer }
+            Practice: { type: integer }
+            Feedback: { type: integer }
+            Evidence: { type: integer }
+            Remediation: { type: integer }
+            Reassessment: { type: integer }
+            Readiness: { type: integer }
+          required: [Learning, Practice, Feedback, Evidence, Remediation, Reassessment, Readiness]
+        assignedContextCount: { type: integer }
+        asOf: { type: string, format: date-time }
+      required: [mostStalled, counts, assignedContextCount, asOf]
     TrainerReviewHistoryEvent:
       type: object
       properties:
