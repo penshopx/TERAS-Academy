@@ -16,7 +16,24 @@ export default function Dashboard() {
   }
 
   if (error || !dashboard) {
-    return <div className="text-destructive">Failed to load dashboard data.</div>;
+    return (
+      <Card className="mx-auto max-w-xl border-amber-500/40" role="alert">
+        <CardHeader>
+          <CardTitle>Dashboard learner tidak tersedia</CardTitle>
+          <CardDescription>
+            Akun ini mungkin menggunakan peran admin atau belum memiliki enrollment learner aktif.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Link href="/admin">
+            <Button>Buka Admin Control Room</Button>
+          </Link>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Coba lagi
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
