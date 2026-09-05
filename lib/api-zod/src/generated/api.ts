@@ -1916,6 +1916,82 @@ export const ListAdminAuditEventsResponseItem = zod.object({
 export const ListAdminAuditEventsResponse = zod.array(ListAdminAuditEventsResponseItem)
 
 
+export const getAdminControlRoomResponseCountsActiveLearnersMin = 0;
+
+export const getAdminControlRoomResponseCountsActiveProgramsMin = 0;
+
+export const getAdminControlRoomResponseCountsActiveCohortsMin = 0;
+
+export const getAdminControlRoomResponseCountsActiveEnrollmentsMin = 0;
+
+export const getAdminControlRoomResponseAssignmentGapsMissingTrainerMin = 0;
+
+export const getAdminControlRoomResponseAssignmentGapsMissingAssessorMin = 0;
+
+export const getAdminControlRoomResponseAssignmentGapsBothMin = 0;
+
+export const getAdminControlRoomResponseQueuesEvidenceMin = 0;
+
+export const getAdminControlRoomResponseQueuesAssessmentMin = 0;
+
+export const getAdminControlRoomResponseQueuesRemediationMin = 0;
+
+export const getAdminControlRoomResponseQueuesReassessmentMin = 0;
+
+export const getAdminControlRoomResponseBottlenecksCountsLearningMin = 0;
+
+export const getAdminControlRoomResponseBottlenecksCountsPracticeMin = 0;
+
+export const getAdminControlRoomResponseBottlenecksCountsFeedbackMin = 0;
+
+export const getAdminControlRoomResponseBottlenecksCountsEvidenceMin = 0;
+
+export const getAdminControlRoomResponseBottlenecksCountsRemediationMin = 0;
+
+export const getAdminControlRoomResponseBottlenecksCountsReassessmentMin = 0;
+
+export const getAdminControlRoomResponseBottlenecksCountsReadinessMin = 0;
+
+export const getAdminControlRoomResponseBottlenecksAssignedContextCountMin = 0;
+
+
+
+export const GetAdminControlRoomResponse = zod.object({
+  "asOf": zod.coerce.date(),
+  "counts": zod.object({
+  "activeLearners": zod.int().min(getAdminControlRoomResponseCountsActiveLearnersMin),
+  "activePrograms": zod.int().min(getAdminControlRoomResponseCountsActiveProgramsMin),
+  "activeCohorts": zod.int().min(getAdminControlRoomResponseCountsActiveCohortsMin),
+  "activeEnrollments": zod.int().min(getAdminControlRoomResponseCountsActiveEnrollmentsMin)
+}),
+  "assignmentGaps": zod.object({
+  "missingTrainer": zod.int().min(getAdminControlRoomResponseAssignmentGapsMissingTrainerMin),
+  "missingAssessor": zod.int().min(getAdminControlRoomResponseAssignmentGapsMissingAssessorMin),
+  "both": zod.int().min(getAdminControlRoomResponseAssignmentGapsBothMin)
+}),
+  "queues": zod.object({
+  "evidence": zod.int().min(getAdminControlRoomResponseQueuesEvidenceMin),
+  "assessment": zod.int().min(getAdminControlRoomResponseQueuesAssessmentMin),
+  "remediation": zod.int().min(getAdminControlRoomResponseQueuesRemediationMin),
+  "reassessment": zod.int().min(getAdminControlRoomResponseQueuesReassessmentMin)
+}),
+  "bottlenecks": zod.object({
+  "mostStalled": zod.union([zod.literal('Learning'),zod.literal('Practice'),zod.literal('Feedback'),zod.literal('Evidence'),zod.literal('Remediation'),zod.literal('Reassessment'),zod.literal('Readiness'),zod.literal(null)]).nullable(),
+  "counts": zod.object({
+  "Learning": zod.int().min(getAdminControlRoomResponseBottlenecksCountsLearningMin),
+  "Practice": zod.int().min(getAdminControlRoomResponseBottlenecksCountsPracticeMin),
+  "Feedback": zod.int().min(getAdminControlRoomResponseBottlenecksCountsFeedbackMin),
+  "Evidence": zod.int().min(getAdminControlRoomResponseBottlenecksCountsEvidenceMin),
+  "Remediation": zod.int().min(getAdminControlRoomResponseBottlenecksCountsRemediationMin),
+  "Reassessment": zod.int().min(getAdminControlRoomResponseBottlenecksCountsReassessmentMin),
+  "Readiness": zod.int().min(getAdminControlRoomResponseBottlenecksCountsReadinessMin)
+}),
+  "assignedContextCount": zod.int().min(getAdminControlRoomResponseBottlenecksAssignedContextCountMin),
+  "asOf": zod.coerce.date()
+})
+})
+
+
 export const searchAssistantKnowledgeBodyQuestionMax = 1000;
 
 

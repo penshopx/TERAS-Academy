@@ -12,6 +12,7 @@ import {
   useUpdateAdminCohort, useUpdateAdminEnrollment, useUpdateAdminPathway, useUpdateAdminProgram,
   useUpdateAdminUser,
   getListAdminKnowledgeArticlesQueryKey, useCreateAdminKnowledgeArticle, useListAdminKnowledgeArticles, usePublishAdminKnowledgeArticle, useUpdateAdminKnowledgeArticle,
+  useGetAdminControlRoom, getGetAdminControlRoomQueryKey, type AdminControlRoom,
 } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Archive, Loader2, Plus, RefreshCw } from "lucide-react";
+import { Archive, Loader2, Plus, RefreshCw, Users, Layers, CalendarDays, BookOpen } from "lucide-react";
 
 const roles = ["admin", "trainer", "assessor", "learner"] as const;
 const userSchema = z.object({ name: z.string().min(1, "Nama wajib diisi"), email: z.string().email("Email tidak valid").or(z.literal("")), organization: z.string(), clerkUserId: z.string(), roles: z.array(z.enum(roles)).min(1, "Pilih minimal satu peran") });
@@ -70,9 +71,10 @@ function State({ loading, error, empty, children }: { loading: boolean; error: u
 
 export default function Admin() {
   const client = useQueryClient(); const { toast } = useToast();
-  const [tab, setTab] = useState<"users" | "programs" | "pathways" | "cohorts" | "enrollments" | "knowledge" | "audit">("users");
+  const [tab, setTab] = useState<"overview" | "users" | "programs" | "pathways" | "cohorts" | "enrollments" | "knowledge" | "audit">("overview");
   const [confirm, setConfirm] = useState<{ kind: "user" | "program" | "pathway" | "cohort" | "enrollment"; id: string; label: string } | null>(null);
   const [editing, setEditing] = useState<{ kind: "user" | "program" | "pathway" | "cohort" | "enrollment" | "knowledge"; item: Record<string, unknown> } | null>(null);
+  const controlRoom = useGetAdminControlRoom({ query: { ...queryOptions, queryKey: getGetAdminControlRoomQueryKey() } });
   const users = useListAdminUsers({ query: { ...queryOptions, queryKey: getListAdminUsersQueryKey() } });
   const programs = useListAdminPrograms({ query: { ...queryOptions, queryKey: getListAdminProgramsQueryKey() } });
   const pathways = useListAdminPathways({ query: { ...queryOptions, queryKey: getListAdminPathwaysQueryKey() } });
@@ -87,7 +89,7 @@ export default function Admin() {
   const createEnrollment = useCreateAdminEnrollment(); const updateEnrollment = useUpdateAdminEnrollment();
   const createKnowledge = useCreateAdminKnowledgeArticle(); const publishKnowledge = usePublishAdminKnowledgeArticle();
   const updateKnowledge = useUpdateAdminKnowledgeArticle();
-  const invalidate = (...keys: ReadonlyArray<readonly unknown[]>) => Promise.all(keys.map((queryKey) => client.invalidateQueries({ queryKey })));
+  const invalidate = (...keys: ReadonlyArray<readonly unknown[]>) => Promise.all(keys.map((queryKey) => client.invalidateQueries({ queryKey })).concat(client.invalidateQueries({ queryKey: getGetAdminControlRoomQueryKey() })));
   const saved = (message: string) => toast({ title: "Tersimpan", description: message });
   const form = useForm<UserForm>({ resolver: zodResolver(userSchema), defaultValues: { name: "", email: "", organization: "", clerkUserId: "", roles: ["learner"] } });
   const submitUser = (v: UserForm) => createUser.mutate({ data: { id: crypto.randomUUID(), name: v.name, initials: v.name.split(/\s+/).map(x => x[0]).join("").slice(0, 2).toUpperCase(), email: v.email || null, organization: v.organization || null, clerkUserId: v.clerkUserId || null, status: "active", roles: v.roles } }, {
@@ -146,13 +148,169 @@ export default function Admin() {
     }
     createKnowledge.mutate({ data: { id: crypto.randomUUID(), category: values.get("category") as "help" | "energy", title: String(values.get("title")), body: String(values.get("body")), audience } }, { onSuccess: () => { form.reset(); invalidate(getListAdminKnowledgeArticlesQueryKey(), getListAdminAuditEventsQueryKey()); saved("Artikel disimpan sebagai draft."); }, onError: error => toast({ variant: "destructive", title: "Gagal menyimpan artikel", description: adminErrorMessage(error) }) });
   };
-  const tabs = [["users", "Pengguna"], ["programs", "Program"], ["pathways", "Pathway"], ["cohorts", "Cohort"], ["enrollments", "Enrollment"], ["knowledge", "Knowledge"], ["audit", "Audit"]] as const;
+  const tabs = [["overview", "Ringkasan"], ["users", "Pengguna"], ["programs", "Program"], ["pathways", "Pathway"], ["cohorts", "Cohort"], ["enrollments", "Enrollment"], ["knowledge", "Knowledge"], ["audit", "Audit"]] as const;
   const field = (name: string, placeholder: string, required = true) => <Input name={name} required={required} placeholder={placeholder} data-testid={`input-admin-${name}`} />;
-  const adminDenied = [users.error, programs.error, pathways.error, cohorts.error, enrollments.error, knowledge.error, audit.error].some(isAdminForbidden);
+  const adminDenied = [controlRoom.error, users.error, programs.error, pathways.error, cohorts.error, enrollments.error, knowledge.error, audit.error].some(isAdminForbidden);
   if (adminDenied) return <div className="flex min-h-48 items-center justify-center" role="alert" aria-live="assertive" data-testid="admin-access-denied"><Card className="max-w-md border-destructive/40"><CardContent className="p-6 text-center"><h1 className="font-semibold">Anda tidak memiliki akses admin</h1><p className="mt-2 text-sm text-muted-foreground">Akses dashboard ini ditentukan oleh server. Hubungi administrator jika Anda memerlukan peran admin.</p></CardContent></Card></div>;
   return <div className="space-y-6" aria-labelledby="admin-title">
     <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="font-mono text-xs font-bold tracking-widest text-primary">OPERATIONS · SERVER-AUTHORIZED</p><h1 id="admin-title" className="mt-2 text-3xl font-bold">Admin Control Room</h1><p className="mt-1 text-sm text-muted-foreground">Visibilitas UI bukan otorisasi; setiap aksi diverifikasi oleh server.</p></div><Button variant="outline" onClick={() => client.invalidateQueries()} data-testid="button-refresh-admin"><RefreshCw className="mr-2 h-4 w-4" />Muat ulang</Button></header>
-    <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Bagian administrasi">{tabs.map(([id, label]) => <Button key={id} role="tab" aria-selected={tab === id} variant={tab === id ? "default" : "outline"} onClick={() => setTab(id)} data-testid={`button-admin-tab-${id}`}>{label}</Button>)}</div>
+    <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Bagian administrasi">{tabs.map(([id, label]) => <Button key={id} role="tab" aria-selected={tab === id} variant={tab === id ? "default" : "outline"} onClick={() => setTab(id as any)} data-testid={`button-admin-tab-${id}`}>{label}</Button>)}</div>
+
+    {tab === "overview" && <State loading={controlRoom.isLoading} error={controlRoom.error} empty={!controlRoom.data}>
+      {controlRoom.data && <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+          <p>DATA PER {auditTime(controlRoom.data.asOf).toUpperCase()}</p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="cockpit-panel border-l-4 border-l-primary/60">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Learner aktif</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{controlRoom.data.counts.activeLearners}</div>
+            </CardContent>
+          </Card>
+          <Card className="cockpit-panel">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Program aktif</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{controlRoom.data.counts.activePrograms}</div>
+            </CardContent>
+          </Card>
+          <Card className="cockpit-panel">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Cohort aktif</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{controlRoom.data.counts.activeCohorts}</div>
+            </CardContent>
+          </Card>
+          <Card className="cockpit-panel border-r-4 border-r-primary/60">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Enrollment aktif</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{controlRoom.data.counts.activeEnrollments}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card className="cockpit-panel flex flex-col">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-destructive" />
+                 Kesenjangan Penugasan
+              </CardTitle>
+               <p className="text-sm text-muted-foreground">Enrollment aktif yang belum memiliki petugas lengkap</p>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col justify-center">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+                     <span className="font-medium">Tanpa trainer</span>
+                  </div>
+                  <span className="text-2xl font-mono">{controlRoom.data.assignmentGaps.missingTrainer}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-orange-500"></div>
+                     <span className="font-medium">Tanpa assessor</span>
+                  </div>
+                  <span className="text-2xl font-mono">{controlRoom.data.assignmentGaps.missingAssessor}</span>
+                </div>
+                <div className="flex items-center justify-between pt-4 border-t border-border/50">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-destructive"></div>
+                     <span className="font-medium">Tanpa keduanya</span>
+                  </div>
+                  <span className="text-2xl font-mono font-bold text-destructive">{controlRoom.data.assignmentGaps.both}</span>
+                </div>
+              </div>
+              <Button
+                className="mt-6 w-full"
+                variant="outline"
+                onClick={() => setTab("enrollments")}
+              >
+                 Atur penugasan <Layers className="ml-2 h-3.5 w-3.5" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="cockpit-panel flex flex-col">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-primary" />
+                 Antrean Operasional
+              </CardTitle>
+               <p className="text-sm text-muted-foreground">Item yang masih menunggu tindak lanjut</p>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col justify-center">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-lg border border-border/50 bg-background/50 p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Evidence</p>
+                  <p className="text-3xl font-mono">{controlRoom.data.queues.evidence}</p>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-background/50 p-4 text-center">
+                   <p className="text-sm text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Asesmen</p>
+                  <p className="text-3xl font-mono">{controlRoom.data.queues.assessment}</p>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-background/50 p-4 text-center">
+                   <p className="text-sm text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Remediasi</p>
+                  <p className="text-3xl font-mono">{controlRoom.data.queues.remediation}</p>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-background/50 p-4 text-center">
+                   <p className="text-sm text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Reasesmen</p>
+                  <p className="text-3xl font-mono">{controlRoom.data.queues.reassessment}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="cockpit-panel">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
+               Bottleneck Lifecycle
+            </CardTitle>
+             <p className="text-sm text-muted-foreground">Distribusi learner menurut tahap yang paling membutuhkan perhatian</p>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <div className="flex items-baseline justify-between mb-1">
+                 <span className="text-sm font-medium">Tahap paling tersendat</span>
+                 <Badge variant={controlRoom.data.bottlenecks.mostStalled ? "destructive" : "secondary"} className="uppercase">{controlRoom.data.bottlenecks.mostStalled ?? "Belum ada data"}</Badge>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {Object.entries(controlRoom.data.bottlenecks.counts).map(([stage, count]) => {
+                const maxCount = Math.max(...Object.values(controlRoom.data.bottlenecks.counts));
+                const percentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
+
+                return (
+                  <div key={stage} className="flex items-center gap-4">
+                    <div className="w-24 text-sm font-medium">{stage}</div>
+                    <div className="flex-1 h-3 bg-secondary rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${stage === controlRoom.data.bottlenecks.mostStalled ? 'bg-destructive' : 'bg-primary'}`}
+                        style={{ width: `${percentage}%` }}
+                      ></div>
+                    </div>
+                    <div className="w-8 text-right font-mono text-sm">{count}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </div>}
+    </State>}
+
     {tab === "users" && <><Card><CardHeader><CardTitle className="flex items-center gap-2"><Plus className="h-4 w-4" />Tambah pengguna</CardTitle></CardHeader><CardContent><Form {...form}><form onSubmit={form.handleSubmit(submitUser)} className="grid gap-4 md:grid-cols-5"><FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Nama</FormLabel><FormControl><Input {...field} data-testid="input-admin-user-name" /></FormControl><FormMessage /></FormItem>} /><FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} type="email" data-testid="input-admin-user-email" /></FormControl><FormMessage /></FormItem>} /><FormField control={form.control} name="organization" render={({ field }) => <FormItem><FormLabel>Organisasi</FormLabel><FormControl><Input {...field} data-testid="input-admin-user-organization" /></FormControl><FormMessage /></FormItem>} /><FormField control={form.control} name="clerkUserId" render={({ field }) => <FormItem><FormLabel>Clerk user ID</FormLabel><FormControl><Input {...field} data-testid="input-admin-user-clerk-id" /></FormControl><p className="text-xs text-muted-foreground">ID Clerk untuk binding identitas, bukan credential.</p><FormMessage /></FormItem>} /><div><label className="text-sm font-medium">Peran</label><div className="mt-2 flex flex-wrap gap-3">{roles.map(role => <FormField key={role} control={form.control} name="roles" render={({ field }) => <label className="flex items-center gap-1 text-sm"><Checkbox checked={field.value.includes(role)} onCheckedChange={checked => field.onChange(checked ? [...field.value, role] : field.value.filter(x => x !== role))} data-testid={`checkbox-role-${role}`} />{role}</label>} />)}</div>{form.formState.errors.roles?.message && <p className="mt-1 text-sm text-destructive" role="alert">{form.formState.errors.roles.message}</p>}</div><Button type="submit" disabled={createUser.isPending || rolesMutation.isPending} data-testid="button-create-user">{createUser.isPending ? <Loader2 className="animate-spin" /> : "Simpan pengguna"}</Button></form></Form></CardContent></Card><State loading={users.isLoading} error={users.error} empty={!users.data?.length}><div className="grid gap-3">{users.data?.map(u => <Card key={u.id} data-testid={`row-admin-user-${u.id}`}><CardContent className="flex flex-wrap items-center justify-between gap-3 p-4"><div><strong>{u.name}</strong><p className="text-sm text-muted-foreground">{u.email || "Tanpa email"} · {u.organization || "—"}</p></div><div className="flex items-center gap-2"><Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status}</Badge>{u.roles.map(r => <Badge key={r} variant="outline">{r}</Badge>)}<Button size="sm" variant="outline" onClick={() => setEditing({ kind: "user", item: { ...u } })} data-testid={`button-edit-user-${u.id}`}>Edit</Button><Button size="sm" variant="outline" disabled={u.status === "inactive"} onClick={() => setConfirm({ kind: "user", id: u.id, label: u.name })} data-testid={`button-deactivate-user-${u.id}`}>Nonaktifkan</Button></div></CardContent></Card>)}</div></State></>}
     {tab === "programs" && <EntitySection title="Program baru" onSubmit={e => quickCreate(e, "program")} fields={[field("name", "Nama program"), field("domain", "Domain"), field("description", "Deskripsi")]} loading={programs.isLoading} error={programs.error} items={programs.data?.map(x => ({ ...x, detail: `${x.domain} · ${x.description}`, kind: "program" as const }))} onEdit={x => setEditing({ kind: "program", item: x })} onArchive={x => setConfirm({ kind: "program", id: x.id, label: x.name })} />}
     {tab === "pathways" && <EntitySection title="Pathway baru" onSubmit={e => quickCreate(e, "pathway")} fields={[field("programId", "ID program"), field("name", "Nama"), field("type", "Tipe"), field("outcome", "Outcome")]} loading={pathways.isLoading} error={pathways.error} items={pathways.data?.map(x => ({ ...x, detail: `${x.type} · ${x.outcome}`, kind: "pathway" as const }))} onEdit={x => setEditing({ kind: "pathway", item: x })} onArchive={x => setConfirm({ kind: "pathway", id: x.id, label: x.name })} />}

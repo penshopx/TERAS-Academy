@@ -841,6 +841,14 @@ paths:
       operationId: listAdminAuditEvents
       tags: [admin]
       responses: { "200": { description: Audit history, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AdminAuditEvent" } } } } } }
+  /admin/control-room:
+    get:
+      operationId: getAdminControlRoom
+      tags: [admin]
+      responses:
+        "200": { description: Operational decision snapshot, content: { application/json: { schema: { $ref: "#/components/schemas/AdminControlRoom" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /assistant/knowledge/search:
     post:
       operationId: searchAssistantKnowledge
@@ -2359,6 +2367,52 @@ components:
       type: object
       required: [id, actorClerkUserId, action, entityType, entityId, before, after, createdAt]
       properties: { id: { type: string }, actorClerkUserId: { type: string }, action: { type: string }, entityType: { type: string }, entityId: { type: string }, before: {}, after: {}, createdAt: { type: string, format: date-time } }
+    AdminControlRoom:
+      type: object
+      required: [asOf, counts, assignmentGaps, queues, bottlenecks]
+      properties:
+        asOf: { type: string, format: date-time }
+        counts:
+          type: object
+          required: [activeLearners, activePrograms, activeCohorts, activeEnrollments]
+          properties:
+            activeLearners: { type: integer, minimum: 0 }
+            activePrograms: { type: integer, minimum: 0 }
+            activeCohorts: { type: integer, minimum: 0 }
+            activeEnrollments: { type: integer, minimum: 0 }
+        assignmentGaps:
+          type: object
+          required: [missingTrainer, missingAssessor, both]
+          properties:
+            missingTrainer: { type: integer, minimum: 0 }
+            missingAssessor: { type: integer, minimum: 0 }
+            both: { type: integer, minimum: 0 }
+        queues:
+          type: object
+          required: [evidence, assessment, remediation, reassessment]
+          properties:
+            evidence: { type: integer, minimum: 0 }
+            assessment: { type: integer, minimum: 0 }
+            remediation: { type: integer, minimum: 0 }
+            reassessment: { type: integer, minimum: 0 }
+        bottlenecks:
+          type: object
+          required: [mostStalled, counts, assignedContextCount, asOf]
+          properties:
+            mostStalled: { type: ["string", "null"], enum: [Learning, Practice, Feedback, Evidence, Remediation, Reassessment, Readiness, null] }
+            counts:
+              type: object
+              required: [Learning, Practice, Feedback, Evidence, Remediation, Reassessment, Readiness]
+              properties:
+                Learning: { type: integer, minimum: 0 }
+                Practice: { type: integer, minimum: 0 }
+                Feedback: { type: integer, minimum: 0 }
+                Evidence: { type: integer, minimum: 0 }
+                Remediation: { type: integer, minimum: 0 }
+                Reassessment: { type: integer, minimum: 0 }
+                Readiness: { type: integer, minimum: 0 }
+            assignedContextCount: { type: integer, minimum: 0 }
+            asOf: { type: string, format: date-time }
     KnowledgeArticle:
       type: object
       required: [id, category, title, body, audience, version, status, publishedAt, createdAt]

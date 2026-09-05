@@ -2,7 +2,7 @@
 // types; runtime operations are constrained by the generated Zod contracts.
 // @ts-nocheck
 import { Router, type IRouter } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   CreateAdminCohortBody, CreateAdminCohortResponse, CreateAdminEnrollmentBody, CreateAdminEnrollmentResponse,
   CreateAdminPathwayBody, CreateAdminPathwayResponse, CreateAdminProgramBody, CreateAdminProgramResponse,
@@ -12,10 +12,15 @@ import {
   UpdateAdminCohortBody, UpdateAdminCohortParams, UpdateAdminCohortResponse, UpdateAdminEnrollmentBody,
   UpdateAdminEnrollmentParams, UpdateAdminEnrollmentResponse, UpdateAdminPathwayBody, UpdateAdminPathwayParams,
   UpdateAdminPathwayResponse, UpdateAdminProgramBody, UpdateAdminProgramParams, UpdateAdminProgramResponse,
-  UpdateAdminUserBody, UpdateAdminUserParams, UpdateAdminUserResponse,
+  UpdateAdminUserBody, UpdateAdminUserParams, UpdateAdminUserResponse, GetAdminControlRoomResponse,
 } from "@workspace/api-zod";
-import { adminAuditEventsTable, cohortsTable, db, enrollmentsTable, pathwaysTable, peopleTable, personRolesTable, programsTable } from "@workspace/db";
+import {
+  adminAuditEventsTable, assessmentAttemptsTable, cohortsTable, db, enrollmentsTable, evidenceReviewsTable,
+  evidenceTable, pathwaysTable, peopleTable, personRolesTable, programsTable, reassessmentLinksTable,
+  remediationActivitiesTable, remediationEventsTable, remediationPlansTable,
+} from "@workspace/db";
 import { authorizeAdmin, type AdminActor } from "../lib/authorization";
+import { latestBy, trainerBottlenecks } from "../lib/trainer-bottlenecks";
 
 const router: IRouter = Router();
 const conflict = (error: unknown) => String(error).includes("duplicate") || String(error).includes("unique");
@@ -65,4 +70,68 @@ router.get("/admin/enrollments", async (req, res): Promise<void> => { if (!await
 router.post("/admin/enrollments", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const input = parsed(CreateAdminEnrollmentBody, req.body, res); if (!actor || !input) return; const error = await enrollmentValid(input); if (error) { res.status(409).json({ error }); return; } try { const value = await db.transaction(async tx => { const [record] = await tx.insert(enrollmentsTable).values({ ...input, createdBy: actor.clerkUserId }).returning(); await audit(tx as typeof db, actor, "create", "enrollment", record.id, null, record); return record; }); res.status(201).json(CreateAdminEnrollmentResponse.parse(value)); } catch { res.status(409).json({ error: "Enrollment conflicts with existing lifecycle data" }); } });
 router.patch("/admin/enrollments/:enrollmentId", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(UpdateAdminEnrollmentParams, req.params, res); const input = parsed(UpdateAdminEnrollmentBody, req.body, res); if (!actor || !params || !input) return; const [before] = await db.select().from(enrollmentsTable).where(eq(enrollmentsTable.id, params.enrollmentId)); if (!before) { res.status(404).json({ error: "Enrollment not found" }); return; } const candidate = { ...before, ...input }; const error = await enrollmentValid(candidate); if (error) { res.status(409).json({ error }); return; } try { const value = await db.transaction(async tx => { const [record] = await tx.update(enrollmentsTable).set(input).where(eq(enrollmentsTable.id, params.enrollmentId)).returning(); await audit(tx as typeof db, actor, "update", "enrollment", record.id, before, record); return record; }); res.json(UpdateAdminEnrollmentResponse.parse(value)); } catch { res.status(409).json({ error: "Enrollment conflicts with existing lifecycle data" }); } });
 router.get("/admin/audit", async (req, res): Promise<void> => { if (!await authorizeAdmin(req, res)) return; res.json(ListAdminAuditEventsResponse.parse(await db.select().from(adminAuditEventsTable).orderBy(desc(adminAuditEventsTable.createdAt)))); });
+router.get("/admin/control-room", async (req, res): Promise<void> => {
+  if (!await authorizeAdmin(req, res)) return;
+  const [
+    learnerRoles, programs, cohorts, activeEnrollments, evidence, evidenceReviews,
+    assessments, plans, activities, remediationEvents, reassessmentLinks,
+  ] = await Promise.all([
+    db.select({ personId: peopleTable.id }).from(peopleTable).innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+      .where(and(eq(peopleTable.status, "active"), eq(personRolesTable.role, "learner"))),
+    db.select({ status: programsTable.status }).from(programsTable),
+    db.select({ status: cohortsTable.status }).from(cohortsTable),
+    db.select({
+      enrollment: { id: enrollmentsTable.id, trainerId: enrollmentsTable.trainerId, assessorId: enrollmentsTable.assessorId },
+      learner: { id: peopleTable.id },
+      pathway: { id: pathwaysTable.id },
+    }).from(enrollmentsTable)
+      .innerJoin(peopleTable, eq(peopleTable.id, enrollmentsTable.learnerId))
+      .innerJoin(pathwaysTable, eq(pathwaysTable.id, enrollmentsTable.pathwayId))
+      .where(and(eq(enrollmentsTable.status, "active"), eq(peopleTable.status, "active"), sql`lower(${pathwaysTable.status}) = 'active'`)),
+    db.select().from(evidenceTable),
+    db.select().from(evidenceReviewsTable),
+    db.select().from(assessmentAttemptsTable),
+    db.select().from(remediationPlansTable),
+    db.select().from(remediationActivitiesTable),
+    db.select().from(remediationEventsTable),
+    db.select().from(reassessmentLinksTable),
+  ]);
+  const evidenceState = latestBy(evidenceReviews, row => row.evidenceId);
+  const activityState = latestBy(remediationEvents, row => row.activityId);
+  const assessmentById = new Map(assessments.map(attempt => [attempt.id, attempt]));
+  const planIdsWithOpenActivity = new Set(activities
+    .filter(activity => activityState.get(activity.id)?.status !== "Completed")
+    .map(activity => activity.planId));
+  const active = activeEnrollments.map(context => ({
+    enrollment: { id: context.enrollment.id },
+    learner: context.learner,
+    pathway: context.pathway,
+  }));
+  const bottlenecks = await trainerBottlenecks(active);
+  const value = {
+    asOf: new Date(),
+    counts: {
+      activeLearners: new Set(learnerRoles.map(row => row.personId)).size,
+      activePrograms: programs.filter(row => row.status.toLowerCase() === "active").length,
+      activeCohorts: cohorts.filter(row => row.status.toLowerCase() === "active").length,
+      activeEnrollments: activeEnrollments.length,
+    },
+    assignmentGaps: {
+      missingTrainer: activeEnrollments.filter(row => !row.enrollment.trainerId).length,
+      missingAssessor: activeEnrollments.filter(row => !row.enrollment.assessorId).length,
+      both: activeEnrollments.filter(row => !row.enrollment.trainerId && !row.enrollment.assessorId).length,
+    },
+    queues: {
+      evidence: evidence.filter(row => evidenceState.get(row.id)?.status !== "Valid").length,
+      assessment: assessments.filter(row => row.status !== "Completed").length,
+      remediation: plans.filter(plan => planIdsWithOpenActivity.has(plan.id)).length,
+      reassessment: reassessmentLinks.filter(link => {
+        const attempt = assessmentById.get(link.reassessmentAttemptId);
+        return !attempt || attempt.status !== "Completed" || attempt.decision !== "Competent";
+      }).length,
+    },
+    bottlenecks,
+  };
+  res.json(GetAdminControlRoomResponse.parse(value));
+});
 export default router;

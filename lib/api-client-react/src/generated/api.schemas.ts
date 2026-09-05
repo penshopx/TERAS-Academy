@@ -650,6 +650,87 @@ export interface AdminAuditEvent {
   createdAt: string;
 }
 
+export type AdminControlRoomCounts = {
+  /** @minimum 0 */
+  activeLearners: number;
+  /** @minimum 0 */
+  activePrograms: number;
+  /** @minimum 0 */
+  activeCohorts: number;
+  /** @minimum 0 */
+  activeEnrollments: number;
+};
+
+export type AdminControlRoomAssignmentGaps = {
+  /** @minimum 0 */
+  missingTrainer: number;
+  /** @minimum 0 */
+  missingAssessor: number;
+  /** @minimum 0 */
+  both: number;
+};
+
+export type AdminControlRoomQueues = {
+  /** @minimum 0 */
+  evidence: number;
+  /** @minimum 0 */
+  assessment: number;
+  /** @minimum 0 */
+  remediation: number;
+  /** @minimum 0 */
+  reassessment: number;
+};
+
+/**
+ * @nullable
+ */
+export type AdminControlRoomBottlenecksMostStalled = typeof AdminControlRoomBottlenecksMostStalled[keyof typeof AdminControlRoomBottlenecksMostStalled] | null;
+
+
+export const AdminControlRoomBottlenecksMostStalled = {
+  Learning: 'Learning',
+  Practice: 'Practice',
+  Feedback: 'Feedback',
+  Evidence: 'Evidence',
+  Remediation: 'Remediation',
+  Reassessment: 'Reassessment',
+  Readiness: 'Readiness',
+} as const;
+
+export type AdminControlRoomBottlenecksCounts = {
+  /** @minimum 0 */
+  Learning: number;
+  /** @minimum 0 */
+  Practice: number;
+  /** @minimum 0 */
+  Feedback: number;
+  /** @minimum 0 */
+  Evidence: number;
+  /** @minimum 0 */
+  Remediation: number;
+  /** @minimum 0 */
+  Reassessment: number;
+  /** @minimum 0 */
+  Readiness: number;
+};
+
+export type AdminControlRoomBottlenecks = {
+  /** @nullable */
+  mostStalled: AdminControlRoomBottlenecksMostStalled;
+  counts: AdminControlRoomBottlenecksCounts;
+  /** @minimum 0 */
+  assignedContextCount: number;
+  asOf: string;
+};
+
+export interface AdminControlRoom {
+  asOf: string;
+  counts: AdminControlRoomCounts;
+  assignmentGaps: AdminControlRoomAssignmentGaps;
+  queues: AdminControlRoomQueues;
+  bottlenecks: AdminControlRoomBottlenecks;
+}
+
 export type KnowledgeArticleCategory = typeof KnowledgeArticleCategory[keyof typeof KnowledgeArticleCategory];
 
 
