@@ -3,6 +3,7 @@
 - [Non-interactive post-merge migrations](post-merge-migrations.md) — preflight data-preserving backfills before Drizzle push because force mode may still prompt without a TTY.
 - [Authenticated presentation hardening](authenticated-presentation-hardening.md) — freeze completed foundations; focus next on accessibility, consistency, and regression protection.
 - [TERAS institutional positioning](teras-institutional-positioning.md) — TERAS prepares people and evidence for competency testing; it does not conduct official certification or assessment.
+- [TERAS capability worldview](teras-capability-worldview.md) — TERAS links resources, investment, institutions, learning, and adaptation; Academy is one instrument, not the whole vision.
 - [Assessor browser fixtures](assessor-browser-fixtures.md) — keyboard decision tests need isolated pending critical rubrics, not mutable shared assessment state.
 - [OpenAPI canonical anchors](openapi-canonical-anchors.md) — schema-like legacy snapshots can capture ambiguous patches; anchor active paths and schemas to canonical root blocks.
 - [Learner identity isolation](learner-identity-isolation.md) — derive learner ownership server-side from authenticated identity; never trust learner IDs supplied by clients.
