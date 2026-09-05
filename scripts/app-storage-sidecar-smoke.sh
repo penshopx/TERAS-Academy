@@ -50,6 +50,39 @@ notify_failure() {
   fi
 }
 
+send_heartbeat() {
+  local status="$1"
+  local failed_stage="${2:-}"
+  local heartbeat_url="${TERAS_APP_STORAGE_HEARTBEAT_URL:-}"
+
+  if [[ -z "$heartbeat_url" ]]; then
+    echo "{\"smoke\":\"app-storage-sidecar\",\"status\":\"HEARTBEAT_CONFIGURATION_FAILED\",\"runId\":\"$run_id\",\"check\":\"heartbeat\",\"reason\":\"TERAS_APP_STORAGE_HEARTBEAT_URL is not configured\",\"releaseApproval\":false}" >&2
+    return 1
+  fi
+
+  local payload
+  payload="$(node -e 'process.stdout.write(JSON.stringify({
+    event: "teras.app-storage.smoke.heartbeat",
+    status: process.argv[1],
+    runId: process.argv[2],
+    failedStage: process.argv[3] || null,
+    releaseApproval: false
+  }))' "$status" "$run_id" "$failed_stage")"
+
+  if curl --fail --silent --show-error \
+    --connect-timeout 10 \
+    --max-time "${TERAS_APP_STORAGE_HEARTBEAT_TIMEOUT_SECONDS:-20}" \
+    --header "Content-Type: application/json" \
+    --data "$payload" \
+    "$heartbeat_url" >/dev/null; then
+    echo "{\"smoke\":\"app-storage-sidecar\",\"status\":\"HEARTBEAT_SENT\",\"runId\":\"$run_id\",\"heartbeatStatus\":\"$status\",\"releaseApproval\":false}" >&2
+    return 0
+  fi
+
+  echo "{\"smoke\":\"app-storage-sidecar\",\"status\":\"HEARTBEAT_FAILED\",\"runId\":\"$run_id\",\"heartbeatStatus\":\"$status\",\"releaseApproval\":false}" >&2
+  return 1
+}
+
 fail_before_smoke() {
   local check="$1"
   json_failure "$check" | tee -a "$output_file" >&2
@@ -64,6 +97,11 @@ fail_before_smoke() {
 [[ "$run_id" =~ ^[a-zA-Z0-9._-]+$ ]] || {
   run_id="invalid-run-id"
   fail_before_smoke "prerequisites"
+}
+
+[[ -n "${TERAS_APP_STORAGE_HEARTBEAT_URL:-}" ]] || {
+  echo "TERAS_APP_STORAGE_HEARTBEAT_URL is required for App Storage dead-man monitoring." >&2
+  fail_before_smoke "heartbeat"
 }
 
 echo "{\"smoke\":\"app-storage-sidecar\",\"status\":\"START\",\"runId\":\"$run_id\",\"releaseApproval\":false}"
@@ -92,8 +130,13 @@ if (( smoke_status != 0 )); then
       process.stdout.write(stage);
     ' "$output_file" "$smoke_status"
   )"
+  send_heartbeat "FAIL" "$failed_stage" || true
   notify_failure "$failed_stage"
   exit "$smoke_status"
 fi
 
 echo "{\"smoke\":\"app-storage-sidecar\",\"status\":\"PASS\",\"runId\":\"$run_id\",\"releaseApproval\":false,\"note\":\"Operational smoke only; not release approval.\"}"
+if ! send_heartbeat "PASS"; then
+  notify_failure "heartbeat"
+  exit 1
+fi
