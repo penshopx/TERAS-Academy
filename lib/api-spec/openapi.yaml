@@ -733,6 +733,19 @@ paths:
       parameters: [{ $ref: "#/components/parameters/CourseId" }]
       responses:
         "200": { description: Append-only authoring history, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CourseAuthoringAuditEvent" } } } } }
+  /admin/access:
+    get:
+      operationId: getAdminAccess
+      tags: [admin]
+      responses:
+        "200":
+          description: Confirms that the current server-authenticated user has active administrator access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAccess"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /admin/users:
     get:
       operationId: listAdminUsers
@@ -2051,6 +2064,13 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    AdminAccess:
+      type: object
+      required: [authorized]
+      properties:
+        authorized:
+          type: boolean
+          const: true
     LearningState:
       type: string
       enum: [NOT_STARTED, IN_PROGRESS, LEARNING_COMPLETED, OUTCOME_VERIFIED, PRACTICE_REQUIRED, PRACTICE_IN_PROGRESS, EVIDENCE_SUBMITTED, UNDER_REVIEW, REVISION_REQUIRED, REMEDIATION, REASSESSMENT, READY, NOT_READY]

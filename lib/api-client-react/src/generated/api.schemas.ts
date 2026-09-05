@@ -5,6 +5,11 @@
  * TERAS Academy capability development API
  * OpenAPI spec version: 0.1.0
  */
+export const AdminAccessValue = {
+  authorized: true,
+} as const;
+export type AdminAccess = typeof AdminAccessValue;
+
 export type LearningState = typeof LearningState[keyof typeof LearningState];
 
 

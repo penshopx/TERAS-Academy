@@ -6,7 +6,7 @@ import { and, desc, eq } from "drizzle-orm";
 import {
   CreateAdminCohortBody, CreateAdminCohortResponse, CreateAdminEnrollmentBody, CreateAdminEnrollmentResponse,
   CreateAdminPathwayBody, CreateAdminPathwayResponse, CreateAdminProgramBody, CreateAdminProgramResponse,
-  CreateAdminUserBody, CreateAdminUserResponse, GetAdminOperationalSummaryResponse, ListAdminAuditEventsResponse, ListAdminCohortsResponse,
+  CreateAdminUserBody, CreateAdminUserResponse, GetAdminAccessResponse, GetAdminOperationalSummaryResponse, ListAdminAuditEventsResponse, ListAdminCohortsResponse,
   ListAdminEnrollmentsResponse, ListAdminPathwaysResponse, ListAdminProgramsResponse, ListAdminUsersResponse,
   ReplaceAdminUserRolesBody, ReplaceAdminUserRolesParams, ReplaceAdminUserRolesResponse,
   UpdateAdminCohortBody, UpdateAdminCohortParams, UpdateAdminCohortResponse, UpdateAdminEnrollmentBody,
@@ -73,6 +73,11 @@ const latestAssessmentAttempts = <T extends { assessmentId: string; learnerId: s
   }
   return result;
 };
+
+router.get("/admin/access", async (req, res): Promise<void> => {
+  if (!await authorizeAdmin(req, res)) return;
+  res.json(GetAdminAccessResponse.parse({ authorized: true }));
+});
 
 router.get("/admin/summary", async (req, res): Promise<void> => {
   if (!await authorizeAdmin(req, res)) return;

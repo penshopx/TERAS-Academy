@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminAccess';
 export * from './adminAuditEvent';
 export * from './adminCohort';
 export * from './adminCohortInput';

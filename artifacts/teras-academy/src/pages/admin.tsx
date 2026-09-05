@@ -5,10 +5,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
   type AdminOperationalSummary,
-  getGetAdminOperationalSummaryQueryKey, getListAdminAuditEventsQueryKey, getListAdminCohortsQueryKey, getListAdminEnrollmentsQueryKey,
+  getGetAdminAccessQueryKey, getGetAdminOperationalSummaryQueryKey, getListAdminAuditEventsQueryKey, getListAdminCohortsQueryKey, getListAdminEnrollmentsQueryKey,
   getListAdminPathwaysQueryKey, getListAdminProgramsQueryKey, getListAdminUsersQueryKey,
   useCreateAdminCohort, useCreateAdminEnrollment, useCreateAdminPathway, useCreateAdminProgram,
-  useCreateAdminUser, useGetAdminOperationalSummary, useListAdminAuditEvents, useListAdminCohorts, useListAdminEnrollments,
+  useCreateAdminUser, useGetAdminAccess, useGetAdminOperationalSummary, useListAdminAuditEvents, useListAdminCohorts, useListAdminEnrollments,
   useListAdminPathways, useListAdminPrograms, useListAdminUsers, useReplaceAdminUserRoles,
   useUpdateAdminCohort, useUpdateAdminEnrollment, useUpdateAdminPathway, useUpdateAdminProgram,
   useUpdateAdminUser,
@@ -36,6 +36,9 @@ export function adminErrorMessage(error: unknown) {
 }
 export function isAdminForbidden(error: unknown) {
   return (error as { status?: number } | undefined)?.status === 403;
+}
+export function shouldEnableAdminQueries(access: { isSuccess: boolean; isFetching: boolean; data?: { authorized: boolean } }) {
+  return access.isSuccess && !access.isFetching && access.data?.authorized === true;
 }
 
 type QueueFilters = { learner: string; pathway: string; trainer: string; assessor: string };
@@ -101,14 +104,16 @@ export default function Admin() {
   const [queueFilters, setQueueFilters] = useState<QueueFilters>(() => queueStateFromSearch(window.location.search).filters);
   const [confirm, setConfirm] = useState<{ kind: "user" | "program" | "pathway" | "cohort" | "enrollment"; id: string; label: string } | null>(null);
   const [editing, setEditing] = useState<{ kind: "user" | "program" | "pathway" | "cohort" | "enrollment" | "knowledge"; item: Record<string, unknown> } | null>(null);
-  const users = useListAdminUsers({ query: { ...queryOptions, queryKey: getListAdminUsersQueryKey() } });
-  const programs = useListAdminPrograms({ query: { ...queryOptions, queryKey: getListAdminProgramsQueryKey() } });
-  const pathways = useListAdminPathways({ query: { ...queryOptions, queryKey: getListAdminPathwaysQueryKey() } });
-  const cohorts = useListAdminCohorts({ query: { ...queryOptions, queryKey: getListAdminCohortsQueryKey() } });
-  const enrollments = useListAdminEnrollments({ query: { ...queryOptions, queryKey: getListAdminEnrollmentsQueryKey() } });
-  const audit = useListAdminAuditEvents({ query: { ...queryOptions, queryKey: getListAdminAuditEventsQueryKey() } });
-  const knowledge = useListAdminKnowledgeArticles({ query: { ...queryOptions, queryKey: getListAdminKnowledgeArticlesQueryKey() } });
-  const summary = useGetAdminOperationalSummary<AdminOperationalSummary>({ query: { ...queryOptions, queryKey: getGetAdminOperationalSummaryQueryKey() } });
+  const access = useGetAdminAccess({ query: { ...queryOptions, queryKey: getGetAdminAccessQueryKey(), retry: false } });
+  const adminQueriesEnabled = shouldEnableAdminQueries(access);
+  const users = useListAdminUsers({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminUsersQueryKey() } });
+  const programs = useListAdminPrograms({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminProgramsQueryKey() } });
+  const pathways = useListAdminPathways({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminPathwaysQueryKey() } });
+  const cohorts = useListAdminCohorts({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminCohortsQueryKey() } });
+  const enrollments = useListAdminEnrollments({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminEnrollmentsQueryKey() } });
+  const audit = useListAdminAuditEvents({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminAuditEventsQueryKey() } });
+  const knowledge = useListAdminKnowledgeArticles({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminKnowledgeArticlesQueryKey() } });
+  const summary = useGetAdminOperationalSummary<AdminOperationalSummary>({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getGetAdminOperationalSummaryQueryKey() } });
   const createUser = useCreateAdminUser(); const rolesMutation = useReplaceAdminUserRoles(); const updateUser = useUpdateAdminUser();
   const createProgram = useCreateAdminProgram(); const updateProgram = useUpdateAdminProgram();
   const createPathway = useCreateAdminPathway(); const updatePathway = useUpdateAdminPathway();
@@ -214,8 +219,9 @@ export default function Admin() {
     window.history.replaceState({}, "", url);
   };
   const field = (name: string, placeholder: string, required = true) => <Input name={name} required={required} placeholder={placeholder} data-testid={`input-admin-${name}`} />;
-  const adminDenied = [summary.error, users.error, programs.error, pathways.error, cohorts.error, enrollments.error, knowledge.error, audit.error].some(isAdminForbidden);
-  if (adminDenied) return <div className="flex min-h-48 items-center justify-center" role="alert" aria-live="assertive" data-testid="admin-access-denied"><Card className="max-w-md border-destructive/40"><CardContent className="p-6 text-center"><h1 className="font-semibold">Anda tidak memiliki akses admin</h1><p className="mt-2 text-sm text-muted-foreground">Akses dashboard ini ditentukan oleh server. Hubungi administrator jika Anda memerlukan peran admin.</p></CardContent></Card></div>;
+  if (access.isLoading) return <div className="flex min-h-48 items-center justify-center gap-2 text-muted-foreground" role="status" aria-live="polite" data-testid="admin-access-loading"><Loader2 className="h-4 w-4 animate-spin" /> Memeriksa akses admin…</div>;
+  if (isAdminForbidden(access.error)) return <div className="flex min-h-48 items-center justify-center" role="alert" aria-live="assertive" data-testid="admin-access-denied"><Card className="max-w-md border-destructive/40"><CardContent className="p-6 text-center"><h1 className="font-semibold">Anda tidak memiliki akses admin</h1><p className="mt-2 text-sm text-muted-foreground">Akses dashboard ini ditentukan oleh server. Hubungi administrator jika Anda memerlukan peran admin.</p></CardContent></Card></div>;
+  if (access.error) return <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert" data-testid="admin-access-error">{adminErrorMessage(access.error)}</div>;
   return <div className="space-y-6" aria-labelledby="admin-title">
     <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="font-mono text-xs font-bold tracking-widest text-primary">OPERATIONS · SERVER-AUTHORIZED</p><h1 id="admin-title" className="mt-2 text-3xl font-bold">Admin Control Room</h1><p className="mt-1 text-sm text-muted-foreground">Visibilitas UI bukan otorisasi; setiap aksi diverifikasi oleh server.</p></div><Button variant="outline" onClick={() => client.invalidateQueries()} data-testid="button-refresh-admin"><RefreshCw className="mr-2 h-4 w-4" />Muat ulang</Button></header>
     <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Bagian administrasi">{tabs.map(([id, label]) => <Button key={id} role="tab" aria-selected={tab === id} variant={tab === id ? "default" : "outline"} onClick={() => openTab(id)} data-testid={`button-admin-tab-${id}`}>{label}</Button>)}</div>

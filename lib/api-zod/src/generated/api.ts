@@ -1595,6 +1595,11 @@ export const ListCourseAuthoringAuditResponseItem = zod.object({
 export const ListCourseAuthoringAuditResponse = zod.array(ListCourseAuthoringAuditResponseItem)
 
 
+export const GetAdminAccessResponse = zod.object({
+  "authorized": zod.literal(true)
+})
+
+
 export const ListAdminUsersResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
