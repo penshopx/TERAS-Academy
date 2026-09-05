@@ -682,6 +682,7 @@ function IntegrationTestRoutes() {
             <Switch>
               <Route path="/practice" component={Practice} />
               <Route path="/evidence" component={Evidence} />
+              <Route path="/admin" component={Admin} />
               <Route component={NotFound} />
             </Switch>
           </RoutedErrorBoundary>
