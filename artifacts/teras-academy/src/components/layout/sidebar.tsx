@@ -31,6 +31,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
   const { signOut } = useClerk();
   const { user } = useUser();
+  const [isSigningOut, setIsSigningOut] = React.useState(false);
+  const [signOutError, setSignOutError] = React.useState<string | null>(null);
   const adminAccess = useListAdminUsers({
     query: {
       enabled: Boolean(user),
@@ -47,6 +49,19 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    setSignOutError(null);
+    try {
+      await signOut();
+      window.location.replace(`${window.location.origin}${import.meta.env.BASE_URL}`);
+    } catch {
+      setSignOutError("Logout gagal. Muat ulang halaman lalu coba lagi.");
+      setIsSigningOut(false);
+    }
+  };
 
   return (
     <div className="w-full lg:w-64 border-r border-sidebar-border bg-sidebar h-full flex flex-col">
@@ -146,13 +161,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <div className="text-sm font-medium text-sidebar-foreground truncate max-w-32">{displayName}</div>
             <button
               type="button"
-              onClick={() => signOut({ redirectUrl: import.meta.env.BASE_URL.replace(/\/$/, '') || "/" })}
-              className="text-xs text-sidebar-foreground/50 hover:text-primary transition-colors"
+              onClick={() => void handleSignOut()}
+              disabled={isSigningOut}
+              className="text-xs text-sidebar-foreground/50 hover:text-primary transition-colors disabled:cursor-wait disabled:opacity-60"
             >
-              Sign out
+              {isSigningOut ? "Signing out…" : "Sign out"}
             </button>
           </div>
         </div>
+        {signOutError && <p className="mt-2 text-xs text-destructive" role="alert">{signOutError}</p>}
       </div>
     </div>
   );
