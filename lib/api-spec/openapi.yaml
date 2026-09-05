@@ -2346,13 +2346,32 @@ components:
         description: { type: string }
     AdminOperationalQueue:
       type: object
-      required: [id, label, count, description, targetTab]
+      required: [id, label, count, description, targetTab, items]
       properties:
         id: { type: string, enum: [evidence, assessment, remediation, reassessment] }
         label: { type: string }
         count: { type: integer, minimum: 0 }
         description: { type: string }
         targetTab: { type: string, enum: [enrollments] }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminOperationalQueueItem" }
+    AdminOperationalQueueItem:
+      type: object
+      required: [id, title, status, learnerId, learnerName, pathwayId, pathwayName, trainerId, trainerName, assessorId, assessorName, createdAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        status: { type: string }
+        learnerId: { type: string }
+        learnerName: { type: string }
+        pathwayId: { type: string }
+        pathwayName: { type: string }
+        trainerId: { type: ["string", "null"] }
+        trainerName: { type: ["string", "null"] }
+        assessorId: { type: ["string", "null"] }
+        assessorName: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
     AdminOperationalAction:
       type: object
       required: [id, label, description, count, targetTab, urgency]

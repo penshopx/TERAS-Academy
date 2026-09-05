@@ -90,6 +90,13 @@ async function run() {
     assert(response.status === 200, "Summary request failed");
     const counts = Object.fromEntries(summary.queues.map((queue: any) => [queue.id, queue.count]));
     assert(counts.evidence === baselineCounts.evidence + 1 && counts.remediation === baselineCounts.remediation + 1, "Only active enrollment evidence and remediation may increase queues");
+    const evidenceQueue = summary.queues.find((queue: any) => queue.id === "evidence");
+    const activeEvidenceItem = evidenceQueue.items.find((item: any) => item.id === ids.activeEvidence);
+    assert(activeEvidenceItem?.learnerId === ids.activeLearner && activeEvidenceItem?.pathwayId === ids.activePath, "Evidence details must preserve learner and pathway context");
+    assert(activeEvidenceItem?.trainerId === null && activeEvidenceItem?.assessorId === null, "Evidence details must preserve unassigned responsibility context");
+    assert(!evidenceQueue.items.some((item: any) => item.id === ids.inactiveEvidence), "Inactive enrollment items must not leak into queue details");
+    const remediationQueue = summary.queues.find((queue: any) => queue.id === "remediation");
+    assert(remediationQueue.items.some((item: any) => item.id === ids.activePlan), "Active remediation plan must be present in queue details");
     assert(counts.reassessment === baselineCounts.reassessment, "Completed enrollment reassessment must be excluded and competent active reassessment must not queue");
     assert(counts.assessment === baselineCounts.assessment, "Highest attempt number must win even when its timestamp is older; completed enrollment attempts must be excluded");
 

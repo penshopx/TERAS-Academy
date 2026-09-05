@@ -27,6 +27,7 @@ export * from './adminOperationalMetric';
 export * from './adminOperationalMetricId';
 export * from './adminOperationalQueue';
 export * from './adminOperationalQueueId';
+export * from './adminOperationalQueueItem';
 export * from './adminOperationalQueueTargetTab';
 export * from './adminOperationalSummary';
 export * from './adminOperationalSummaryIncompleteAssignments';

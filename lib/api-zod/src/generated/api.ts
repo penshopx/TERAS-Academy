@@ -1664,7 +1664,21 @@ export const GetAdminOperationalSummaryResponse = zod.object({
   "label": zod.string(),
   "count": zod.int().min(getAdminOperationalSummaryResponseQueuesItemCountMin),
   "description": zod.string(),
-  "targetTab": zod.enum(['enrollments'])
+  "targetTab": zod.enum(['enrollments']),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "learnerId": zod.string(),
+  "learnerName": zod.string(),
+  "pathwayId": zod.string(),
+  "pathwayName": zod.string(),
+  "trainerId": zod.string().nullable(),
+  "trainerName": zod.string().nullable(),
+  "assessorId": zod.string().nullable(),
+  "assessorName": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
 })),
   "bottleneck": zod.object({
   "stage": zod.enum(['evidence', 'assessment', 'remediation', 'reassessment', 'clear']),

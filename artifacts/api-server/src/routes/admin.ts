@@ -85,11 +85,11 @@ const latestAssessmentAttempts = <T extends { assessmentId: string; learnerId: s
 router.get("/admin/summary", async (req, res): Promise<void> => {
   if (!await authorizeAdmin(req, res)) return;
   const [
-    roles, people, programs, cohorts, enrollments, evidence, evidenceReviews, attempts,
+    roles, people, programs, pathways, cohorts, enrollments, evidence, evidenceReviews, attempts,
     gaps, remediationPlans, remediationActivities, remediationEvents, reassessmentLinks,
   ] = await Promise.all([
     db.select().from(personRolesTable), db.select().from(peopleTable), db.select().from(programsTable),
-    db.select().from(cohortsTable), db.select().from(enrollmentsTable), db.select().from(evidenceTable),
+    db.select().from(pathwaysTable), db.select().from(cohortsTable), db.select().from(enrollmentsTable), db.select().from(evidenceTable),
     db.select().from(evidenceReviewsTable), db.select().from(assessmentAttemptsTable),
     db.select().from(gapsTable),
     db.select().from(remediationPlansTable), db.select().from(remediationActivitiesTable),
@@ -98,13 +98,35 @@ router.get("/admin/summary", async (req, res): Promise<void> => {
   const activePeople = new Set(people.filter(person => person.status === "active").map(person => person.id));
   const activeEnrollments = enrollments.filter(enrollment => enrollment.status === "active" && activePeople.has(enrollment.learnerId));
   const activeContexts = new Set(activeEnrollments.map(enrollment => `${enrollment.learnerId}:${enrollment.pathwayId}`));
+  const enrollmentByContext = new Map(activeEnrollments.map(enrollment => [`${enrollment.learnerId}:${enrollment.pathwayId}`, enrollment]));
+  const peopleById = new Map(people.map(person => [person.id, person]));
+  const pathwaysById = new Map(pathways.map(pathway => [pathway.id, pathway]));
   const inActiveContext = (row: { learnerId: string; pathwayId: string }) => activeContexts.has(`${row.learnerId}:${row.pathwayId}`);
+  const queueItem = (row: { id: string; learnerId: string; pathwayId: string; createdAt: Date }, title: string, status: string) => {
+    const enrollment = enrollmentByContext.get(`${row.learnerId}:${row.pathwayId}`);
+    const learner = peopleById.get(row.learnerId);
+    const pathway = pathwaysById.get(row.pathwayId);
+    const trainer = enrollment?.trainerId ? peopleById.get(enrollment.trainerId) : undefined;
+    const assessor = enrollment?.assessorId ? peopleById.get(enrollment.assessorId) : undefined;
+    return {
+      id: row.id, title, status,
+      learnerId: row.learnerId, learnerName: learner?.name ?? row.learnerId,
+      pathwayId: row.pathwayId, pathwayName: pathway?.name ?? row.pathwayId,
+      trainerId: enrollment?.trainerId ?? null, trainerName: trainer?.name ?? null,
+      assessorId: enrollment?.assessorId ?? null, assessorName: assessor?.name ?? null,
+      createdAt: row.createdAt,
+    };
+  };
   const learners = new Set(roles.filter(role => role.role === "learner" && activePeople.has(role.personId)).map(role => role.personId)).size;
   const latestEvidenceReviews = latestBy(evidenceReviews, review => review.evidenceId);
-  const evidenceCount = evidence.filter(item => inActiveContext(item) && latestEvidenceReviews.get(item.id)?.status === "Under review").length;
+  const evidenceItems = evidence
+    .filter(item => inActiveContext(item) && latestEvidenceReviews.get(item.id)?.status === "Under review")
+    .map(item => queueItem(item, item.title, "Under review"));
   const activeAttempts = attempts.filter(inActiveContext);
   const latestAttempts = latestAssessmentAttempts(activeAttempts);
-  const assessmentCount = [...latestAttempts.values()].filter(attempt => !attempt.decision).length;
+  const assessmentItems = [...latestAttempts.values()]
+    .filter(attempt => !attempt.decision)
+    .map(attempt => queueItem(attempt, `Assessment attempt #${attempt.number}`, attempt.status));
   const latestRemediationEvents = latestBy(remediationEvents, event => event.activityId);
   const planActivities = new Map<string, typeof remediationActivities>();
   for (const activity of remediationActivities) planActivities.set(activity.planId, [...(planActivities.get(activity.planId) ?? []), activity]);
@@ -113,7 +135,13 @@ router.get("/admin/summary", async (req, res): Promise<void> => {
     const activities = planActivities.get(plan.id) ?? [];
     return activities.length > 0 && activities.some(activity => latestRemediationEvents.get(activity.id)?.status !== "Completed");
   })()).map(plan => plan.id));
-  const remediationCount = openRemediationPlanIds.size;
+  const gapsById = new Map(gaps.map(gap => [gap.id, gap]));
+  const remediationItems = remediationPlans
+    .filter(plan => openRemediationPlanIds.has(plan.id))
+    .flatMap(plan => {
+      const gap = gapsById.get(plan.gapId);
+      return gap ? [queueItem({ ...plan, learnerId: gap.learnerId, pathwayId: gap.pathwayId }, plan.title, "Aktif")] : [];
+    });
   const attemptById = new Map(attempts.map(attempt => [attempt.id, attempt]));
   const latestReassessmentByPlan = new Map<string, typeof reassessmentLinks[number]>();
   for (const link of reassessmentLinks.filter(link => inActiveContext(link) && activeGapIds.has(link.originalGapId))) {
@@ -123,14 +151,19 @@ router.get("/admin/summary", async (req, res): Promise<void> => {
     const previous = previousLink ? attemptById.get(previousLink.reassessmentAttemptId) : undefined;
     if (!previous || attempt.number > previous.number || (attempt.number === previous.number && attempt.createdAt > previous.createdAt)) latestReassessmentByPlan.set(link.remediationPlanId, link);
   }
-  const reassessmentCount = [...latestReassessmentByPlan.values()].filter(link => attemptById.get(link.reassessmentAttemptId)?.decision !== "Competent").length;
+  const reassessmentItems = [...latestReassessmentByPlan.values()]
+    .filter(link => attemptById.get(link.reassessmentAttemptId)?.decision !== "Competent")
+    .map(link => {
+      const attempt = attemptById.get(link.reassessmentAttemptId)!;
+      return queueItem(attempt, `Reassessment attempt #${attempt.number}`, attempt.decision ?? attempt.status);
+    });
   const trainerMissing = activeEnrollments.filter(enrollment => !enrollment.trainerId).length;
   const assessorMissing = activeEnrollments.filter(enrollment => !enrollment.assessorId).length;
   const queues = [
-    { id: "evidence", label: "Evidence menunggu review", count: evidenceCount, description: "Evidence dengan review terbaru masih Under review.", targetTab: "enrollments" },
-    { id: "assessment", label: "Assessment menunggu keputusan", count: assessmentCount, description: "Attempt terbaru belum memiliki keputusan assessor.", targetTab: "enrollments" },
-    { id: "remediation", label: "Remediation aktif", count: remediationCount, description: "Rencana dengan aktivitas yang belum seluruhnya selesai.", targetTab: "enrollments" },
-    { id: "reassessment", label: "Reassessment belum kompeten", count: reassessmentCount, description: "Reassessment terhubung yang masih perlu keputusan kompeten.", targetTab: "enrollments" },
+    { id: "evidence", label: "Evidence menunggu review", count: evidenceItems.length, description: "Evidence dengan review terbaru masih Under review.", targetTab: "enrollments", items: evidenceItems },
+    { id: "assessment", label: "Assessment menunggu keputusan", count: assessmentItems.length, description: "Attempt terbaru belum memiliki keputusan assessor.", targetTab: "enrollments", items: assessmentItems },
+    { id: "remediation", label: "Remediation aktif", count: remediationItems.length, description: "Rencana dengan aktivitas yang belum seluruhnya selesai.", targetTab: "enrollments", items: remediationItems },
+    { id: "reassessment", label: "Reassessment belum kompeten", count: reassessmentItems.length, description: "Reassessment terhubung yang masih perlu keputusan kompeten.", targetTab: "enrollments", items: reassessmentItems },
   ] as const;
   const largestQueue = queues.reduce((largest, queue) => queue.count > largest.count ? queue : largest, queues[0]);
   const bottleneck = largestQueue.count > 0

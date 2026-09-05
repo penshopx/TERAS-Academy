@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AdminOperationalQueueId } from './adminOperationalQueueId';
+import type { AdminOperationalQueueItem } from './adminOperationalQueueItem';
 import type { AdminOperationalQueueTargetTab } from './adminOperationalQueueTargetTab';
 
 export interface AdminOperationalQueue {
@@ -15,4 +16,5 @@ export interface AdminOperationalQueue {
   count: number;
   description: string;
   targetTab: AdminOperationalQueueTargetTab;
+  items: AdminOperationalQueueItem[];
 }

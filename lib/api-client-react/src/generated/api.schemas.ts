@@ -480,6 +480,25 @@ export const AdminOperationalQueueTargetTab = {
   enrollments: 'enrollments',
 } as const;
 
+export interface AdminOperationalQueueItem {
+  id: string;
+  title: string;
+  status: string;
+  learnerId: string;
+  learnerName: string;
+  pathwayId: string;
+  pathwayName: string;
+  /** @nullable */
+  trainerId: string | null;
+  /** @nullable */
+  trainerName: string | null;
+  /** @nullable */
+  assessorId: string | null;
+  /** @nullable */
+  assessorName: string | null;
+  createdAt: string;
+}
+
 export interface AdminOperationalQueue {
   id: AdminOperationalQueueId;
   label: string;
@@ -487,6 +506,7 @@ export interface AdminOperationalQueue {
   count: number;
   description: string;
   targetTab: AdminOperationalQueueTargetTab;
+  items: AdminOperationalQueueItem[];
 }
 
 export type AdminOperationalActionTargetTab = typeof AdminOperationalActionTargetTab[keyof typeof AdminOperationalActionTargetTab];
