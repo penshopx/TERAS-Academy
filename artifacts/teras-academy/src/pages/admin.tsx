@@ -38,6 +38,20 @@ export function isAdminForbidden(error: unknown) {
   return (error as { status?: number } | undefined)?.status === 403;
 }
 
+type QueueFilters = { learner: string; pathway: string; trainer: string; assessor: string };
+type QueueFilterKey = keyof QueueFilters;
+const emptyQueueFilters: QueueFilters = { learner: "", pathway: "", trainer: "", assessor: "" };
+const queueFilterKeys = Object.keys(emptyQueueFilters) as QueueFilterKey[];
+
+export function filterQueueItems<T extends { learnerId: string; pathwayId: string; trainerId: string | null; assessorId: string | null }>(items: T[], filters: QueueFilters) {
+  return items.filter(item =>
+    (!filters.learner || item.learnerId === filters.learner)
+    && (!filters.pathway || item.pathwayId === filters.pathway)
+    && (!filters.trainer || (filters.trainer === "unassigned" ? item.trainerId === null : item.trainerId === filters.trainer))
+    && (!filters.assessor || (filters.assessor === "unassigned" ? item.assessorId === null : item.assessorId === filters.assessor))
+  );
+}
+
 const auditEntityLabels: Record<string, string> = {
   user: "pengguna",
   program: "program",
@@ -72,8 +86,10 @@ function State({ loading, error, empty, children }: { loading: boolean; error: u
 export default function Admin() {
   const client = useQueryClient(); const { toast } = useToast();
   const [tab, setTab] = useState<"summary" | "users" | "programs" | "pathways" | "cohorts" | "enrollments" | "knowledge" | "audit">("summary");
-  const initialQueue = new URLSearchParams(window.location.search).get("queue");
+  const initialParams = new URLSearchParams(window.location.search);
+  const initialQueue = initialParams.get("queue");
   const [selectedQueue, setSelectedQueue] = useState<QueueId | null>(isQueueId(initialQueue) ? initialQueue : null);
+  const [queueFilters, setQueueFilters] = useState<QueueFilters>(() => Object.fromEntries(queueFilterKeys.map(key => [key, initialParams.get(key) ?? ""])) as QueueFilters);
   const [confirm, setConfirm] = useState<{ kind: "user" | "program" | "pathway" | "cohort" | "enrollment"; id: string; label: string } | null>(null);
   const [editing, setEditing] = useState<{ kind: "user" | "program" | "pathway" | "cohort" | "enrollment" | "knowledge"; item: Record<string, unknown> } | null>(null);
   const users = useListAdminUsers({ query: { ...queryOptions, queryKey: getListAdminUsersQueryKey() } });
@@ -155,17 +171,28 @@ export default function Admin() {
     setTab(nextTab);
     if (nextTab !== "summary") {
       setSelectedQueue(null);
+      setQueueFilters(emptyQueueFilters);
       const url = new URL(window.location.href);
       url.searchParams.delete("queue");
+      queueFilterKeys.forEach(key => url.searchParams.delete(key));
       window.history.replaceState({}, "", url);
     }
   };
   const openQueue = (queueId: QueueId) => {
     setTab("summary");
     setSelectedQueue(queueId);
+    setQueueFilters(emptyQueueFilters);
     const url = new URL(window.location.href);
     url.searchParams.set("queue", queueId);
+    queueFilterKeys.forEach(key => url.searchParams.delete(key));
     window.history.pushState({}, "", url);
+  };
+  const updateQueueFilter = (key: QueueFilterKey, value: string) => {
+    setQueueFilters(current => ({ ...current, [key]: value }));
+    const url = new URL(window.location.href);
+    if (value) url.searchParams.set(key, value);
+    else url.searchParams.delete(key);
+    window.history.replaceState({}, "", url);
   };
   const field = (name: string, placeholder: string, required = true) => <Input name={name} required={required} placeholder={placeholder} data-testid={`input-admin-${name}`} />;
   const adminDenied = [summary.error, users.error, programs.error, pathways.error, cohorts.error, enrollments.error, knowledge.error, audit.error].some(isAdminForbidden);
@@ -173,7 +200,7 @@ export default function Admin() {
   return <div className="space-y-6" aria-labelledby="admin-title">
     <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="font-mono text-xs font-bold tracking-widest text-primary">OPERATIONS · SERVER-AUTHORIZED</p><h1 id="admin-title" className="mt-2 text-3xl font-bold">Admin Control Room</h1><p className="mt-1 text-sm text-muted-foreground">Visibilitas UI bukan otorisasi; setiap aksi diverifikasi oleh server.</p></div><Button variant="outline" onClick={() => client.invalidateQueries()} data-testid="button-refresh-admin"><RefreshCw className="mr-2 h-4 w-4" />Muat ulang</Button></header>
     <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Bagian administrasi">{tabs.map(([id, label]) => <Button key={id} role="tab" aria-selected={tab === id} variant={tab === id ? "default" : "outline"} onClick={() => openTab(id)} data-testid={`button-admin-tab-${id}`}>{label}</Button>)}</div>
-    {tab === "summary" && <OperationalSummary summary={summary} selectedQueue={selectedQueue} onOpenQueue={openQueue} onOpenTab={openTab} />}
+    {tab === "summary" && <OperationalSummary summary={summary} selectedQueue={selectedQueue} filters={queueFilters} onFilterChange={updateQueueFilter} onOpenQueue={openQueue} onOpenTab={openTab} />}
     {tab === "users" && <><Card><CardHeader><CardTitle className="flex items-center gap-2"><Plus className="h-4 w-4" />Tambah pengguna</CardTitle></CardHeader><CardContent><Form {...form}><form onSubmit={form.handleSubmit(submitUser)} className="grid gap-4 md:grid-cols-5"><FormField control={form.control} name="name" render={({ field }) => <FormItem><FormLabel>Nama</FormLabel><FormControl><Input {...field} data-testid="input-admin-user-name" /></FormControl><FormMessage /></FormItem>} /><FormField control={form.control} name="email" render={({ field }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} type="email" data-testid="input-admin-user-email" /></FormControl><FormMessage /></FormItem>} /><FormField control={form.control} name="organization" render={({ field }) => <FormItem><FormLabel>Organisasi</FormLabel><FormControl><Input {...field} data-testid="input-admin-user-organization" /></FormControl><FormMessage /></FormItem>} /><FormField control={form.control} name="clerkUserId" render={({ field }) => <FormItem><FormLabel>Clerk user ID</FormLabel><FormControl><Input {...field} data-testid="input-admin-user-clerk-id" /></FormControl><p className="text-xs text-muted-foreground">ID Clerk untuk binding identitas, bukan credential.</p><FormMessage /></FormItem>} /><div><label className="text-sm font-medium">Peran</label><div className="mt-2 flex flex-wrap gap-3">{roles.map(role => <FormField key={role} control={form.control} name="roles" render={({ field }) => <label className="flex items-center gap-1 text-sm"><Checkbox checked={field.value.includes(role)} onCheckedChange={checked => field.onChange(checked ? [...field.value, role] : field.value.filter(x => x !== role))} data-testid={`checkbox-role-${role}`} />{role}</label>} />)}</div>{form.formState.errors.roles?.message && <p className="mt-1 text-sm text-destructive" role="alert">{form.formState.errors.roles.message}</p>}</div><Button type="submit" disabled={createUser.isPending || rolesMutation.isPending} data-testid="button-create-user">{createUser.isPending ? <Loader2 className="animate-spin" /> : "Simpan pengguna"}</Button></form></Form></CardContent></Card><State loading={users.isLoading} error={users.error} empty={!users.data?.length}><div className="grid gap-3">{users.data?.map(u => <Card key={u.id} data-testid={`row-admin-user-${u.id}`}><CardContent className="flex flex-wrap items-center justify-between gap-3 p-4"><div><strong>{u.name}</strong><p className="text-sm text-muted-foreground">{u.email || "Tanpa email"} · {u.organization || "—"}</p></div><div className="flex items-center gap-2"><Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status}</Badge>{u.roles.map(r => <Badge key={r} variant="outline">{r}</Badge>)}<Button size="sm" variant="outline" onClick={() => setEditing({ kind: "user", item: { ...u } })} data-testid={`button-edit-user-${u.id}`}>Edit</Button><Button size="sm" variant="outline" disabled={u.status === "inactive"} onClick={() => setConfirm({ kind: "user", id: u.id, label: u.name })} data-testid={`button-deactivate-user-${u.id}`}>Nonaktifkan</Button></div></CardContent></Card>)}</div></State></>}
     {tab === "programs" && <EntitySection title="Program baru" onSubmit={e => quickCreate(e, "program")} fields={[field("name", "Nama program"), field("domain", "Domain"), field("description", "Deskripsi")]} loading={programs.isLoading} error={programs.error} items={programs.data?.map(x => ({ ...x, detail: `${x.domain} · ${x.description}`, kind: "program" as const }))} onEdit={x => setEditing({ kind: "program", item: x })} onArchive={x => setConfirm({ kind: "program", id: x.id, label: x.name })} />}
     {tab === "pathways" && <EntitySection title="Pathway baru" onSubmit={e => quickCreate(e, "pathway")} fields={[field("programId", "ID program"), field("name", "Nama"), field("type", "Tipe"), field("outcome", "Outcome")]} loading={pathways.isLoading} error={pathways.error} items={pathways.data?.map(x => ({ ...x, detail: `${x.type} · ${x.outcome}`, kind: "pathway" as const }))} onEdit={x => setEditing({ kind: "pathway", item: x })} onArchive={x => setConfirm({ kind: "pathway", id: x.id, label: x.name })} />}
@@ -201,8 +228,16 @@ type QueueId = "evidence" | "assessment" | "remediation" | "reassessment";
 type SummaryQuery = { data?: AdminOperationalSummary; isLoading: boolean; error: unknown };
 const isQueueId = (value: string | null): value is QueueId => ["evidence", "assessment", "remediation", "reassessment"].includes(value ?? "");
 
-function OperationalSummary({ summary, selectedQueue, onOpenQueue, onOpenTab }: { summary: SummaryQuery; selectedQueue: QueueId | null; onOpenQueue: (queue: QueueId) => void; onOpenTab: (tab: AdminTab) => void }) {
+function OperationalSummary({ summary, selectedQueue, filters, onFilterChange, onOpenQueue, onOpenTab }: { summary: SummaryQuery; selectedQueue: QueueId | null; filters: QueueFilters; onFilterChange: (key: QueueFilterKey, value: string) => void; onOpenQueue: (queue: QueueId) => void; onOpenTab: (tab: AdminTab) => void }) {
   const activeQueue = summary.data?.queues.find(queue => queue.id === selectedQueue);
+  const filterOptions = activeQueue ? {
+    learner: uniqueQueueOptions(activeQueue.items, "learnerId", "learnerName"),
+    pathway: uniqueQueueOptions(activeQueue.items, "pathwayId", "pathwayName"),
+    trainer: uniqueQueueOptions(activeQueue.items, "trainerId", "trainerName", "Belum ditugaskan"),
+    assessor: uniqueQueueOptions(activeQueue.items, "assessorId", "assessorName", "Belum ditugaskan"),
+  } : null;
+  const filteredItems = activeQueue ? filterQueueItems(activeQueue.items, filters) : [];
+  const hasFilters = queueFilterKeys.some(key => filters[key]);
   return <State loading={summary.isLoading} error={summary.error} empty={!summary.data}>
     {summary.data && <div className="space-y-6" data-testid="admin-operational-summary">
       <section aria-labelledby="platform-pulse-title">
@@ -217,10 +252,24 @@ function OperationalSummary({ summary, selectedQueue, onOpenQueue, onOpenTab }: 
         <Card><CardHeader><CardTitle className="flex items-center gap-2"><UsersRound className="h-5 w-5" />Assignment belum lengkap</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-3"><div className="rounded-lg border p-3"><p className="text-sm text-muted-foreground">Tanpa trainer</p><p className="mt-1 text-2xl font-bold">{summary.data.incompleteAssignments.trainer}</p></div><div className="rounded-lg border p-3"><p className="text-sm text-muted-foreground">Tanpa assessor</p><p className="mt-1 text-2xl font-bold">{summary.data.incompleteAssignments.assessor}</p></div></div><Button variant="outline" className="w-full" onClick={() => onOpenTab("enrollments")}>Kelola assignment</Button></CardContent></Card>
       </div>
       <section aria-labelledby="queues-title"><h2 id="queues-title" className="mb-3 text-lg font-semibold">Antrean operasional</h2><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{summary.data.queues.map(queue => <Card key={queue.id} className={selectedQueue === queue.id ? "border-primary" : ""}><CardContent className="p-5"><div className="flex items-start justify-between gap-3"><ClipboardCheck className="h-5 w-5 text-primary" /><Badge variant={queue.count ? "default" : "secondary"}>{queue.count}</Badge></div><h3 className="mt-4 font-semibold">{queue.label}</h3><p className="mt-1 min-h-10 text-xs text-muted-foreground">{queue.description}</p><Button variant="ghost" size="sm" className="mt-3 -ml-3" aria-expanded={selectedQueue === queue.id} onClick={() => onOpenQueue(queue.id)}>Lihat item<ArrowRight className="ml-2 h-4 w-4" /></Button></CardContent></Card>)}</div></section>
-      {activeQueue && <Card data-testid={`admin-queue-detail-${activeQueue.id}`}><CardHeader><CardTitle>{activeQueue.label}</CardTitle><p className="text-sm text-muted-foreground">{activeQueue.description}</p></CardHeader><CardContent>{activeQueue.items.length ? <div className="divide-y">{activeQueue.items.map(item => <article key={item.id} className="grid gap-3 py-4 first:pt-0 last:pb-0 md:grid-cols-[1fr_auto] md:items-center"><div><div className="flex flex-wrap items-center gap-2"><strong>{item.title}</strong><Badge variant="outline">{item.status}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{item.learnerName} · {item.pathwayName}</p><p className="mt-1 text-xs text-muted-foreground">Trainer: {item.trainerName ?? "Belum ditugaskan"} · Assessor: {item.assessorName ?? "Belum ditugaskan"}</p></div><Button size="sm" variant="outline" onClick={() => onOpenTab("enrollments")}>Kelola enrollment</Button></article>)}</div> : <div className="rounded-md border border-dashed p-8 text-center"><p className="font-medium">Antrean ini kosong</p><p className="mt-1 text-sm text-muted-foreground">Tidak ada item yang membutuhkan tindak lanjut saat ini.</p></div>}</CardContent></Card>}
+      {activeQueue && <Card data-testid={`admin-queue-detail-${activeQueue.id}`}><CardHeader><CardTitle>{activeQueue.label}</CardTitle><p className="text-sm text-muted-foreground">{activeQueue.description}</p></CardHeader><CardContent className="space-y-5">{activeQueue.items.length > 0 && filterOptions && <div className="grid gap-3 rounded-lg border bg-muted/20 p-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Filter antrean"><QueueFilter label="Learner" value={filters.learner} options={filterOptions.learner} onChange={value => onFilterChange("learner", value)} /><QueueFilter label="Pathway" value={filters.pathway} options={filterOptions.pathway} onChange={value => onFilterChange("pathway", value)} /><QueueFilter label="Trainer" value={filters.trainer} options={filterOptions.trainer} onChange={value => onFilterChange("trainer", value)} /><QueueFilter label="Assessor" value={filters.assessor} options={filterOptions.assessor} onChange={value => onFilterChange("assessor", value)} /></div>}{filteredItems.length ? <><p className="text-sm text-muted-foreground" aria-live="polite">Menampilkan {filteredItems.length} dari {activeQueue.items.length} item.</p><div className="divide-y">{filteredItems.map(item => <article key={item.id} className="grid gap-3 py-4 first:pt-0 last:pb-0 md:grid-cols-[1fr_auto] md:items-center"><div><div className="flex flex-wrap items-center gap-2"><strong>{item.title}</strong><Badge variant="outline">{item.status}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{item.learnerName} · {item.pathwayName}</p><p className="mt-1 text-xs text-muted-foreground">Trainer: {item.trainerName ?? "Belum ditugaskan"} · Assessor: {item.assessorName ?? "Belum ditugaskan"}</p></div><Button size="sm" variant="outline" onClick={() => onOpenTab("enrollments")}>Kelola enrollment</Button></article>)}</div></> : <div className="rounded-md border border-dashed p-8 text-center" role="status"><p className="font-medium">{hasFilters ? "Tidak ada item yang cocok" : "Antrean ini kosong"}</p><p className="mt-1 text-sm text-muted-foreground">{hasFilters ? "Ubah atau hapus filter untuk melihat item antrean lainnya." : "Tidak ada item yang membutuhkan tindak lanjut saat ini."}</p>{hasFilters && <Button variant="outline" size="sm" className="mt-4" onClick={() => queueFilterKeys.forEach(key => onFilterChange(key, ""))}>Hapus semua filter</Button>}</div>}</CardContent></Card>}
       <Card><CardHeader><CardTitle>Tindakan berikutnya</CardTitle></CardHeader><CardContent>{summary.data.actions.length ? <div className="divide-y">{summary.data.actions.map(action => <div key={action.id} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-3"><Badge variant={action.urgency === "critical" ? "destructive" : action.urgency === "attention" ? "default" : "secondary"} className="h-fit">{action.count}</Badge><div><p className="font-medium">{action.label}</p><p className="text-sm text-muted-foreground">{action.description}</p></div></div><Button size="sm" variant="outline" onClick={() => action.id.startsWith("resolve-") ? onOpenQueue(action.id.replace("resolve-", "") as QueueId) : onOpenTab(action.targetTab)}>Buka</Button></div>)}</div> : <p className="text-sm text-muted-foreground">Tidak ada tindakan mendesak. Semua assignment dan antrean lifecycle dalam kondisi bersih.</p>}</CardContent></Card>
     </div>}
   </State>;
+}
+
+function uniqueQueueOptions<T, IdKey extends keyof T, LabelKey extends keyof T>(items: T[], idKey: IdKey, labelKey: LabelKey, nullLabel?: string) {
+  const options = new Map<string, string>();
+  for (const item of items) {
+    const rawId = item[idKey];
+    if (rawId === null && nullLabel) options.set("unassigned", nullLabel);
+    else if (typeof rawId === "string") options.set(rawId, typeof item[labelKey] === "string" ? item[labelKey] as string : rawId);
+  }
+  return [...options].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, "id"));
+}
+
+function QueueFilter({ label, value, options, onChange }: { label: string; value: string; options: Array<{ value: string; label: string }>; onChange: (value: string) => void }) {
+  return <label className="grid gap-1 text-sm"><span className="font-medium">{label}</span><select value={value} onChange={event => onChange(event.target.value)} className="h-10 rounded-md border bg-background px-3" data-testid={`filter-queue-${label.toLowerCase()}`}><option value="">Semua {label.toLowerCase()}</option>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
 }
 
 function AudienceSelector({ selected = ["learner", "trainer", "assessor", "admin"] }: { selected?: string[] }) {
