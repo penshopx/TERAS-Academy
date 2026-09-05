@@ -66,6 +66,16 @@ export function filterQueueItems<T extends { learnerId: string; pathwayId: strin
   );
 }
 
+export function validateQueueFilters<T extends { learnerId: string; pathwayId: string; trainerId: string | null; assessorId: string | null }>(items: T[], filters: QueueFilters) {
+  const available = {
+    learner: new Set(items.map(item => item.learnerId)),
+    pathway: new Set(items.map(item => item.pathwayId)),
+    trainer: new Set(items.map(item => item.trainerId ?? "unassigned")),
+    assessor: new Set(items.map(item => item.assessorId ?? "unassigned")),
+  };
+  return Object.fromEntries(queueFilterKeys.map(key => [key, !filters[key] || available[key].has(filters[key]) ? filters[key] : ""])) as QueueFilters;
+}
+
 const auditEntityLabels: Record<string, string> = {
   user: "pengguna",
   program: "program",
@@ -131,6 +141,17 @@ export default function Admin() {
     window.addEventListener("popstate", restoreQueueState);
     return () => window.removeEventListener("popstate", restoreQueueState);
   }, []);
+  useEffect(() => {
+    const activeQueue = summary.data?.queues.find(queue => queue.id === selectedQueue);
+    if (!activeQueue) return;
+    const validated = validateQueueFilters(activeQueue.items, queueFilters);
+    const invalidKeys = queueFilterKeys.filter(key => validated[key] !== queueFilters[key]);
+    if (!invalidKeys.length) return;
+    setQueueFilters(validated);
+    const url = new URL(window.location.href);
+    invalidKeys.forEach(key => url.searchParams.delete(key));
+    window.history.replaceState({}, "", url);
+  }, [queueFilters, selectedQueue, summary.data]);
   const invalidate = (...keys: ReadonlyArray<readonly unknown[]>) => Promise.all(keys.map((queryKey) => client.invalidateQueries({ queryKey })));
   const saved = (message: string) => toast({ title: "Tersimpan", description: message });
   const form = useForm<UserForm>({ resolver: zodResolver(userSchema), defaultValues: { name: "", email: "", organization: "", clerkUserId: "", roles: ["learner"] } });

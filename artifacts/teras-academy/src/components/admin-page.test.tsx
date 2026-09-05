@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adminErrorMessage, filterQueueItems, isAdminForbidden, queueStateFromSearch, shouldEnableAdminQueries } from "../pages/admin";
+import { adminErrorMessage, filterQueueItems, isAdminForbidden, queueStateFromSearch, shouldEnableAdminQueries, validateQueueFilters } from "../pages/admin";
 
 test("admin conflict errors provide an actionable accessible message", () => {
   assert.equal(
@@ -36,9 +36,25 @@ test("queue filters combine available operational context safely", () => {
 });
 
 test("queue links restore the selected detail and filters from the URL", () => {
-  assert.deepEqual(queueStateFromSearch("?queue=remediation&learner=learner-a&trainer=unassigned"), {
+  const restored = queueStateFromSearch("?queue=remediation&learner=learner-a&trainer=unassigned");
+  assert.deepEqual(restored, {
     selectedQueue: "remediation",
     filters: { learner: "learner-a", pathway: "", trainer: "unassigned", assessor: "" },
+  });
+  assert.deepEqual(validateQueueFilters([
+    { learnerId: "learner-a", pathwayId: "path-a", trainerId: null, assessorId: "assessor-a" },
+  ], restored.filters), restored.filters);
+});
+
+test("switching queues through the URL clears filters unavailable in the active queue", () => {
+  const restored = queueStateFromSearch("?queue=assessment&learner=learner-from-remediation&trainer=trainer-a&assessor=unassigned");
+  assert.deepEqual(validateQueueFilters([
+    { learnerId: "learner-assessment", pathwayId: "path-a", trainerId: "trainer-a", assessorId: "assessor-a" },
+  ], restored.filters), {
+    learner: "",
+    pathway: "",
+    trainer: "trainer-a",
+    assessor: "",
   });
 });
 
