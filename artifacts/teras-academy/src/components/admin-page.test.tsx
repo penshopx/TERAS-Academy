@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adminErrorMessage, filterQueueItems, isAdminForbidden } from "../pages/admin";
+import { adminErrorMessage, filterQueueItems, isAdminForbidden, queueStateFromSearch } from "../pages/admin";
 
 test("admin conflict errors provide an actionable accessible message", () => {
   assert.equal(
@@ -26,4 +26,22 @@ test("queue filters combine available operational context safely", () => {
   assert.deepEqual(filterQueueItems(items, { learner: "learner-a", pathway: "path-a", trainer: "trainer-a", assessor: "unassigned" }).map(item => item.id), ["one"]);
   assert.deepEqual(filterQueueItems(items, { learner: "", pathway: "", trainer: "unassigned", assessor: "" }).map(item => item.id), ["two"]);
   assert.deepEqual(filterQueueItems(items, { learner: "unknown", pathway: "", trainer: "", assessor: "" }), []);
+});
+
+test("queue links restore the selected detail and filters from the URL", () => {
+  assert.deepEqual(queueStateFromSearch("?queue=remediation&learner=learner-a&trainer=unassigned"), {
+    selectedQueue: "remediation",
+    filters: { learner: "learner-a", pathway: "", trainer: "unassigned", assessor: "" },
+  });
+});
+
+test("stale or missing queue links clear the selected detail safely", () => {
+  assert.deepEqual(queueStateFromSearch("?queue=unknown&assessor=assessor-a"), {
+    selectedQueue: null,
+    filters: { learner: "", pathway: "", trainer: "", assessor: "assessor-a" },
+  });
+  assert.deepEqual(queueStateFromSearch(""), {
+    selectedQueue: null,
+    filters: { learner: "", pathway: "", trainer: "", assessor: "" },
+  });
 });
