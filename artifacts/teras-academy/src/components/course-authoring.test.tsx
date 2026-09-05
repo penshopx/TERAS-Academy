@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
 import {
   getListAuthoredCourseVersionsQueryKey,
   getListCourseAuthoringAuditQueryKey,
@@ -13,9 +13,11 @@ import {
 } from "@workspace/api-client-react";
 import {
   HistoryRefreshWarning,
+  HistoryRefreshStatus,
   PublishedVersionHistory,
   PublishSuccessMessage,
   publishAuthoredCourseAndRefresh,
+  refreshAuthoringHistory,
 } from "./trainer/authoring/validation-panel";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -111,6 +113,50 @@ test("history refresh warning says publish succeeded and asks the trainer to rel
   assert.match(markup, /Course published, but History could not be refreshed\./);
   assert.match(markup, /Open History and try reloading it/);
   assert.match(markup, /data-testid="alert-history-refresh-failed"/);
+});
+
+test("manual History refresh refetches both version and audit queries", async () => {
+  const courseId = "course-1";
+  const refetchedKeys: QueryKey[] = [];
+
+  const result = await refreshAuthoringHistory({
+    courseId,
+    refetchQueries: async queryKey => {
+      refetchedKeys.push(queryKey);
+    },
+  });
+
+  assert.equal(result.failed, false);
+  assert.deepEqual(refetchedKeys, [
+    getListAuthoredCourseVersionsQueryKey(courseId),
+    getListCourseAuthoringAuditQueryKey(courseId),
+  ]);
+});
+
+test("manual History refresh reports a partial refetch failure", async () => {
+  const courseId = "course-1";
+  const failedKey = getListCourseAuthoringAuditQueryKey(courseId);
+  const result = await refreshAuthoringHistory({
+    courseId,
+    refetchQueries: async queryKey => {
+      if (JSON.stringify(queryKey) === JSON.stringify(failedKey)) {
+        throw new Error("Audit history unavailable");
+      }
+    },
+  });
+
+  assert.equal(result.failed, true);
+});
+
+test("History refresh status is accessible while refreshing and after failure", () => {
+  const refreshing = renderToStaticMarkup(<HistoryRefreshStatus isRefreshing failed={false} />);
+  const failed = renderToStaticMarkup(<HistoryRefreshStatus isRefreshing={false} failed />);
+
+  assert.match(refreshing, /aria-live="polite"/);
+  assert.match(refreshing, /Refreshing History\./);
+  assert.match(failed, /role="alert"/);
+  assert.match(failed, /History could not be refreshed\./);
+  assert.match(failed, /Try again\./);
 });
 
 test("published version history displays the authoring revision returned by the API", () => {

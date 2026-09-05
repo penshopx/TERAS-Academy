@@ -1,5 +1,5 @@
 import { CourseVersion, usePublishAuthoredCourse, getListAuthoredCoursesQueryKey, getPreviewAuthoredCourseQueryKey, useValidateAuthoredCourse, useListAuthoredCourseVersions, useListCourseAuthoringAudit, getListAuthoredCourseVersionsQueryKey, getListCourseAuthoringAuditQueryKey, getValidateAuthoredCourseQueryKey } from "@workspace/api-client-react";
-import { AlertCircle, CheckCircle2, AlertTriangle, Send, Clock, History } from "lucide-react";
+import { AlertCircle, CheckCircle2, AlertTriangle, Send, Clock, History, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { QueryKey } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,6 +22,22 @@ interface PublishAndRefreshDependencies {
 interface PublishAndRefreshResult {
   version: CourseVersion;
   historyRefreshFailed: boolean;
+}
+
+interface RefreshAuthoringHistoryDependencies {
+  courseId: string;
+  refetchQueries: (queryKey: QueryKey) => Promise<unknown>;
+}
+
+export async function refreshAuthoringHistory({
+  courseId,
+  refetchQueries,
+}: RefreshAuthoringHistoryDependencies): Promise<{ failed: boolean }> {
+  const results = await Promise.allSettled([
+    refetchQueries(getListAuthoredCourseVersionsQueryKey(courseId)),
+    refetchQueries(getListCourseAuthoringAuditQueryKey(courseId)),
+  ]);
+  return { failed: results.some(result => result.status === "rejected") };
 }
 
 export async function publishAuthoredCourseAndRefresh({
@@ -59,6 +75,22 @@ export function HistoryRefreshWarning() {
   );
 }
 
+export function HistoryRefreshStatus({ isRefreshing, failed }: { isRefreshing: boolean; failed: boolean }) {
+  return (
+    <div aria-live="polite">
+      <p className="sr-only" data-testid="status-history-refresh">
+        {isRefreshing ? "Refreshing History." : failed ? "History refresh failed." : "History is up to date."}
+      </p>
+      {failed && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3" role="alert" data-testid="alert-manual-history-refresh-failed">
+          <p className="text-xs font-semibold text-destructive">History could not be refreshed.</p>
+          <p className="mt-1 text-[10px] text-muted-foreground">Your current course and History view are unchanged. Try again.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PublishedVersionHistory({ versions }: { versions: CourseVersion[] | undefined }) {
   return (
     <div className="space-y-2">
@@ -86,10 +118,28 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [publishedVersion, setPublishedVersion] = useState<CourseVersion | null>(null);
   const [historyRefreshFailed, setHistoryRefreshFailed] = useState(false);
+  const [manualHistoryRefreshFailed, setManualHistoryRefreshFailed] = useState(false);
 
   const { data: validation } = useValidateAuthoredCourse(courseId, { query: { enabled: !!courseId, queryKey: getValidateAuthoredCourseQueryKey(courseId) } });
-  const { data: versions } = useListAuthoredCourseVersions(courseId, { query: { enabled: !!courseId, queryKey: getListAuthoredCourseVersionsQueryKey(courseId) } });
-  const { data: auditEvents } = useListCourseAuthoringAudit(courseId, { query: { enabled: !!courseId, queryKey: getListCourseAuthoringAuditQueryKey(courseId) } });
+  const versionsQuery = useListAuthoredCourseVersions(courseId, { query: { enabled: !!courseId, queryKey: getListAuthoredCourseVersionsQueryKey(courseId) } });
+  const auditQuery = useListCourseAuthoringAudit(courseId, { query: { enabled: !!courseId, queryKey: getListCourseAuthoringAuditQueryKey(courseId) } });
+  const { data: versions } = versionsQuery;
+  const { data: auditEvents } = auditQuery;
+  const historyRefreshing = versionsQuery.isFetching || auditQuery.isFetching;
+  const historyLoading = (versionsQuery.isLoading || auditQuery.isLoading) && !versions && !auditEvents;
+  const historyQueryFailed = versionsQuery.isError || auditQuery.isError;
+
+  const handleHistoryRefresh = async () => {
+    setManualHistoryRefreshFailed(false);
+    const result = await refreshAuthoringHistory({
+      courseId,
+      refetchQueries: queryKey => queryClient.refetchQueries(
+        { queryKey, exact: true },
+        { throwOnError: true },
+      ),
+    });
+    setManualHistoryRefreshFailed(result.failed);
+  };
 
   const handlePublish = async () => {
     try {
@@ -210,7 +260,35 @@ export function ValidationPanel({ courseId }: ValidationPanelProps) {
 
         <TabsContent value="history" className="mt-0 flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar min-h-0">
-            
+            <div className="flex items-center justify-between gap-3 border-b border-border/50 pb-3">
+              <div>
+                <p className="text-xs font-semibold text-foreground">Course History</p>
+                <p className="text-[10px] text-muted-foreground">Refresh versions and audit activity without leaving this course.</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleHistoryRefresh}
+                disabled={historyRefreshing}
+                aria-label={historyRefreshing ? "Refreshing course History" : "Refresh course History"}
+                data-testid="button-refresh-history"
+              >
+                <RefreshCw className={`mr-2 h-3.5 w-3.5 ${historyRefreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+                {historyRefreshing ? "Refreshing..." : "Refresh"}
+              </Button>
+            </div>
+
+            <HistoryRefreshStatus
+              isRefreshing={historyRefreshing}
+              failed={manualHistoryRefreshFailed || historyQueryFailed}
+            />
+            {historyLoading && (
+              <p className="py-6 text-center text-xs text-muted-foreground font-mono" data-testid="history-loading">
+                Loading History...
+              </p>
+            )}
+
             <div className="space-y-2">
               <h4 className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest flex items-center gap-2 border-b border-border/50 pb-2">
                 <History className="w-3.5 h-3.5" /> PUBLISHED VERSIONS
