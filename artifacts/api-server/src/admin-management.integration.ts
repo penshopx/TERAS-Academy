@@ -2,12 +2,14 @@ import { createIntegrationTestApp } from "./integration-test-app";
 import { adminAuditEventsTable, cohortsTable, db, enrollmentsTable, pathwaysTable, peopleTable, personRolesTable, programsTable } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { updateManagedUser } from "@workspace/db/admin-membership";
+import { ensureConfiguredBootstrapAdmin } from "./lib/authorization";
 
 const suffix = crypto.randomUUID();
 const ids = {
   learner: `admin-learner-${suffix}`, trainer: `admin-trainer-${suffix}`,
   administrator: `admin-administrator-${suffix}`,
   controlAdministrator: `admin-control-administrator-${suffix}`,
+  bootstrapAdministrator: `bootstrap-admin-bootstrap-${suffix}`,
   program: `admin-program-${suffix}`, otherProgram: `admin-other-program-${suffix}`,
   pathway: `admin-path-${suffix}`, otherPathway: `admin-other-path-${suffix}`,
   cohort: `admin-cohort-${suffix}`, otherCohort: `admin-other-cohort-${suffix}`,
@@ -63,6 +65,58 @@ async function run() {
       directServiceOutcome.kind === "last_admin",
       "A direct job/script service call must not deactivate the final active administrator",
     );
+    const bootstrapClerkUserId = `bootstrap-${suffix}`;
+    const previousBootstrapAdmin = process.env.TERAS_BOOTSTRAP_ADMIN_CLERK_USER_ID;
+    process.env.TERAS_BOOTSTRAP_ADMIN_CLERK_USER_ID = bootstrapClerkUserId;
+    await db.insert(peopleTable).values({
+      id: ids.bootstrapAdministrator,
+      name: "Pending Bootstrap Administrator",
+      initials: "BA",
+      role: "Learner",
+      email: `${ids.bootstrapAdministrator}@example.test`,
+      organization: null,
+      clerkUserId: bootstrapClerkUserId,
+      status: "inactive",
+      createdBy: `admin-${suffix}`,
+    });
+    await db.insert(personRolesTable).values({
+      personId: ids.bootstrapAdministrator,
+      role: "learner",
+      createdBy: `admin-${suffix}`,
+    });
+    try {
+      const bootstrapRace = await Promise.all([
+        ensureConfiguredBootstrapAdmin(bootstrapClerkUserId),
+        updateManagedUser(
+          activeFixtureAdmins[0].id,
+          { status: "inactive" },
+          { clerkUserId: `admin-${suffix}`, personId: null },
+          { activeAdminFixtureIds: [activeFixtureAdmins[0].id, ids.bootstrapAdministrator] },
+        ),
+      ]);
+      assert(
+        bootstrapRace[1].kind === "updated" || bootstrapRace[1].kind === "last_admin",
+        "Concurrent bootstrap race must complete through the guarded admin service",
+      );
+      const activeAdminsAfterBootstrapRace = await db.select({ id: peopleTable.id })
+        .from(peopleTable)
+        .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+        .where(and(
+          inArray(peopleTable.id, [activeFixtureAdmins[0].id, ids.bootstrapAdministrator]),
+          eq(peopleTable.status, "active"),
+          eq(personRolesTable.role, "admin"),
+        ));
+      assert(
+        activeAdminsAfterBootstrapRace.length >= 1,
+        "Bootstrap and final-admin revocation must share one transaction lock and leave an active administrator",
+      );
+    } finally {
+      if (previousBootstrapAdmin === undefined) {
+        delete process.env.TERAS_BOOTSTRAP_ADMIN_CLERK_USER_ID;
+      } else {
+        process.env.TERAS_BOOTSTRAP_ADMIN_CLERK_USER_ID = previousBootstrapAdmin;
+      }
+    }
     response = await request(`/admin/users/${ids.learner}`, { status: "inactive" }, "PATCH");
     assert(response.status === 200 && (await response.json() as any).status === "inactive", "Admin did not deactivate user");
     response = await request(`/admin/users/${ids.learner}/roles`, { roles: ["learner", "assessor"] }, "PUT");
@@ -105,8 +159,8 @@ async function run() {
     await db.delete(cohortsTable).where(inArray(cohortsTable.id, [ids.cohort, ids.otherCohort]));
     await db.delete(pathwaysTable).where(inArray(pathwaysTable.id, [ids.pathway, ids.otherPathway]));
     await db.delete(programsTable).where(inArray(programsTable.id, [ids.program, ids.otherProgram]));
-    await db.delete(personRolesTable).where(inArray(personRolesTable.personId, [ids.learner, ids.trainer, ids.administrator, ids.controlAdministrator]));
-    await db.delete(peopleTable).where(inArray(peopleTable.id, [ids.learner, ids.trainer, ids.administrator, ids.controlAdministrator]));
+    await db.delete(personRolesTable).where(inArray(personRolesTable.personId, [ids.learner, ids.trainer, ids.administrator, ids.controlAdministrator, ids.bootstrapAdministrator]));
+    await db.delete(peopleTable).where(inArray(peopleTable.id, [ids.learner, ids.trainer, ids.administrator, ids.controlAdministrator, ids.bootstrapAdministrator]));
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 }

@@ -35,7 +35,7 @@ export type KnowledgeRole = "admin" | "trainer" | "assessor" | "learner";
 export type KnowledgeActor = { clerkUserId: string; roles: KnowledgeRole[] };
 export type CurrentSession = { personId: string; name: string; roles: KnowledgeRole[] };
 
-async function ensureConfiguredBootstrapAdmin(userId: string): Promise<void> {
+export async function ensureConfiguredBootstrapAdmin(userId: string): Promise<void> {
   if (process.env.TERAS_BOOTSTRAP_ADMIN_CLERK_USER_ID !== userId) return;
   await ensureConfiguredAdmin(userId);
 }
