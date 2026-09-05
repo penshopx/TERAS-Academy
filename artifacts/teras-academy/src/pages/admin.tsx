@@ -36,6 +36,31 @@ export function adminErrorMessage(error: unknown) {
 export function isAdminForbidden(error: unknown) {
   return (error as { status?: number } | undefined)?.status === 403;
 }
+
+const auditEntityLabels: Record<string, string> = {
+  user: "pengguna",
+  program: "program",
+  pathway: "pathway",
+  cohort: "cohort",
+  enrollment: "enrollment",
+  knowledge: "artikel knowledge",
+};
+
+function auditDescription(action: string, entityType: string) {
+  const entity = auditEntityLabels[entityType] ?? "data";
+  if (action === "create") return `${entity[0].toUpperCase()}${entity.slice(1)} baru dibuat`;
+  if (action === "update") return `Informasi ${entity} diperbarui`;
+  if (action === "replace_roles") return "Peran dan hak akses pengguna diperbarui";
+  if (action === "publish") return `${entity[0].toUpperCase()}${entity.slice(1)} dipublikasikan`;
+  return `Perubahan pada ${entity}`;
+}
+
+function auditTime(value: string | Date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "medium",
+  }).format(new Date(value));
+}
 function State({ loading, error, empty, children }: { loading: boolean; error: unknown; empty: boolean; children: ReactNode }) {
   if (loading) return <div className="flex min-h-32 items-center gap-2 text-muted-foreground" role="status" aria-live="polite"><Loader2 className="h-4 w-4 animate-spin" /> Memuat data operasional…</div>;
   if (error) return <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive" role="alert">{adminErrorMessage(error)}</div>;
@@ -134,7 +159,7 @@ export default function Admin() {
     {tab === "cohorts" && <EntitySection title="Cohort baru" onSubmit={e => quickCreate(e, "cohort")} fields={[field("programId", "ID program"), field("name", "Nama cohort"), <Input key="startsOn" name="startsOn" type="date" data-testid="input-admin-startsOn" />, <Input key="endsOn" name="endsOn" type="date" data-testid="input-admin-endsOn" />]} loading={cohorts.isLoading} error={cohorts.error} items={cohorts.data?.map(x => ({ ...x, detail: `${x.startsOn || "—"} sampai ${x.endsOn || "—"}`, kind: "cohort" as const }))} onEdit={x => setEditing({ kind: "cohort", item: x })} onArchive={x => setConfirm({ kind: "cohort", id: x.id, label: x.name })} />}
     {tab === "enrollments" && <><EntitySection title="Enrollment baru" onSubmit={e => quickCreate(e, "enrollment")} fields={["learnerId", "programId", "pathwayId", "trainerId", "assessorId", "cohortId"].map(n => field(n, `ID ${n.replace("Id", "")}`, ["trainerId", "assessorId", "cohortId"].includes(n) === false))} loading={enrollments.isLoading} error={enrollments.error} items={enrollments.data?.map(x => ({ ...x, name: x.learnerId, detail: `Program ${x.programId} · Pathway ${x.pathwayId}`, kind: "enrollment" as const }))} onEdit={x => setEditing({ kind: "enrollment", item: x })} onArchive={x => setConfirm({ kind: "enrollment", id: x.id, label: x.name })} /></>}
     {tab === "knowledge" && <><Card><CardHeader><CardTitle>Artikel knowledge baru</CardTitle></CardHeader><CardContent><form onSubmit={createArticle} className="grid gap-3"><select name="category" className="h-10 rounded-md border bg-background px-3" defaultValue="help"><option value="help">Help Desk</option><option value="energy">TERAS & Energi</option></select><Input name="title" required placeholder="Judul artikel" /><textarea name="body" required placeholder="Isi panduan terkurasi" className="min-h-28 rounded-md border bg-background p-3 text-sm" /><AudienceSelector /><Button type="submit" disabled={createKnowledge.isPending}>Simpan draft</Button></form></CardContent></Card><State loading={knowledge.isLoading} error={knowledge.error} empty={!knowledge.data?.length}><div className="grid gap-3">{knowledge.data?.map(article => <Card key={article.id}><CardContent className="flex flex-wrap items-center justify-between gap-3 p-4"><div><strong>{article.title}</strong><p className="text-sm text-muted-foreground">{article.category} · v{article.version} · {article.status} · {article.audience.join(", ")}</p></div><div className="flex gap-2"><Button size="sm" variant="outline" disabled={article.status === "archived"} onClick={() => setEditing({ kind: "knowledge", item: { ...article } })}>Edit</Button><Button size="sm" disabled={article.status !== "draft" || publishKnowledge.isPending} onClick={() => publishKnowledge.mutate({ articleId: article.id }, { onSuccess: () => { invalidate(getListAdminKnowledgeArticlesQueryKey(), getListAdminAuditEventsQueryKey()); saved("Artikel diterbitkan."); }, onError: error => toast({ variant: "destructive", title: "Gagal menerbitkan", description: adminErrorMessage(error) }) })}>Terbitkan</Button></div></CardContent></Card>)}</div></State></>}
-    {tab === "audit" && <State loading={audit.isLoading} error={audit.error} empty={!audit.data?.length}><div className="space-y-2">{audit.data?.map(event => <Card key={event.id} data-testid={`row-audit-${event.id}`}><CardContent className="p-4 text-sm"><strong>{event.action}</strong> · {event.entityType} <span className="text-muted-foreground">oleh {event.actorClerkUserId} · {new Date(event.createdAt).toLocaleString("id-ID")}</span></CardContent></Card>)}</div></State>}
+    {tab === "audit" && <State loading={audit.isLoading} error={audit.error} empty={!audit.data?.length}><div className="space-y-2">{audit.data?.map(event => <Card key={event.id} data-testid={`row-audit-${event.id}`}><CardContent className="p-4"><p className="font-medium">{auditDescription(event.action, event.entityType)}</p><p className="mt-1 text-sm text-muted-foreground">Dilakukan oleh administrator · {auditTime(event.createdAt)}</p></CardContent></Card>)}</div></State>}
     <div aria-live="polite" className="sr-only">{createUser.isPending ? "Menyimpan perubahan" : ""}</div>
     <AlertDialog open={!!confirm} onOpenChange={open => !open && setConfirm(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Konfirmasi perubahan status</AlertDialogTitle><AlertDialogDescription>Anda akan menonaktifkan atau mengarsipkan {confirm?.label}. Aksi ini tercatat dalam audit dan dapat memengaruhi akses aktif.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel data-testid="button-cancel-admin-confirm">Batal</AlertDialogCancel><AlertDialogAction onClick={archive} data-testid="button-confirm-admin-status">Lanjutkan</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     <Dialog open={!!editing} onOpenChange={open => !open && setEditing(null)}><DialogContent className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Edit {editing?.kind}</DialogTitle><DialogDescription>Perubahan diperiksa server dan dicatat pada audit.</DialogDescription></DialogHeader>{editing && <form onSubmit={saveEdit} className="grid gap-4" aria-label={`Edit ${editing.kind}`}>
