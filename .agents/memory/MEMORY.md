@@ -15,3 +15,4 @@
 - [Authoring publish serialization](authoring-publish-serialization.md) — edits and publishes for one course must share a database transaction lock before snapshot reads begin.
 - [App Storage private directory](app-storage-private-directory.md) — normalize PRIVATE_OBJECT_DIR before URL matching because provisioned values may begin with a slash.
 - [Publish-safe database checks](publish-safe-database-checks.md) — publish schema diffs may omit custom functions, so table constraints must be self-contained.
+- [Artifact base-path health](artifact-base-path-health.md) — runnable API artifacts must answer both their base path and configured health path with HTTP 200.
