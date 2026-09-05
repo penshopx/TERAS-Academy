@@ -28,3 +28,8 @@ timeoutMs = 180000
 [nix]
 channel = "stable-25_05"
 packages = ["freetype", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf", "openjpeg", "swig", "xcbuild"]
+
+[userenv]
+
+[userenv.production]
+TERAS_BOOTSTRAP_ADMIN_CLERK_USER_ID = "user_3Iu7i3J2jbRM4ckcFWzGLl1gFgu"

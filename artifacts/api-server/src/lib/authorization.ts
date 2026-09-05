@@ -33,6 +33,40 @@ export type AdminActor = { clerkUserId: string; personId: string | null };
 export type KnowledgeRole = "admin" | "trainer" | "assessor" | "learner";
 export type KnowledgeActor = { clerkUserId: string; roles: KnowledgeRole[] };
 
+async function ensureConfiguredBootstrapAdmin(userId: string): Promise<void> {
+  if (process.env.TERAS_BOOTSTRAP_ADMIN_CLERK_USER_ID !== userId) return;
+
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('teras-admin-bootstrap'))`);
+    let [person] = await tx.select({ id: peopleTable.id }).from(peopleTable)
+      .where(eq(peopleTable.clerkUserId, userId))
+      .limit(1);
+
+    if (!person) {
+      [person] = await tx.insert(peopleTable).values({
+        id: `bootstrap-admin-${userId}`,
+        name: "TERAS Administrator",
+        initials: "TA",
+        role: "Administrator",
+        organization: "TERAS Academy",
+        clerkUserId: userId,
+        status: "active",
+        createdBy: "configured-admin-bootstrap",
+      }).returning({ id: peopleTable.id });
+    } else {
+      await tx.update(peopleTable)
+        .set({ status: "active", role: "Administrator", organization: "TERAS Academy" })
+        .where(eq(peopleTable.id, person.id));
+    }
+
+    await tx.insert(personRolesTable).values({
+      personId: person.id,
+      role: "admin",
+      createdBy: "configured-admin-bootstrap",
+    }).onConflictDoNothing();
+  });
+}
+
 /** Authenticated, local-role-derived visibility scope for assistant content. */
 export async function authorizeKnowledgeActor(req: Request, res: Response): Promise<KnowledgeActor | null> {
   const identity = integrationIdentity(req);
@@ -68,6 +102,7 @@ export async function authorizeAdmin(req: Request, res: Response): Promise<Admin
     res.status(401).json({ error: "Authentication required" });
     return null;
   }
+  await ensureConfiguredBootstrapAdmin(userId);
   const [assignment] = await db.select({ personId: peopleTable.id }).from(peopleTable)
     .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
     .where(and(eq(peopleTable.clerkUserId, userId), eq(peopleTable.status, "active"), eq(personRolesTable.role, "admin")))

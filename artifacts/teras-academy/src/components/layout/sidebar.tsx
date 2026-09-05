@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk, useUser } from "@clerk/react";
+import { getListAdminUsersQueryKey, useListAdminUsers } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { 
@@ -30,6 +31,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
   const { signOut } = useClerk();
   const { user } = useUser();
+  const adminAccess = useListAdminUsers({
+    query: {
+      enabled: Boolean(user),
+      queryKey: getListAdminUsersQueryKey(),
+      retry: false,
+      staleTime: 60_000,
+    },
+  });
+  const isAdmin = adminAccess.isSuccess;
   const displayName = user?.fullName || user?.primaryEmailAddress?.emailAddress || "Learner";
   const initials = displayName
     .split(/\s+/)
@@ -49,7 +59,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-2 space-y-6">
-        <div>
+        {!isAdmin && <div>
           <h2 className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-3 px-2">Learner</h2>
           <nav className="space-y-1">
             {NAV_ITEMS.map((item) => {
@@ -74,9 +84,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               );
             })}
           </nav>
-        </div>
+        </div>}
 
-        <div>
+        {!isAdmin && <div>
           <h2 className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-3 px-2">Staff</h2>
           <nav className="space-y-1">
             {STAFF_ITEMS.map((item) => {
@@ -101,9 +111,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               );
             })}
           </nav>
-        </div>
+        </div>}
 
-        <div>
+        {isAdmin && <div>
             <h2 className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-3 px-2">Administration</h2>
             <nav className="space-y-1">
               <Link
@@ -121,7 +131,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 Admin Control Room (akses server)
               </Link>
             </nav>
-          </div>
+          </div>}
       </div>
 
       <div className="p-4 border-t border-sidebar-border mt-auto shrink-0">
