@@ -23,6 +23,9 @@ async function run() {
   const base = `http://127.0.0.1:${address.port}/api`;
   const request = async (path: string, body?: unknown, method = "POST") => fetch(`${base}${path}`, { method, headers: { "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
   try {
+    const existingActiveAdmins = await db.select({ id: peopleTable.id }).from(peopleTable)
+      .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+      .where(sql`${peopleTable.status} = 'active' and ${personRolesTable.role} = 'admin'`);
     for (const [id, name, roles] of [[ids.learner, "Managed Learner", ["learner"]], [ids.trainer, "Managed Trainer", ["trainer"]]] as const) {
       const response = await request("/admin/users", { id, name, initials: name.slice(0, 2), email: `${id}@example.test`, organization: null, clerkUserId: null, status: "active", roles });
       assert(response.status === 201, `Admin user create failed: ${await response.text()}`);
@@ -30,7 +33,12 @@ async function run() {
     let response = await request("/admin/users", { id: ids.administrator, name: "Sole Managed Admin", initials: "SA", email: `${ids.administrator}@example.test`, organization: null, clerkUserId: null, status: "active", roles: ["admin"] });
     assert(response.status === 201, `Admin bootstrap fixture failed: ${await response.text()}`);
     response = await request(`/admin/users/${ids.administrator}/roles`, { roles: ["learner"] }, "PUT");
-    assert(response.status === 409, "Removing the last active admin must return 409");
+    assert(
+      response.status === (existingActiveAdmins.length === 0 ? 409 : 200),
+      existingActiveAdmins.length === 0
+        ? "Removing the last active admin must return 409"
+        : "Removing a test admin must remain allowed when another active admin exists",
+    );
     response = await request(`/admin/users/${ids.learner}`, { status: "inactive" }, "PATCH");
     assert(response.status === 200 && (await response.json() as any).status === "inactive", "Admin did not deactivate user");
     response = await request(`/admin/users/${ids.learner}/roles`, { roles: ["learner", "assessor"] }, "PUT");
