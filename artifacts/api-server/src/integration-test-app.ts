@@ -19,6 +19,11 @@ export type IntegrationResponseControl = {
    * database work, but before a response body is sent to the browser.
    */
   dropResponseAfterCommit?: (request: Request, body: unknown) => boolean;
+  /**
+   * Limits last-admin safeguards to these fixture people. This is injected
+   * in-process so integration tests never need to alter pre-existing admins.
+   */
+  activeAdminFixtureIds?: readonly string[];
 };
 
 /**
@@ -39,6 +44,11 @@ export function createIntegrationTestApp(
       testAuthorizationIdentity
     ] = resolveIdentity(req);
     Object.assign(req, { log: logger });
+    if (responseControl.activeAdminFixtureIds) {
+      Object.assign(req, {
+        integrationActiveAdminFixtureIds: responseControl.activeAdminFixtureIds,
+      });
+    }
     next();
   });
   app.use((req, res, next) => {

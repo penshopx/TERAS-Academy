@@ -2,7 +2,7 @@
 // types; runtime operations are constrained by the generated Zod contracts.
 // @ts-nocheck
 import { Router, type IRouter } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   CreateAdminCohortBody, CreateAdminCohortResponse, CreateAdminEnrollmentBody, CreateAdminEnrollmentResponse,
   CreateAdminPathwayBody, CreateAdminPathwayResponse, CreateAdminProgramBody, CreateAdminProgramResponse,
@@ -33,7 +33,19 @@ const parsed = <T>(schema: { safeParse(value: unknown): { success: boolean; data
 async function audit(tx: any, actor: AdminActor, action: string, entityType: string, entityId: string, before: unknown, after: unknown) {
   await tx.insert(adminAuditEventsTable).values({ id: crypto.randomUUID(), actorPersonId: actor.personId, actorClerkUserId: actor.clerkUserId, action, entityType, entityId, before, after, createdBy: actor.clerkUserId });
 }
-async function activeAdminCount() { return (await db.select({ id: peopleTable.id }).from(peopleTable).innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id)).where(and(eq(peopleTable.status, "active"), eq(personRolesTable.role, "admin")))).length; }
+async function activeAdminCount(req?: { integrationActiveAdminFixtureIds?: readonly string[] }) {
+  const fixtureIds = process.env.NODE_ENV === "test"
+    ? req?.integrationActiveAdminFixtureIds
+    : undefined;
+  return (await db.select({ id: peopleTable.id })
+    .from(peopleTable)
+    .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+    .where(and(
+      eq(peopleTable.status, "active"),
+      eq(personRolesTable.role, "admin"),
+      fixtureIds ? inArray(peopleTable.id, [...fixtureIds]) : undefined,
+    ))).length;
+}
 async function user(id: string) {
   const [person] = await db.select().from(peopleTable).where(eq(peopleTable.id, id)); if (!person) return null;
   const roles = await db.select({ role: personRolesTable.role }).from(personRolesTable).where(eq(personRolesTable.personId, id));
@@ -144,8 +156,8 @@ router.get("/admin/summary", async (req, res): Promise<void> => {
 });
 router.get("/admin/users", async (req, res): Promise<void> => { if (!await authorizeAdmin(req, res)) return; const people = await db.select().from(peopleTable); res.json(ListAdminUsersResponse.parse((await Promise.all(people.map(p => user(p.id)))).filter(Boolean))); });
 router.post("/admin/users", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); if (!actor) return; const input = parsed(CreateAdminUserBody, req.body, res); if (!input) return; try { const value = await db.transaction(async tx => { await tx.insert(peopleTable).values({ ...input, role: input.roles[0], createdBy: actor.clerkUserId }); await tx.insert(personRolesTable).values(input.roles.map(role => ({ personId: input.id, role, createdBy: actor.clerkUserId }))); const result = { ...input }; await audit(tx, actor, "create", "user", input.id, null, result); return result; }); res.status(201).json(CreateAdminUserResponse.parse(value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: conflict(error) ? "User or Clerk identity already exists" : "Could not create user" }); } });
-router.patch("/admin/users/:personId", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(UpdateAdminUserParams, req.params, res); const input = parsed(UpdateAdminUserBody, req.body, res); if (!actor || !params || !input) return; const before = await user(params.personId); if (!before) { res.status(404).json({ error: "User not found" }); return; } if (input.status === "inactive" && before.roles.includes("admin") && await activeAdminCount() === 1) { res.status(409).json({ error: "Cannot deactivate the last active administrator" }); return; } try { const value = await db.transaction(async tx => { const [updated] = await tx.update(peopleTable).set(input).where(eq(peopleTable.id, params.personId)).returning(); const result = { ...updated, roles: before.roles }; await audit(tx as typeof db, actor, "update", "user", params.personId, before, result); return result; }); res.json(UpdateAdminUserResponse.parse(value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: "Clerk identity or email already exists" }); } });
-router.put("/admin/users/:personId/roles", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(ReplaceAdminUserRolesParams, req.params, res); const input = parsed(ReplaceAdminUserRolesBody, req.body, res); if (!actor || !params || !input) return; const before = await user(params.personId); if (!before) { res.status(404).json({ error: "User not found" }); return; } if (before.roles.includes("admin") && !input.roles.includes("admin") && before.status === "active" && await activeAdminCount() === 1) { res.status(409).json({ error: "Cannot remove the last active administrator role" }); return; } const value = await db.transaction(async tx => { await tx.delete(personRolesTable).where(eq(personRolesTable.personId, params.personId)); await tx.insert(personRolesTable).values(input.roles.map(role => ({ personId: params.personId, role, createdBy: actor.clerkUserId }))); const result = { ...before, roles: input.roles }; await audit(tx as typeof db, actor, "replace_roles", "user", params.personId, before, result); return result; }); res.json(ReplaceAdminUserRolesResponse.parse(value)); });
+router.patch("/admin/users/:personId", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(UpdateAdminUserParams, req.params, res); const input = parsed(UpdateAdminUserBody, req.body, res); if (!actor || !params || !input) return; const before = await user(params.personId); if (!before) { res.status(404).json({ error: "User not found" }); return; } if (input.status === "inactive" && before.roles.includes("admin") && await activeAdminCount(req) === 1) { res.status(409).json({ error: "Cannot deactivate the last active administrator" }); return; } try { const value = await db.transaction(async tx => { const [updated] = await tx.update(peopleTable).set(input).where(eq(peopleTable.id, params.personId)).returning(); const result = { ...updated, roles: before.roles }; await audit(tx as typeof db, actor, "update", "user", params.personId, before, result); return result; }); res.json(UpdateAdminUserResponse.parse(value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: "Clerk identity or email already exists" }); } });
+router.put("/admin/users/:personId/roles", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(ReplaceAdminUserRolesParams, req.params, res); const input = parsed(ReplaceAdminUserRolesBody, req.body, res); if (!actor || !params || !input) return; const before = await user(params.personId); if (!before) { res.status(404).json({ error: "User not found" }); return; } if (before.roles.includes("admin") && !input.roles.includes("admin") && before.status === "active" && await activeAdminCount(req) === 1) { res.status(409).json({ error: "Cannot remove the last active administrator role" }); return; } const value = await db.transaction(async tx => { await tx.delete(personRolesTable).where(eq(personRolesTable.personId, params.personId)); await tx.insert(personRolesTable).values(input.roles.map(role => ({ personId: params.personId, role, createdBy: actor.clerkUserId }))); const result = { ...before, roles: input.roles }; await audit(tx as typeof db, actor, "replace_roles", "user", params.personId, before, result); return result; }); res.json(ReplaceAdminUserRolesResponse.parse(value)); });
 
 function lifecycle(prefix: string, table: any, listSchema: any, createSchema: any, createResponse: any, updateParams: any, updateBody: any, updateResponse: any, idColumn: any, entity: string) {
   router.get(`/admin/${prefix}`, async (req, res): Promise<void> => { if (!await authorizeAdmin(req, res)) return; res.json(listSchema.parse(normalizeLifecycleRows(await db.select().from(table)))); });

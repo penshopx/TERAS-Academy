@@ -6,6 +6,7 @@ const suffix = crypto.randomUUID();
 const ids = {
   learner: `admin-learner-${suffix}`, trainer: `admin-trainer-${suffix}`,
   administrator: `admin-administrator-${suffix}`,
+  controlAdministrator: `admin-control-administrator-${suffix}`,
   program: `admin-program-${suffix}`, otherProgram: `admin-other-program-${suffix}`,
   pathway: `admin-path-${suffix}`, otherPathway: `admin-other-path-${suffix}`,
   cohort: `admin-cohort-${suffix}`, otherCohort: `admin-other-cohort-${suffix}`,
@@ -17,28 +18,25 @@ async function run() {
   if (!schema.rows[0]?.audit_table) {
     throw new Error("Admin management migration 0005 is not installed; refusing to run integration fixtures against an unupgraded database");
   }
-  const app = createIntegrationTestApp(() => ({ userId: `admin-${suffix}`, role: "admin" }));
+  const app = createIntegrationTestApp(
+    () => ({ userId: `admin-${suffix}`, role: "admin" }),
+    { activeAdminFixtureIds: [ids.administrator] },
+  );
   const server = await new Promise<ReturnType<typeof app.listen>>(resolve => { const listener = app.listen(0, () => resolve(listener)); });
   const address = server.address(); assert(address && typeof address !== "string", "Test server did not bind");
   const base = `http://127.0.0.1:${address.port}/api`;
   const request = async (path: string, body?: unknown, method = "POST") => fetch(`${base}${path}`, { method, headers: { "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
   try {
-    const existingActiveAdmins = await db.select({ id: peopleTable.id }).from(peopleTable)
-      .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
-      .where(sql`${peopleTable.status} = 'active' and ${personRolesTable.role} = 'admin'`);
     for (const [id, name, roles] of [[ids.learner, "Managed Learner", ["learner"]], [ids.trainer, "Managed Trainer", ["trainer"]]] as const) {
       const response = await request("/admin/users", { id, name, initials: name.slice(0, 2), email: `${id}@example.test`, organization: null, clerkUserId: null, status: "active", roles });
       assert(response.status === 201, `Admin user create failed: ${await response.text()}`);
     }
     let response = await request("/admin/users", { id: ids.administrator, name: "Sole Managed Admin", initials: "SA", email: `${ids.administrator}@example.test`, organization: null, clerkUserId: null, status: "active", roles: ["admin"] });
     assert(response.status === 201, `Admin bootstrap fixture failed: ${await response.text()}`);
+    response = await request("/admin/users", { id: ids.controlAdministrator, name: "Control Administrator", initials: "CA", email: `${ids.controlAdministrator}@example.test`, organization: null, clerkUserId: null, status: "active", roles: ["admin"] });
+    assert(response.status === 201, `Admin control fixture failed: ${await response.text()}`);
     response = await request(`/admin/users/${ids.administrator}/roles`, { roles: ["learner"] }, "PUT");
-    assert(
-      response.status === (existingActiveAdmins.length === 0 ? 409 : 200),
-      existingActiveAdmins.length === 0
-        ? "Removing the last active admin must return 409"
-        : "Removing a test admin must remain allowed when another active admin exists",
-    );
+    assert(response.status === 409, "Removing the last active fixture admin must return 409 even when other admins exist");
     response = await request(`/admin/users/${ids.learner}`, { status: "inactive" }, "PATCH");
     assert(response.status === 200 && (await response.json() as any).status === "inactive", "Admin did not deactivate user");
     response = await request(`/admin/users/${ids.learner}/roles`, { roles: ["learner", "assessor"] }, "PUT");
@@ -81,8 +79,8 @@ async function run() {
     await db.delete(cohortsTable).where(inArray(cohortsTable.id, [ids.cohort, ids.otherCohort]));
     await db.delete(pathwaysTable).where(inArray(pathwaysTable.id, [ids.pathway, ids.otherPathway]));
     await db.delete(programsTable).where(inArray(programsTable.id, [ids.program, ids.otherProgram]));
-    await db.delete(personRolesTable).where(inArray(personRolesTable.personId, [ids.learner, ids.trainer, ids.administrator]));
-    await db.delete(peopleTable).where(inArray(peopleTable.id, [ids.learner, ids.trainer, ids.administrator]));
+    await db.delete(personRolesTable).where(inArray(personRolesTable.personId, [ids.learner, ids.trainer, ids.administrator, ids.controlAdministrator]));
+    await db.delete(peopleTable).where(inArray(peopleTable.id, [ids.learner, ids.trainer, ids.administrator, ids.controlAdministrator]));
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 }
