@@ -1,6 +1,6 @@
 import { createIntegrationTestApp } from "./integration-test-app";
 import { adminAuditEventsTable, cohortsTable, db, enrollmentsTable, pathwaysTable, peopleTable, personRolesTable, programsTable } from "@workspace/db";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 const suffix = crypto.randomUUID();
 const ids = {
@@ -20,7 +20,7 @@ async function run() {
   }
   const app = createIntegrationTestApp(
     () => ({ userId: `admin-${suffix}`, role: "admin" }),
-    { activeAdminFixtureIds: [ids.administrator] },
+    { activeAdminFixtureIds: [ids.administrator, ids.controlAdministrator] },
   );
   const server = await new Promise<ReturnType<typeof app.listen>>(resolve => { const listener = app.listen(0, () => resolve(listener)); });
   const address = server.address(); assert(address && typeof address !== "string", "Test server did not bind");
@@ -33,10 +33,25 @@ async function run() {
     }
     let response = await request("/admin/users", { id: ids.administrator, name: "Sole Managed Admin", initials: "SA", email: `${ids.administrator}@example.test`, organization: null, clerkUserId: null, status: "active", roles: ["admin"] });
     assert(response.status === 201, `Admin bootstrap fixture failed: ${await response.text()}`);
-    response = await request("/admin/users", { id: ids.controlAdministrator, name: "Control Administrator", initials: "CA", email: `${ids.controlAdministrator}@example.test`, organization: null, clerkUserId: null, status: "active", roles: ["admin"] });
-    assert(response.status === 201, `Admin control fixture failed: ${await response.text()}`);
     response = await request(`/admin/users/${ids.administrator}/roles`, { roles: ["learner"] }, "PUT");
     assert(response.status === 409, "Removing the last active fixture admin must return 409 even when other admins exist");
+    response = await request("/admin/users", { id: ids.controlAdministrator, name: "Control Administrator", initials: "CA", email: `${ids.controlAdministrator}@example.test`, organization: null, clerkUserId: null, status: "active", roles: ["admin"] });
+    assert(response.status === 201, `Admin control fixture failed: ${await response.text()}`);
+    const concurrentResponses = await Promise.all([
+      request(`/admin/users/${ids.administrator}/roles`, { roles: ["learner"] }, "PUT"),
+      request(`/admin/users/${ids.controlAdministrator}`, { status: "inactive" }, "PATCH"),
+    ]);
+    const concurrentStatuses = concurrentResponses.map(item => item.status).sort();
+    assert(concurrentStatuses.join(",") === "200,409", `Concurrent admin removal must allow exactly one request and reject one, received ${concurrentStatuses.join(",")}`);
+    const activeFixtureAdmins = await db.select({ id: peopleTable.id })
+      .from(peopleTable)
+      .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+      .where(and(
+        inArray(peopleTable.id, [ids.administrator, ids.controlAdministrator]),
+        eq(peopleTable.status, "active"),
+        eq(personRolesTable.role, "admin"),
+      ));
+    assert(activeFixtureAdmins.length === 1, `Concurrent admin changes must leave exactly one active administrator fixture, received ${activeFixtureAdmins.length}`);
     response = await request(`/admin/users/${ids.learner}`, { status: "inactive" }, "PATCH");
     assert(response.status === 200 && (await response.json() as any).status === "inactive", "Admin did not deactivate user");
     response = await request(`/admin/users/${ids.learner}/roles`, { roles: ["learner", "assessor"] }, "PUT");
