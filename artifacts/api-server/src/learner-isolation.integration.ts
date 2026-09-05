@@ -182,6 +182,18 @@ async function run() {
     await request("/learning/transitions", "learner-b", { method: "POST", body: JSON.stringify(transition) }, 201);
     const [stored] = await db.select().from(learningTransitionEventsTable).where(eq(learningTransitionEventsTable.idempotencyKey, transitionKey));
     assert(stored?.learnerId === learnerB && stored.enrollmentId === enrollmentB, "Transition was not stored against learner B enrollment");
+    const [coursesAfterA, coursesAfterB] = await Promise.all([
+      request<any[]>("/learning/courses", "learner-a"),
+      request<any[]>("/learning/courses", "learner-b"),
+    ]);
+    assert(
+      coursesAfterB.some(course => course.resumeAction?.activityId === "activity-b04-protection"),
+      "Learner B did not resume the activity they most recently started",
+    );
+    assert(
+      coursesAfterA.every(course => course.resumeAction?.activityId !== "activity-b04-protection"),
+      "Learner B resume state leaked into learner A courses",
+    );
 
     for (const path of ["/learner/dashboard", "/evidence", "/gaps", "/readiness", "/passport", "/learning/courses", "/assessments"]) {
       await request(path, "anonymous", undefined, 401);

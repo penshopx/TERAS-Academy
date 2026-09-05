@@ -67,12 +67,13 @@ export default function LearningList() {
       <div className="grid grid-cols-1 gap-8" data-testid="course-list">
         {courses.map((course) => {
           const progress = computeCourseProgress(course);
+          const resumeAction = course.resumeAction ?? progress.firstIncompleteAction;
           
           let totalMinutes = 0;
           course.modules.forEach(m => m.lessons.forEach(l => totalMinutes += l.estimatedDurationMinutes));
 
           const isCompleted = progress.percentage === 100;
-          const isStarted = progress.completedCount > 0;
+          const isStarted = progress.hasStarted;
 
           return (
             <Card key={course.id} className="overflow-hidden border-border/50 hover:border-primary/40 transition-all duration-300 bg-card/40 backdrop-blur-sm relative group" data-testid={`course-card-${course.id}`}>
@@ -137,17 +138,17 @@ export default function LearningList() {
                       <p className="text-[10px] font-mono font-bold tracking-[0.2em] text-muted-foreground uppercase">
                         Next Action
                       </p>
-                      {progress.firstIncompleteAction ? (
+                      {resumeAction ? (
                         <Button asChild className="w-full font-bold uppercase tracking-widest text-xs h-14 shadow-[0_0_20px_rgba(0,195,255,0.15)] hover:shadow-[0_0_30px_rgba(0,195,255,0.3)] transition-all">
                           <Link
-                            href={`/learning/lessons/${progress.firstIncompleteAction.lessonId}`}
+                            href={`/learning/lessons/${resumeAction.lessonId}`}
                             onClick={() => trackLearningAction({
                               action: isStarted ? "continue_learning" : "start_course",
                               location: "learning_list_next_action",
                               courseId: course.id,
-                              moduleId: progress.firstIncompleteAction!.moduleId,
-                              lessonId: progress.firstIncompleteAction!.lessonId,
-                              activityId: progress.firstIncompleteAction!.activityId,
+                               moduleId: resumeAction.moduleId,
+                               lessonId: resumeAction.lessonId,
+                               activityId: resumeAction.activityId,
                             })}
                             data-testid={`link-course-resume-${course.id}`}
                           >

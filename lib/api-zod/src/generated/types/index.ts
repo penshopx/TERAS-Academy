@@ -102,6 +102,7 @@ export * from './learningResource';
 export * from './learningResourceInput';
 export * from './learningResourceInputType';
 export * from './learningResourceType';
+export * from './learningResumeAction';
 export * from './learningState';
 export * from './learningTransitionInput';
 export * from './learningTransitionReason';

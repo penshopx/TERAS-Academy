@@ -1140,7 +1140,13 @@ export const ListLearningCoursesResponseItem = zod.object({
 }))
 }))
 }))
-}))
+})),
+  "resumeAction": zod.object({
+  "courseId": zod.string(),
+  "moduleId": zod.string(),
+  "lessonId": zod.string(),
+  "activityId": zod.string()
+}).optional()
 })
 export const ListLearningCoursesResponse = zod.array(ListLearningCoursesResponseItem)
 
@@ -1323,7 +1329,13 @@ export const ListAuthoredCoursesResponseItem = zod.object({
 }))
 }))
 }))
-}))
+})),
+  "resumeAction": zod.object({
+  "courseId": zod.string(),
+  "moduleId": zod.string(),
+  "lessonId": zod.string(),
+  "activityId": zod.string()
+}).optional()
 })
 export const ListAuthoredCoursesResponse = zod.array(ListAuthoredCoursesResponseItem)
 
@@ -1451,7 +1463,13 @@ export const PreviewAuthoredCourseResponse = zod.object({
 }))
 }))
 }))
-}))
+})),
+  "resumeAction": zod.object({
+  "courseId": zod.string(),
+  "moduleId": zod.string(),
+  "lessonId": zod.string(),
+  "activityId": zod.string()
+}).optional()
 }),
   "validation": zod.object({
   "courseId": zod.string(),

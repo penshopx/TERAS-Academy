@@ -11,11 +11,13 @@ export function isOutcomeVerified(state: LearningState): boolean {
 export function computeCourseProgress(course: LearningCourse) {
   let requiredCount = 0;
   let completedCount = 0;
+  let hasStarted = false;
   let firstIncompleteAction: { courseId: string; moduleId: string; lessonId: string; activityId: string } | null = null;
 
   for (const module of course.modules) {
     for (const lesson of module.lessons) {
       for (const activity of lesson.activities) {
+        if (activity.currentState !== 'NOT_STARTED') hasStarted = true;
         if (activity.required) {
           requiredCount++;
           if (isLearningCompleted(activity.currentState)) {
@@ -37,6 +39,7 @@ export function computeCourseProgress(course: LearningCourse) {
   return {
     requiredCount,
     completedCount,
+    hasStarted,
     percentage,
     firstIncompleteAction
   };

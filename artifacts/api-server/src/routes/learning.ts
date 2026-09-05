@@ -31,6 +31,7 @@ import {
 import { learnerContext } from "../lib/teras";
 import { RESOURCE_URI_ERROR, validateResourceUri } from "../lib/resource-uri";
 import { applyCourseAuthoring, trainerHasAssignment } from "../lib/course-authoring";
+import { resolveLearningResumeAction } from "../lib/learning-resume";
 
 const router: IRouter = Router();
 export const learnerCourseAvailable = (course: { status: string; publishedVersionId: string | null }) =>
@@ -184,7 +185,11 @@ router.get("/learning/courses", async (req, res): Promise<void> => {
     }
     return course;
   });
-  res.json(ListLearningCoursesResponse.parse(publishedResponse));
+  const coursesWithResume = publishedResponse.map(course => ({
+    ...course,
+    resumeAction: resolveLearningResumeAction(course, latestState),
+  }));
+  res.json(ListLearningCoursesResponse.parse(coursesWithResume));
 });
 
 router.post("/learning/resources", async (req, res): Promise<void> => {

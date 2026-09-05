@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { LearningCourseModule } from './learningCourseModule';
+import type { LearningResumeAction } from './learningResumeAction';
 
 export interface LearningCourse {
   id: string;
@@ -16,4 +17,5 @@ export interface LearningCourse {
   status: string;
   sequence: number;
   modules: LearningCourseModule[];
+  resumeAction?: LearningResumeAction;
 }

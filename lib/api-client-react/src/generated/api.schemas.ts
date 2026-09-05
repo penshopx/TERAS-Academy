@@ -237,6 +237,13 @@ export interface LearningCourseModule {
   lessons: LearningLesson[];
 }
 
+export interface LearningResumeAction {
+  courseId: string;
+  moduleId: string;
+  lessonId: string;
+  activityId: string;
+}
+
 export interface LearningCourse {
   id: string;
   programId: string;
@@ -246,6 +253,7 @@ export interface LearningCourse {
   status: string;
   sequence: number;
   modules: LearningCourseModule[];
+  resumeAction?: LearningResumeAction;
 }
 
 export interface CourseAuthoringPreview {
