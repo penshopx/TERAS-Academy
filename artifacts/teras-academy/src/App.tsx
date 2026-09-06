@@ -14,6 +14,7 @@ import { FloatingAssistants } from '@/components/floating-assistants';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { getGetCurrentSessionQueryKey, useGetCurrentSession } from '@workspace/api-client-react';
 import { homeForRoles } from '@/lib/role-navigation';
+import { hasIdentityChanged, type PreviousUserId, type UserId } from '@/lib/identity-lifecycle';
 
 import Dashboard from '@/pages/dashboard';
 import Journey from '@/pages/journey';
@@ -628,18 +629,21 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
-type IdentityListener = (userId: string | null) => void;
+type IdentityListener = (userId: UserId) => void;
 type RegisterIdentityListener = (listener: IdentityListener) => () => void;
 
 function IdentityScopedQueryClientProvider({ children, register }: { children: ReactNode; register: RegisterIdentityListener }) {
   const [identityRevision, setIdentityRevision] = useState(0);
-  const previousUserId = useRef<string | null | undefined>(undefined);
+  const previousUserId = useRef<PreviousUserId>(undefined);
 
   useEffect(() => register((userId) => {
-    if (previousUserId.current !== undefined && previousUserId.current !== userId) {
-      queryClient.clear();
-      setIdentityRevision(revision => revision + 1);
+    if (!hasIdentityChanged(previousUserId.current, userId)) {
+      previousUserId.current = userId;
+      return;
     }
+
+    queryClient.clear();
+    setIdentityRevision(revision => revision + 1);
     previousUserId.current = userId;
   }), [register]);
 
