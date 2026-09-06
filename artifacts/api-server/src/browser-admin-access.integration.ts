@@ -103,7 +103,13 @@ async function main() {
     phase = "clerk-admin-to-learner";
     gateResolved = false;
     await page.evaluate(() => {
-      window.dispatchEvent(new CustomEvent("teras:test-identity-change", { detail: "integration-learner" }));
+      const browserGlobal = globalThis as typeof globalThis & {
+        dispatchEvent(event: unknown): boolean;
+        CustomEvent: new (type: string, init: { detail: string }) => unknown;
+      };
+      browserGlobal.dispatchEvent(
+        new browserGlobal.CustomEvent("teras:test-identity-change", { detail: "integration-learner" }),
+      );
     });
     await page.getByTestId("admin-access-denied").waitFor();
     await page.waitForTimeout(150);
