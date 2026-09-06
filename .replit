@@ -31,6 +31,4 @@ packages = ["freetype", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf
 
 [userenv]
 
-[userenv.production]
-TERAS_BOOTSTRAP_ADMIN_CLERK_USER_ID = "user_3Iu7i3J2jbRM4ckcFWzGLl1gFgu"
-TERAS_BOOTSTRAP_SUPER_ADMIN_EMAIL = "penshopx@gmail.com"
+

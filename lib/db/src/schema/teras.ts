@@ -1,6 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
-  boolean, foreignKey, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex,
+  boolean, check, foreignKey, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -21,7 +21,10 @@ export const peopleTable = pgTable("teras_people", {
 export const personRolesTable = pgTable("teras_person_roles", {
   personId: text("person_id").notNull().references(() => peopleTable.id, { onDelete: "cascade" }),
   role: text("role").notNull(), ...audit,
-}, table => [primaryKey({ columns: [table.personId, table.role] })]);
+}, table => [
+  primaryKey({ columns: [table.personId, table.role] }),
+  check("teras_person_roles_role_check", sql`${table.role} IN ('super_admin', 'admin', 'trainer', 'assessor', 'learner')`),
+]);
 /** Durable, reviewable requests for elevated administrative access. */
 export const adminAccessRequestsTable = pgTable("teras_admin_access_requests", {
   id: text("id").primaryKey(),

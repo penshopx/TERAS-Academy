@@ -1,10 +1,8 @@
 import { getAuth } from "@clerk/express";
-import { createClerkClient } from "@clerk/backend";
 import type { Request, Response } from "express";
 import { learnerContext } from "./teras";
 import { db, peopleTable, personRolesTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
-import { claimInitialSuperAdmin, hasActiveSuperAdmin } from "@workspace/db/admin-membership";
 import { allowsDemoAccess } from "@workspace/db/demo-access";
 
 type WorkspaceRole = "trainer" | "assessor";
@@ -36,77 +34,6 @@ export type KnowledgeRole = "super_admin" | "admin" | "trainer" | "assessor" | "
 export type KnowledgeActor = { clerkUserId: string; roles: KnowledgeRole[] };
 export type CurrentSession = { personId: string; name: string; roles: KnowledgeRole[] };
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** The optional operator value is normalized, but never returned or logged. */
-export function configuredBootstrapEmail(): string | null {
-  const email = process.env.TERAS_BOOTSTRAP_SUPER_ADMIN_EMAIL?.trim().toLowerCase();
-  return email && emailPattern.test(email) ? email : null;
-}
-
-function initialsFor(name: string) {
-  return name.split(/\s+/).filter(Boolean).map(part => part[0]).join("").slice(0, 2).toUpperCase() || "SA";
-}
-
-type BootstrapClerkAccount = {
-  id: string;
-  firstName: string | null;
-  lastName: string | null;
-  emailAddresses: Array<{ emailAddress: string; verification?: { status?: string | null } | null }>;
-};
-
-/** Pure validation seam for the bootstrap's Clerk identity-discovery result. */
-export function verifiedBootstrapIdentity(
-  userId: string,
-  bootstrapEmail: string,
-  accounts: BootstrapClerkAccount[],
-) {
-  const verifiedMatches = accounts.filter(account => account.emailAddresses.some(address =>
-    address.emailAddress.trim().toLowerCase() === bootstrapEmail
-    && address.verification?.status === "verified",
-  ));
-  if (verifiedMatches.length !== 1 || verifiedMatches[0].id !== userId) return null;
-  const account = verifiedMatches[0];
-  const verifiedEmail = account.emailAddresses.find(address =>
-    address.emailAddress.trim().toLowerCase() === bootstrapEmail
-    && address.verification?.status === "verified",
-  );
-  if (!verifiedEmail) return null;
-  const name = [account.firstName, account.lastName].filter(Boolean).join(" ") || verifiedEmail.emailAddress;
-  return {
-    clerkUserId: account.id,
-    email: verifiedEmail.emailAddress,
-    name,
-    initials: initialsFor(name),
-  };
-}
-
-/**
- * A one-time identity-discovery bridge for a newly published production
- * tenant.  It never authorizes by email: Clerk must resolve the already
- * authenticated Clerk user as the sole owner of the exact verified address,
- * and the following request is authorized from the local role just created.
- */
-export async function ensureConfiguredBootstrapAdmin(userId: string): Promise<void> {
-  const bootstrapEmail = configuredBootstrapEmail();
-  if (!bootstrapEmail || await hasActiveSuperAdmin()) return;
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) return; // Fail closed when this runtime cannot verify Clerk.
-
-  try {
-    const clerk = createClerkClient({ secretKey });
-    const result = await clerk.users.getUserList({ emailAddress: [bootstrapEmail], limit: 100 });
-    // A matching email on another account, an unverified address, or ambiguity
-    // never reaches the database mutation.
-    const identity = verifiedBootstrapIdentity(userId, bootstrapEmail, result.data);
-    if (!identity) return;
-    await claimInitialSuperAdmin(identity);
-  } catch {
-    // Clerk lookup errors are intentionally indistinguishable from no match.
-    // The normal local-role check below returns 403 rather than granting access.
-  }
-}
-
 export async function authorizeCurrentSession(req: Request, res: Response): Promise<CurrentSession | null> {
   const identity = integrationIdentity(req);
   if (identity) {
@@ -129,7 +56,6 @@ export async function authorizeCurrentSession(req: Request, res: Response): Prom
     return null;
   }
 
-  await ensureConfiguredBootstrapAdmin(userId);
   const assignments = await db.select({
     personId: peopleTable.id,
     name: peopleTable.name,
@@ -182,7 +108,6 @@ export async function authorizeAdmin(req: Request, res: Response): Promise<Admin
     res.status(401).json({ error: "Authentication required" });
     return null;
   }
-  await ensureConfiguredBootstrapAdmin(userId);
   const assignments = await db.select({ personId: peopleTable.id, role: personRolesTable.role }).from(peopleTable)
     .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
     .where(and(eq(peopleTable.clerkUserId, userId), eq(peopleTable.status, "active"), sql`${personRolesTable.role} IN ('admin', 'super_admin')`));

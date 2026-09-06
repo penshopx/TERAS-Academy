@@ -17,6 +17,8 @@
     "test:remediation-idempotency-upgrade": "bash ./remediation-idempotency-upgrade.integration.test.sh",
     "test:knowledge-upgrade": "bash ./knowledge-upgrade.integration.test.sh",
     "test:admin-management": "bash ./admin-management.integration.test.sh",
+    "test:super-admin-provisioning-policy": "tsx ./src/super-admin-provisioning-policy.test.ts",
+    "test:super-admin-provisioning": "bash ./super-admin-provisioning.integration.test.sh",
     "test:safety": "tsx ../artifacts/api-server/src/lib/safety.test.ts",
     "test:deployment-hardening": "bash ./deployment-hardening.test.sh",
     "test:certification-preparation-release-workflow": "bash ./certification-preparation-release-workflow.test.sh",

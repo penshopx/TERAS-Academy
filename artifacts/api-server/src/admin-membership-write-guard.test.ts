@@ -355,8 +355,6 @@ assert.deepEqual(
     "replaceManagedUserRoles",
     "reviewAdminAccessRequest",
     "provisionSuperAdmin",
-    "claimInitialSuperAdmin",
-    "ensureConfiguredAdmin",
     "seedManagedPeople",
   ],
   "The active-admin mutation inventory changed; review every new public operation before updating this contract",

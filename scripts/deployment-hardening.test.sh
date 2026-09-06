@@ -2,6 +2,7 @@
 set -euo pipefail
 
 pnpm --filter @workspace/scripts run test:demo-access-policy
+pnpm --filter @workspace/scripts run test:super-admin-provisioning-policy
 
 before_demo_state="$(psql "$DATABASE_URL" -Atqc "
   SELECT
