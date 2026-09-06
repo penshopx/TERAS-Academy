@@ -5,6 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import express from "express";
 import { chromium } from "playwright";
+import { BrowserTestIdentityHarness } from "./browser-test-identity-harness.js";
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(import.meta.dirname, "../../..");
@@ -190,6 +191,7 @@ async function main() {
 
   try {
     const page = await browser.newPage();
+    const identity = await BrowserTestIdentityHarness.install(page, "integration-admin");
     page.on("pageerror", error => process.stderr.write(`[browser pageerror] ${error.message}\n`));
 
     await page.goto(`${baseUrl}/admin`);
@@ -198,15 +200,7 @@ async function main() {
 
     phase = "clerk-admin-to-signed-out";
     gateResolved = false;
-    await page.evaluate(() => {
-      const browserGlobal = globalThis as typeof globalThis & {
-        dispatchEvent(event: unknown): boolean;
-        CustomEvent: new (type: string, init: { detail: string | null }) => unknown;
-      };
-      browserGlobal.dispatchEvent(
-        new browserGlobal.CustomEvent("teras:test-identity-change", { detail: null }),
-      );
-    });
+    await identity.signOut();
     await page.getByRole("link", { name: "Masuk", exact: true }).first().waitFor();
     assert(
       await page.getByText(adminCacheMarker, { exact: true }).count() === 0,
@@ -220,15 +214,7 @@ async function main() {
     role = "learner";
     phase = "clerk-signed-out-to-learner";
     gateResolved = false;
-    await page.evaluate(() => {
-      const browserGlobal = globalThis as typeof globalThis & {
-        dispatchEvent(event: unknown): boolean;
-        CustomEvent: new (type: string, init: { detail: string | null }) => unknown;
-      };
-      browserGlobal.dispatchEvent(
-        new browserGlobal.CustomEvent("teras:test-identity-change", { detail: "integration-learner" }),
-      );
-    });
+    await identity.signIn("integration-learner");
     await page.getByTestId("admin-access-denied").waitFor();
     await page.waitForTimeout(150);
     assert(
@@ -278,13 +264,7 @@ async function main() {
       await page.getByText(workspaceMarkers[workspaceRole].first).first().waitFor();
 
       phase = `${workspaceRole}-signed-out`;
-      await page.evaluate(() => {
-        const browserGlobal = globalThis as typeof globalThis & {
-          dispatchEvent(event: unknown): boolean;
-          CustomEvent: new (type: string, init: { detail: string | null }) => unknown;
-        };
-        browserGlobal.dispatchEvent(new browserGlobal.CustomEvent("teras:test-identity-change", { detail: null }));
-      });
+      await identity.signOut();
       await page.getByRole("link", { name: "Masuk", exact: true }).first().waitFor();
       assert(
         await page.getByText(workspaceMarkers[workspaceRole].first).count() === 0,
@@ -297,13 +277,7 @@ async function main() {
 
       account = "second";
       phase = `${workspaceRole}-second-account`;
-      await page.evaluate((nextUserId) => {
-        const browserGlobal = globalThis as typeof globalThis & {
-          dispatchEvent(event: unknown): boolean;
-          CustomEvent: new (type: string, init: { detail: string | null }) => unknown;
-        };
-        browserGlobal.dispatchEvent(new browserGlobal.CustomEvent("teras:test-identity-change", { detail: nextUserId }));
-      }, `integration-${workspaceRole}-second`);
+      await identity.signIn(`integration-${workspaceRole}-second`);
       await page.getByText(workspaceMarkers[workspaceRole].second).first().waitFor();
       assert(
         await page.getByText(workspaceMarkers[workspaceRole].first).count() === 0,

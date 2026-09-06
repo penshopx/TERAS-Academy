@@ -9,6 +9,7 @@ import pg from "pg";
 import { chromium } from "playwright";
 import type { Express } from "express";
 import { requiredTestDatabaseUrl } from "./browser-idempotency-guard.js";
+import { BrowserTestIdentityHarness } from "./browser-test-identity-harness.js";
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(import.meta.dirname, "../../..");
@@ -116,6 +117,7 @@ async function main() {
       executablePath: chromiumExecutablePath(),
     });
     const page = await browser.newPage();
+    await BrowserTestIdentityHarness.install(page, "task-41-browser");
     page.on("console", message => {
       if (message.type() === "error") process.stderr.write(`[browser console] ${message.text()}\n`);
     });

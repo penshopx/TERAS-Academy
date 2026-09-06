@@ -690,22 +690,28 @@ function ClerkProviderWithRoutes() {
 }
 
 function IntegrationTestApp() {
-  const [userId, setUserId] = useState<string | null>('integration-admin');
+  type TestIdentityState =
+    | { status: 'signed-out' }
+    | { status: 'signed-in'; userId: string };
+  const initialIdentity = (globalThis as typeof globalThis & {
+    __TERAS_TEST_IDENTITY__?: TestIdentityState;
+  }).__TERAS_TEST_IDENTITY__ ?? { status: 'signed-in', userId: 'integration-admin' };
+  const [identity, setIdentity] = useState<TestIdentityState>(initialIdentity);
   const register = useCallback((listener: IdentityListener) => {
-    listener('integration-admin');
+    listener(initialIdentity.status === 'signed-in' ? initialIdentity.userId : null);
     const onIdentityChange = (event: Event) => {
-      const nextUserId = (event as CustomEvent<string | null>).detail;
-      listener(nextUserId);
-      setUserId(nextUserId);
+      const nextIdentity = (event as CustomEvent<TestIdentityState>).detail;
+      listener(nextIdentity.status === 'signed-in' ? nextIdentity.userId : null);
+      setIdentity(nextIdentity);
     };
     window.addEventListener('teras:test-identity-change', onIdentityChange);
     return () => window.removeEventListener('teras:test-identity-change', onIdentityChange);
-  }, []);
+  }, [initialIdentity]);
 
   return (
     <IdentityScopedQueryClientProvider register={register}>
       <TooltipProvider>
-        {userId === null ? (
+        {identity.status === 'signed-out' ? (
           <PublicHome />
         ) : (
           <main className="min-h-screen bg-background p-6 text-foreground">
