@@ -116,6 +116,57 @@ grep -Fq 'pnpm --filter @workspace/api-server run test:browser-admin-access' "$g
 
 mock_dir="$(mktemp -d)"
 trap 'rm -rf "$mock_dir"' EXIT
+
+gate_report_dir="$mock_dir/gate-reports"
+gate_run_id="admin-browser-failure"
+gate_candidate_sha="1111111111111111111111111111111111111111"
+cat >"$mock_dir/pnpm" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PNPM_MOCK_LOG"
+if [[ "$*" == *"test:browser-admin-access"* ]]; then
+  exit 23
+fi
+exit 0
+EOF
+cat >"$mock_dir/database-command" <<'EOF'
+#!/usr/bin/env bash
+printf '%s %s\n' "$(basename "$0")" "$*" >>"$DATABASE_MOCK_LOG"
+exit 0
+EOF
+chmod +x "$mock_dir/pnpm" "$mock_dir/database-command"
+ln -s database-command "$mock_dir/createdb"
+ln -s database-command "$mock_dir/dropdb"
+ln -s database-command "$mock_dir/psql"
+
+if PATH="$mock_dir:$PATH" \
+  PNPM_MOCK_LOG="$mock_dir/pnpm-calls.log" \
+  DATABASE_MOCK_LOG="$mock_dir/database-calls.log" \
+  DATABASE_URL="postgresql://gate-test.invalid/postgres" \
+  TERAS_GATE_RUN_ID="$gate_run_id" \
+  TERAS_GATE_CANDIDATE_SHA="$gate_candidate_sha" \
+  TERAS_GATE_REPORT_DIR="$gate_report_dir" \
+  TERAS_GATE_STORAGE_ADAPTER="test" \
+  TERAS_GATE_STORAGE_NAMESPACE="release-gate-contract" \
+  bash "$gate"; then
+  fail "gate must exit non-zero when the admin browser access check fails"
+fi
+
+gate_json_report="$gate_report_dir/certification-preparation-$gate_run_id.json"
+gate_markdown_report="$gate_report_dir/certification-preparation-$gate_run_id.md"
+[[ -f "$gate_json_report" && -f "$gate_markdown_report" ]] ||
+  fail "failed admin browser gate must still write JSON and Markdown reports"
+grep -Fq '"testStatus":"FAIL"' "$gate_json_report" &&
+  grep -Fq '"gateReview":"NO-GO"' "$gate_json_report" ||
+  fail "failed admin browser JSON report must be FAIL/NO-GO"
+grep -Fq 'Automated test status: **FAIL**' "$gate_markdown_report" &&
+  grep -Fq 'Gate review: **NO-GO**' "$gate_markdown_report" ||
+  fail "failed admin browser Markdown report must be FAIL/NO-GO"
+grep -Fq 'reproduce locally with: pnpm --filter @workspace/api-server run test:browser-admin-access' "$gate_json_report" &&
+  grep -Fq 'reproduce locally with: pnpm --filter @workspace/api-server run test:browser-admin-access' "$gate_markdown_report" ||
+  fail "failed admin browser reports must include the actionable reproduction command"
+grep -Fq 'test:browser-admin-access' "$mock_dir/pnpm-calls.log" ||
+  fail "admin browser failure simulation did not execute the mocked command"
+
 cat >"$mock_dir/gh" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$GH_MOCK_LOG"
