@@ -17,7 +17,16 @@ export class BrowserTestIdentityHarness {
     this.state = { status: "signed-in", userId: initialUserId };
   }
 
-  static async install(page: Page, initialUserId: string) {
+  static async createPage(
+    owner: { newPage(): Promise<Page> },
+    initialUserId: string,
+  ): Promise<{ page: Page; identity: BrowserTestIdentityHarness }> {
+    const page = await owner.newPage();
+    const identity = await BrowserTestIdentityHarness.install(page, initialUserId);
+    return { page, identity };
+  }
+
+  private static async install(page: Page, initialUserId: string) {
     const harness = new BrowserTestIdentityHarness(page, initialUserId);
     await page.addInitScript(
       ({ key, state }) => {

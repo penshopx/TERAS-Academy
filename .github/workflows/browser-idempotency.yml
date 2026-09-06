@@ -47,6 +47,9 @@ jobs:
       - name: Verify browser job requires database guard
         run: pnpm --filter @workspace/api-server run test:browser-idempotency-workflow-contract
 
+      - name: Verify browser tests use the shared identity harness
+        run: pnpm --filter @workspace/api-server run test:browser-identity-contract
+
   browser-idempotency:
     name: Browser idempotency
     needs: browser-idempotency-guard

@@ -116,8 +116,10 @@ async function main() {
       headless: true,
       executablePath: chromiumExecutablePath(),
     });
-    const page = await browser.newPage();
-    const identity = await BrowserTestIdentityHarness.install(page, "task-41-browser");
+    const { page, identity } = await BrowserTestIdentityHarness.createPage(
+      browser,
+      "task-41-browser",
+    );
     page.on("console", message => {
       if (message.type() === "error") process.stderr.write(`[browser console] ${message.text()}\n`);
     });

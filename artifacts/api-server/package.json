@@ -27,6 +27,7 @@
     "test:trainer-bottlenecks": "NODE_ENV=test tsx --test ./src/lib/trainer-bottlenecks.test.ts",
     "test:browser-idempotency-guard": "tsx ./src/browser-idempotency-guard.test.ts",
     "test:browser-idempotency-workflow-contract": "tsx ./src/browser-idempotency-workflow-contract.test.ts",
+    "test:browser-identity-contract": "tsx ./src/browser-test-identity-contract.test.ts",
     "setup:browser-idempotency": "playwright install --with-deps chromium",
     "setup:browser-admin-access": "playwright install --with-deps chromium",
     "test:browser-idempotency": "NODE_ENV=test tsx ./src/browser-idempotency.integration.ts",

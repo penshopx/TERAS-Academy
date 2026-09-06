@@ -190,8 +190,10 @@ async function main() {
   const browser = await chromium.launch({ headless: true, executablePath: chromiumExecutablePath() });
 
   try {
-    const page = await browser.newPage();
-    const identity = await BrowserTestIdentityHarness.install(page, "integration-admin");
+    const { page, identity } = await BrowserTestIdentityHarness.createPage(
+      browser,
+      "integration-admin",
+    );
     page.on("pageerror", error => process.stderr.write(`[browser pageerror] ${error.message}\n`));
 
     await page.goto(`${baseUrl}/admin`);
