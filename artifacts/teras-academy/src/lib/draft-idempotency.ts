@@ -55,3 +55,13 @@ export function clearDraftIdempotencyKey(storage: Storage, flow: string) {
     // A confirmed response must not be turned into an error by unavailable storage.
   }
 }
+
+export function clearAllDraftIdempotencyKeys(storage: Storage) {
+  try {
+    const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index))
+      .filter((key): key is string => key?.startsWith(`${STORAGE_PREFIX}:`) === true);
+    keys.forEach(key => storage.removeItem(key));
+  } catch {
+    // Identity changes must still complete when browser storage is unavailable.
+  }
+}

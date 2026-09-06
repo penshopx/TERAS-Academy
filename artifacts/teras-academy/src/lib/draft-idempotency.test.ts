@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { clearDraftIdempotencyKey, getDraftIdempotencyKey } from "./draft-idempotency";
+import { clearAllDraftIdempotencyKeys, clearDraftIdempotencyKey, getDraftIdempotencyKey } from "./draft-idempotency";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -45,4 +45,16 @@ test("replaces a key when the draft changes and clears it after success", () => 
   assert.notEqual(changed, first);
   clearDraftIdempotencyKey(storage, "evidence:attempt");
   assert.equal(storage.length, 0);
+});
+
+test("clears every idempotency draft without removing unrelated browser state", () => {
+  const storage = new MemoryStorage();
+  getDraftIdempotencyKey(storage, "practice:activity:task", "practice payload");
+  getDraftIdempotencyKey(storage, "evidence:attempt", "evidence payload");
+  storage.setItem("teras:theme", "dark");
+
+  clearAllDraftIdempotencyKeys(storage);
+
+  assert.equal(storage.length, 1);
+  assert.equal(storage.getItem("teras:theme"), "dark");
 });

@@ -15,6 +15,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { getGetCurrentSessionQueryKey, useGetCurrentSession } from '@workspace/api-client-react';
 import { homeForRoles } from '@/lib/role-navigation';
 import { hasIdentityChanged, type PreviousUserId, type UserId } from '@/lib/identity-lifecycle';
+import { clearAllDraftIdempotencyKeys } from '@/lib/draft-idempotency';
 
 import Dashboard from '@/pages/dashboard';
 import Journey from '@/pages/journey';
@@ -643,6 +644,7 @@ function IdentityScopedQueryClientProvider({ children, register }: { children: R
     }
 
     queryClient.clear();
+    clearAllDraftIdempotencyKeys(window.localStorage);
     setIdentityRevision(revision => revision + 1);
     previousUserId.current = userId;
   }), [register]);

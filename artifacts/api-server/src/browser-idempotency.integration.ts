@@ -117,7 +117,7 @@ async function main() {
       executablePath: chromiumExecutablePath(),
     });
     const page = await browser.newPage();
-    await BrowserTestIdentityHarness.install(page, "task-41-browser");
+    const identity = await BrowserTestIdentityHarness.install(page, "task-41-browser");
     page.on("console", message => {
       if (message.type() === "error") process.stderr.write(`[browser console] ${message.text()}\n`);
     });
@@ -166,6 +166,52 @@ async function main() {
     if (await count(database, "teras_evidence") !== 3) throw new Error("Retrying the identical evidence draft did not leave exactly one new evidence record.");
     const evidenceKeys = requests.filter(item => item.path === "/api/evidence").map(item => item.key);
     if (evidenceKeys.length < 2 || evidenceKeys[0] !== evidenceKeys[1]) throw new Error("Reload and retry did not reuse the evidence idempotency key.");
+
+    // Leave real practice and evidence drafts in localStorage while their
+    // committed responses are held, then cross the signed-out identity gate.
+    await setState(database, "activity-m03-safe-isolation", "REMEDIATION");
+    heldResponses.add("/api/practice/tasks/task-m03/attempts");
+    await page.goto(practiceUrl);
+    await page.locator("textarea").nth(0).fill("Account boundary output");
+    await page.locator("textarea").nth(1).fill("Account boundary reflection");
+    const boundaryPracticeCommit = waitForCommit("/api/practice/tasks/task-m03/attempts");
+    await page.getByRole("button", { name: "COMMIT ATTEMPT RECORD" }).click();
+    await boundaryPracticeCommit;
+    const previousPracticeKey = requests.filter(item => item.path.includes("/practice/")).at(-1)?.key;
+
+    heldResponses.add("/api/evidence");
+    await page.goto(evidenceUrl);
+    await page.locator("input").fill("Account boundary evidence");
+    await page.locator("textarea").fill("Evidence draft held across an account boundary.");
+    const boundaryEvidenceCommit = waitForCommit("/api/evidence");
+    await page.getByRole("button", { name: "SUBMIT FOR REVIEW" }).click();
+    await boundaryEvidenceCommit;
+    const previousEvidenceKey = requests.filter(item => item.path === "/api/evidence").at(-1)?.key;
+
+    await identity.signOut();
+    await page.getByRole("link", { name: "Masuk", exact: true }).first().waitFor();
+    await identity.signIn("task-41-browser-next-account");
+
+    await setState(database, "activity-m03-safe-isolation", "REMEDIATION");
+    await page.goto(practiceUrl);
+    await page.locator("textarea").nth(0).fill("Account boundary output");
+    await page.locator("textarea").nth(1).fill("Account boundary reflection");
+    await page.getByRole("button", { name: "COMMIT ATTEMPT RECORD" }).click();
+    await page.getByRole("link", { name: "CONTINUE TO EVIDENCE" }).waitFor();
+    const nextPracticeKey = requests.filter(item => item.path.includes("/practice/")).at(-1)?.key;
+    if (!previousPracticeKey || !nextPracticeKey || previousPracticeKey === nextPracticeKey) {
+      throw new Error("The next account reused the previous account's practice idempotency key.");
+    }
+
+    await page.goto(evidenceUrl);
+    await page.locator("input").fill("Account boundary evidence");
+    await page.locator("textarea").fill("Evidence draft held across an account boundary.");
+    await page.getByRole("button", { name: "SUBMIT FOR REVIEW" }).click();
+    await page.getByText("Evidence submitted", { exact: true }).waitFor();
+    const nextEvidenceKey = requests.filter(item => item.path === "/api/evidence").at(-1)?.key;
+    if (!previousEvidenceKey || !nextEvidenceKey || previousEvidenceKey === nextEvidenceKey) {
+      throw new Error("The next account reused the previous account's evidence idempotency key.");
+    }
     process.stdout.write("browser idempotency integration passed\n");
   } finally {
     await browser?.close();
