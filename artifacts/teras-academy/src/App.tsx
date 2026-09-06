@@ -655,13 +655,6 @@ function ClerkIdentityScopedQueryClientProvider({ children }: { children: ReactN
   return <IdentityScopedQueryClientProvider register={register}>{children}</IdentityScopedQueryClientProvider>;
 }
 
-function registerIntegrationTestIdentityListener(listener: IdentityListener) {
-  listener('integration-admin');
-  const onIdentityChange = (event: Event) => listener((event as CustomEvent<string | null>).detail);
-  window.addEventListener('teras:test-identity-change', onIdentityChange);
-  return () => window.removeEventListener('teras:test-identity-change', onIdentityChange);
-}
-
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
   return (
@@ -692,20 +685,36 @@ function ClerkProviderWithRoutes() {
   );
 }
 
-function IntegrationTestRoutes() {
+function IntegrationTestApp() {
+  const [userId, setUserId] = useState<string | null>('integration-admin');
+  const register = useCallback((listener: IdentityListener) => {
+    listener('integration-admin');
+    const onIdentityChange = (event: Event) => {
+      const nextUserId = (event as CustomEvent<string | null>).detail;
+      listener(nextUserId);
+      setUserId(nextUserId);
+    };
+    window.addEventListener('teras:test-identity-change', onIdentityChange);
+    return () => window.removeEventListener('teras:test-identity-change', onIdentityChange);
+  }, []);
+
   return (
-    <IdentityScopedQueryClientProvider register={registerIntegrationTestIdentityListener}>
+    <IdentityScopedQueryClientProvider register={register}>
       <TooltipProvider>
-        <main className="min-h-screen bg-background p-6 text-foreground">
-          <RoutedErrorBoundary>
-            <Switch>
-              <Route path="/practice" component={Practice} />
-              <Route path="/evidence" component={Evidence} />
-              <Route path="/admin" component={Admin} />
-              <Route component={NotFound} />
-            </Switch>
-          </RoutedErrorBoundary>
-        </main>
+        {userId === null ? (
+          <PublicHome />
+        ) : (
+          <main className="min-h-screen bg-background p-6 text-foreground">
+            <RoutedErrorBoundary>
+              <Switch>
+                <Route path="/practice" component={Practice} />
+                <Route path="/evidence" component={Evidence} />
+                <Route path="/admin" component={Admin} />
+                <Route component={NotFound} />
+              </Switch>
+            </RoutedErrorBoundary>
+          </main>
+        )}
         <Toaster />
       </TooltipProvider>
     </IdentityScopedQueryClientProvider>
@@ -713,7 +722,7 @@ function IntegrationTestRoutes() {
 }
 
 function App() {
-  return <WouterRouter base={basePath}>{integrationTestMode ? <IntegrationTestRoutes /> : <ClerkProviderWithRoutes />}</WouterRouter>;
+  return <WouterRouter base={basePath}>{integrationTestMode ? <IntegrationTestApp /> : <ClerkProviderWithRoutes />}</WouterRouter>;
 }
 
 export default App;

@@ -99,13 +99,34 @@ async function main() {
     await page.getByTestId("admin-operational-summary").waitFor();
     await page.getByText(adminCacheMarker, { exact: true }).waitFor();
 
-    role = "learner";
-    phase = "clerk-admin-to-learner";
+    phase = "clerk-admin-to-signed-out";
     gateResolved = false;
     await page.evaluate(() => {
       const browserGlobal = globalThis as typeof globalThis & {
         dispatchEvent(event: unknown): boolean;
-        CustomEvent: new (type: string, init: { detail: string }) => unknown;
+        CustomEvent: new (type: string, init: { detail: string | null }) => unknown;
+      };
+      browserGlobal.dispatchEvent(
+        new browserGlobal.CustomEvent("teras:test-identity-change", { detail: null }),
+      );
+    });
+    await page.getByRole("link", { name: "Masuk", exact: true }).first().waitFor();
+    assert(
+      await page.getByText(adminCacheMarker, { exact: true }).count() === 0,
+      "The signed-out page appeared while cached dashboard data from the previous account was still visible",
+    );
+    assert(
+      requests.filter(request => request.phase === phase).length === 0,
+      "Signing out must not start authenticated admin requests",
+    );
+
+    role = "learner";
+    phase = "clerk-signed-out-to-learner";
+    gateResolved = false;
+    await page.evaluate(() => {
+      const browserGlobal = globalThis as typeof globalThis & {
+        dispatchEvent(event: unknown): boolean;
+        CustomEvent: new (type: string, init: { detail: string | null }) => unknown;
       };
       browserGlobal.dispatchEvent(
         new browserGlobal.CustomEvent("teras:test-identity-change", { detail: "integration-learner" }),
@@ -115,7 +136,7 @@ async function main() {
     await page.waitForTimeout(150);
     assert(
       await page.getByText(adminCacheMarker, { exact: true }).count() === 0,
-      "The learner account saw cached dashboard data from the previous admin identity",
+      "The account signed in after logout saw cached dashboard data from the previous admin identity",
     );
 
     const learnerRequests = requests.filter(request => request.phase === phase);
