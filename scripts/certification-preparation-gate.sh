@@ -31,11 +31,14 @@ sanitize_cleanup_diagnostic() {
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk) => { diagnostic += chunk; });
     process.stdin.on("end", () => {
-    for (const secret of process.argv.slice(1)) {
-      if (secret) diagnostic = diagnostic.split(secret).join("[REDACTED_DATABASE_URL]");
-    }
-    diagnostic = diagnostic.replace(/\bpostgres(?:ql)?:\/\/[^\s]+/gi, "postgresql://[REDACTED]");
-    process.stdout.write(diagnostic.trim().slice(0, 4000));
+      for (const secret of process.argv.slice(1)) {
+        if (secret) diagnostic = diagnostic.split(secret).join("[REDACTED_DATABASE_URL]");
+      }
+      diagnostic = diagnostic.replace(/\bpostgres(?:ql)?:\/\/[^\s]+/gi, "postgresql://[REDACTED]");
+      diagnostic = diagnostic.replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, (control) =>
+        `\\u${control.charCodeAt(0).toString(16).padStart(4, "0")}`
+      );
+      process.stdout.write(diagnostic.trim().slice(0, 4000));
     });
   ' "${DATABASE_URL:-}" "$test_database_url"
 }

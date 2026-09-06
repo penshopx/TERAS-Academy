@@ -128,6 +128,7 @@ const urls = [
 ];
 process.stdout.write([
   "dropdb: error: database removal failed",
+  "terminal controls: \u001b[31mred\u001b[0m bell=\u0007 backspace=\u0008 carriage=\rreturn delete=\u007f c1=\u0085",
   "# forged Markdown heading",
   "| forged | table | row |",
   "```sh",
@@ -187,7 +188,7 @@ gate_markdown_report="$gate_report_dir/certification-preparation-$gate_run_id.md
   fail "failed admin browser gate must still write JSON and Markdown reports"
 grep -Fq '"testStatus":"FAIL"' "$gate_json_report" &&
   grep -Fq '"gateReview":"NO-GO"' "$gate_json_report" &&
-  grep -Fq '"cleanup":{"status":"FAIL","detail":"dropdb exited with status 31: dropdb: error: database removal failed\n# forged Markdown heading\n| forged | table | row |\n```sh\necho this must remain diagnostic text\n```\nmaintenance URL postgresql://[REDACTED]\nmaintenance URL postgresql://[REDACTED]\nmaintenance URL postgresql://[REDACTED]' "$gate_json_report" ||
+  grep -Fq '"cleanup":{"status":"FAIL","detail":"dropdb exited with status 31: dropdb: error: database removal failed\nterminal controls: \\u001b[31mred\\u001b[0m bell=\\u0007 backspace=\\u0008 carriage=\\u000dreturn delete=\\u007f c1=\\u0085\n# forged Markdown heading\n| forged | table | row |\n```sh\necho this must remain diagnostic text\n```\nmaintenance URL postgresql://[REDACTED]\nmaintenance URL postgresql://[REDACTED]\nmaintenance URL postgresql://[REDACTED]' "$gate_json_report" ||
   fail "combined check and cleanup failure JSON report must be FAIL/NO-GO with failed cleanup"
 grep -Fq 'Automated test status: **FAIL**' "$gate_markdown_report" &&
   grep -Fq 'Gate review: **NO-GO**' "$gate_markdown_report" ||
@@ -218,6 +219,12 @@ if (report.cleanup.detail.length > 4000) {
 if (!report.cleanup.detail.includes("# forged Markdown heading")) {
   process.exit(1);
 }
+if (!report.cleanup.detail.includes("terminal controls: \\u001b[31mred\\u001b[0m bell=\\u0007 backspace=\\u0008 carriage=\\u000dreturn delete=\\u007f c1=\\u0085")) {
+  process.exit(1);
+}
+if (/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/.test(report.cleanup.detail)) {
+  process.exit(1);
+}
 if (report.cleanup.detail.includes("TRUNCATION_SENTINEL_MUST_NOT_APPEAR")) {
   process.exit(1);
 }
@@ -234,6 +241,16 @@ if grep -Fxq '# forged Markdown heading' "$gate_markdown_report" ||
   grep -Fxq '```sh' "$gate_markdown_report"; then
   fail "cleanup Markdown characters must remain inside the indented diagnostic block"
 fi
+grep -Fq '    terminal controls: \u001b[31mred\u001b[0m bell=\u0007 backspace=\u0008 carriage=\u000dreturn delete=\u007f c1=\u0085' "$gate_markdown_report" ||
+  fail "cleanup Markdown must render terminal controls as stable diagnostic text"
+node - "$gate_json_report" "$gate_markdown_report" <<'EOF' ||
+const fs = require("fs");
+for (const path of process.argv.slice(2)) {
+  const output = fs.readFileSync(path, "utf8");
+  if (/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/.test(output)) process.exit(1);
+}
+EOF
+  fail "cleanup reports must not contain raw terminal control characters"
 if grep -Fq 'TRUNCATION_SENTINEL_MUST_NOT_APPEAR' "$gate_json_report" "$gate_markdown_report"; then
   fail "cleanup diagnostics must be truncated before oversized trailing content"
 fi
