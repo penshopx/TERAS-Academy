@@ -131,6 +131,9 @@ EOF
 cat >"$mock_dir/database-command" <<'EOF'
 #!/usr/bin/env bash
 printf '%s %s\n' "$(basename "$0")" "$*" >>"$DATABASE_MOCK_LOG"
+if [[ "$(basename "$0")" == "dropdb" ]]; then
+  exit "${DROPDB_MOCK_EXIT:-0}"
+fi
 exit 0
 EOF
 chmod +x "$mock_dir/pnpm" "$mock_dir/database-command"
@@ -141,6 +144,7 @@ ln -s database-command "$mock_dir/psql"
 if PATH="$mock_dir:$PATH" \
   PNPM_MOCK_LOG="$mock_dir/pnpm-calls.log" \
   DATABASE_MOCK_LOG="$mock_dir/database-calls.log" \
+  DROPDB_MOCK_EXIT=31 \
   DATABASE_URL="postgresql://gate-test.invalid/postgres" \
   TERAS_GATE_RUN_ID="$gate_run_id" \
   TERAS_GATE_CANDIDATE_SHA="$gate_candidate_sha" \
@@ -156,16 +160,22 @@ gate_markdown_report="$gate_report_dir/certification-preparation-$gate_run_id.md
 [[ -f "$gate_json_report" && -f "$gate_markdown_report" ]] ||
   fail "failed admin browser gate must still write JSON and Markdown reports"
 grep -Fq '"testStatus":"FAIL"' "$gate_json_report" &&
-  grep -Fq '"gateReview":"NO-GO"' "$gate_json_report" ||
-  fail "failed admin browser JSON report must be FAIL/NO-GO"
+  grep -Fq '"gateReview":"NO-GO"' "$gate_json_report" &&
+  grep -Fq '"cleanup":{"status":"FAIL"}' "$gate_json_report" ||
+  fail "combined check and cleanup failure JSON report must be FAIL/NO-GO with failed cleanup"
 grep -Fq 'Automated test status: **FAIL**' "$gate_markdown_report" &&
   grep -Fq 'Gate review: **NO-GO**' "$gate_markdown_report" ||
-  fail "failed admin browser Markdown report must be FAIL/NO-GO"
+  fail "combined check and cleanup failure Markdown report must be FAIL/NO-GO"
 grep -Fq 'reproduce locally with: pnpm --filter @workspace/api-server run test:browser-admin-access' "$gate_json_report" &&
   grep -Fq 'reproduce locally with: pnpm --filter @workspace/api-server run test:browser-admin-access' "$gate_markdown_report" ||
-  fail "failed admin browser reports must include the actionable reproduction command"
+  fail "combined failure reports must retain the actionable primary check failure"
+grep -Fq 'disposable database cleanup failed' "$gate_json_report" &&
+  grep -Fq 'disposable database cleanup failed' "$gate_markdown_report" ||
+  fail "combined failure reports must also record the cleanup failure"
 grep -Fq 'test:browser-admin-access' "$mock_dir/pnpm-calls.log" ||
   fail "admin browser failure simulation did not execute the mocked command"
+grep -Fq 'dropdb ' "$mock_dir/database-calls.log" ||
+  fail "cleanup failure simulation did not execute the mocked dropdb command"
 
 cat >"$mock_dir/gh" <<'EOF'
 #!/usr/bin/env bash
