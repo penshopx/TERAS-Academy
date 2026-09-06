@@ -190,6 +190,8 @@ run_check() {
 # copy a production schema or seed demonstration data.
 run_check "resource URI policy helper" "command failed" psql "$test_database_url" -v ON_ERROR_STOP=1 -c "CREATE FUNCTION teras_is_valid_resource_uri(value text) RETURNS boolean LANGUAGE sql IMMUTABLE AS \$\$ SELECT value ~ '^https?://[^[:space:]]+$' AND value !~ '[<>\"{}|\\\\^\`]' \$\$;" >/dev/null || exit 1
 run_check "schema provisioning" "command failed" env DATABASE_URL="$test_database_url" pnpm --filter @workspace/db run push-force || exit 1
+run_check "Super Admin provisioning policy" "reproduce locally with: pnpm --filter @workspace/scripts run test:super-admin-provisioning-policy" pnpm --filter @workspace/scripts run test:super-admin-provisioning-policy || exit 1
+run_check "Super Admin ready and legacy provisioning" "reproduce locally with: DATABASE_URL=<maintenance-database-url> pnpm --filter @workspace/scripts run test:super-admin-provisioning" env DATABASE_URL="$test_database_url" pnpm --filter @workspace/scripts run test:super-admin-provisioning || exit 1
 run_check "authoring and safe-media input contract" "command failed" env DATABASE_URL="$test_database_url" NODE_ENV=test pnpm --filter @workspace/api-server exec tsx ./src/course-authoring.contract.test.ts || exit 1
 run_check "shared certification preparation journey" "command failed" env DATABASE_URL="$test_database_url" NODE_ENV=test TERAS_GATE_STORAGE_NAMESPACE="$storage_namespace" pnpm --filter @workspace/api-server exec tsx ./src/certification-preparation-journey.integration.ts || exit 1
 run_check "admin browser access gate" "reproduce locally with: pnpm --filter @workspace/api-server run test:browser-admin-access" pnpm --filter @workspace/api-server run test:browser-admin-access || exit 1

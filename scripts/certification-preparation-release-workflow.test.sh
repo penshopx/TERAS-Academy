@@ -70,8 +70,10 @@ grep -Fq "needs: certification-preparation-evidence" <<<"$release_evidence_block
   grep -Fq -- "--signer-workflow" <<<"$release_evidence_block" &&
   grep -Fq "report_sha" <<<"$release_evidence_block" &&
   grep -Fq '[[ "$report_sha" == "$TARGET_SHA" ]]' <<<"$release_evidence_block" &&
-  grep -Fq '[[ "$report_status" == "PASS" ]]' <<<"$release_evidence_block" ||
-  fail "Gate Review must verify provenance, PASS status, and candidate SHA first"
+  grep -Fq '[[ "$report_status" == "PASS" ]]' <<<"$release_evidence_block" &&
+  grep -Fq '"Super Admin provisioning policy"' <<<"$release_evidence_block" &&
+  grep -Fq '"Super Admin ready and legacy provisioning"' <<<"$release_evidence_block" ||
+  fail "Gate Review must verify provenance, PASS status, candidate SHA, and both Super Admin checks first"
 grep -Fq -- "- gate-review" <<<"$publish_block" &&
   grep -Fq "run: bash scripts/publish-approved-release.sh" <<<"$publish_block" ||
   fail "release creation must happen only after Gate Review GO"
@@ -89,8 +91,10 @@ grep -Fq "actions/attest-build-provenance@v2" <<<"$evidence_block" &&
 grep -Fq "actions/download-artifact@v4" <<<"$publish_block" &&
   grep -Fq "gh attestation verify" <<<"$publish_block" &&
   grep -Fq 'candidateSha' <<<"$publish_block" &&
-  grep -Fq 'testStatus' <<<"$publish_block" ||
-  fail "publisher must reverify attestation, candidate SHA, and PASS status"
+  grep -Fq 'testStatus' <<<"$publish_block" &&
+  grep -Fq '"Super Admin provisioning policy"' <<<"$publish_block" &&
+  grep -Fq '"Super Admin ready and legacy provisioning"' <<<"$publish_block" ||
+  fail "publisher must reverify attestation, candidate SHA, PASS status, and both Super Admin checks"
 grep -Fq 'RELEASE_TAG: ${{ inputs.tag_name }}' <<<"$publish_block" &&
   grep -Fq 'RELEASE_NAME: ${{ inputs.release_name || inputs.tag_name }}' <<<"$publish_block" ||
   fail "dispatcher input must reach the shell only through environment variables"
@@ -113,6 +117,10 @@ grep -Fq '"candidateSha":$(json_escape "$candidate_sha")' "$gate" &&
 grep -Fq 'pnpm --filter @workspace/api-server run test:browser-admin-access' "$gate" &&
   grep -Fq 'reproduce locally with: pnpm --filter @workspace/api-server run test:browser-admin-access' "$gate" ||
   fail "release gate must block on admin browser access with an actionable reproduction command"
+grep -Fq 'pnpm --filter @workspace/scripts run test:super-admin-provisioning-policy' "$gate" &&
+  grep -Fq 'pnpm --filter @workspace/scripts run test:super-admin-provisioning' "$gate" &&
+  grep -Fq 'env DATABASE_URL="$test_database_url"' "$gate" ||
+  fail "release gate must block on Super Admin policy and ready/legacy provisioning checks"
 
 mock_dir="$(mktemp -d)"
 trap 'rm -rf "$mock_dir"' EXIT
@@ -259,6 +267,23 @@ grep -Fq '[DIAGNOSTIC TRUNCATED]' "$gate_json_report" &&
   fail "truncated cleanup diagnostics must say that output was omitted"
 grep -Fq 'test:browser-admin-access' "$mock_dir/pnpm-calls.log" ||
   fail "admin browser failure simulation did not execute the mocked command"
+grep -Fq 'test:super-admin-provisioning-policy' "$mock_dir/pnpm-calls.log" &&
+  grep -Fq 'test:super-admin-provisioning' "$mock_dir/pnpm-calls.log" ||
+  fail "release gate did not execute both Super Admin checks before later checks"
+node - "$gate_json_report" <<'EOF' ||
+const fs = require("fs");
+const report = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const expected = [
+  "Super Admin provisioning policy",
+  "Super Admin ready and legacy provisioning",
+];
+for (const name of expected) {
+  const check = report.checks.find((candidate) => candidate.name === name);
+  if (!check || check.status !== "PASS") process.exit(1);
+  if (/email|identity|clerk user/i.test(check.detail)) process.exit(1);
+}
+EOF
+  fail "release evidence must record sanitized PASS results for both Super Admin checks"
 grep -Fq 'dropdb ' "$mock_dir/database-calls.log" ||
   fail "cleanup failure simulation did not execute the mocked dropdb command"
 

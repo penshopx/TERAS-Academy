@@ -179,6 +179,16 @@ jobs:
             echo "::error::Release-gate evidence status is $report_status, not PASS."
             exit 1
           }
+           jq -e '
+             (.checks | map(select(
+               (.name == "Super Admin provisioning policy" or
+                .name == "Super Admin ready and legacy provisioning") and
+               .status == "PASS"
+             )) | length) == 2
+           ' "$json_report" >/dev/null || {
+             echo "::error::Release-gate evidence is missing a required passing Super Admin check."
+             exit 1
+           }
           expected_markdown_line="$(printf -- '- Release candidate SHA: `%s`' "$TARGET_SHA")"
           grep -Fqx -- "$expected_markdown_line" "$markdown_report" || {
             echo "::error::Markdown evidence does not identify release candidate $TARGET_SHA."
@@ -249,6 +259,16 @@ jobs:
             echo "::error::Approved evidence is not a PASS report."
             exit 1
           }
+           jq -e '
+             (.checks | map(select(
+               (.name == "Super Admin provisioning policy" or
+                .name == "Super Admin ready and legacy provisioning") and
+               .status == "PASS"
+             )) | length) == 2
+           ' "$json_report" >/dev/null || {
+             echo "::error::Approved evidence is missing a required passing Super Admin check."
+             exit 1
+           }
           expected_markdown_line="$(printf -- '- Release candidate SHA: `%s`' "$TARGET_SHA")"
           grep -Fqx -- "$expected_markdown_line" "$markdown_report" || {
             echo "::error::Approved Markdown evidence does not belong to release candidate $TARGET_SHA."
