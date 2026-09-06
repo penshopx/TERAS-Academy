@@ -71,6 +71,8 @@ import type {
   LearningPlanItem,
   LearningResource,
   LearningResourceInput,
+  LearningResourceProgress,
+  LearningResourceProgressInput,
   LearningTransitionInput,
   LearningTransitionRejection,
   LearningTransitionResult,
@@ -2399,6 +2401,155 @@ export const useCreateLearningResource = <TError = ErrorType<BadRequestResponse 
         TContext
       > => {
       return useMutation(getCreateLearningResourceMutationOptions(options));
+    }
+
+export const getGetLearningResourceProgressUrl = (resourceId: string,) => {
+
+
+
+
+  return `/api/learning/resources/${resourceId}/progress`
+}
+
+/**
+ * @summary Get the authenticated learner's position in a learning resource
+ */
+export const getLearningResourceProgress = async (resourceId: string, options?: Parameters<typeof customFetch>[1]): Promise<LearningResourceProgress> => {
+
+  return customFetch<LearningResourceProgress>(getGetLearningResourceProgressUrl(resourceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLearningResourceProgressQueryKey = (resourceId: string,) => {
+    return [
+    `/api/learning/resources/${resourceId}/progress`
+    ] as const;
+    }
+
+
+export const getGetLearningResourceProgressQueryOptions = <TData = Awaited<ReturnType<typeof getLearningResourceProgress>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(resourceId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLearningResourceProgress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLearningResourceProgressQueryKey(resourceId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLearningResourceProgress>>> = ({ signal }) => getLearningResourceProgress(resourceId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: resourceId !== null && resourceId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLearningResourceProgress>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLearningResourceProgressQueryResult = NonNullable<Awaited<ReturnType<typeof getLearningResourceProgress>>>
+export type GetLearningResourceProgressQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get the authenticated learner's position in a learning resource
+ */
+
+export function useGetLearningResourceProgress<TData = Awaited<ReturnType<typeof getLearningResourceProgress>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ resourceId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLearningResourceProgress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLearningResourceProgressQueryOptions(resourceId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveLearningResourceProgressUrl = (resourceId: string,) => {
+
+
+
+
+  return `/api/learning/resources/${resourceId}/progress`
+}
+
+/**
+ * @summary Save the authenticated learner's position in a learning resource
+ */
+export const saveLearningResourceProgress = async (resourceId: string,
+    learningResourceProgressInput: LearningResourceProgressInput, options?: Parameters<typeof customFetch>[1]): Promise<LearningResourceProgress> => {
+
+  return customFetch<LearningResourceProgress>(getSaveLearningResourceProgressUrl(resourceId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(learningResourceProgressInput)
+  }
+);}
+
+
+
+
+
+export const getSaveLearningResourceProgressMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveLearningResourceProgress>>, TError,{resourceId: string;data: BodyType<LearningResourceProgressInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveLearningResourceProgress>>, TError,{resourceId: string;data: BodyType<LearningResourceProgressInput>}, TContext> => {
+
+const mutationKey = ['saveLearningResourceProgress'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveLearningResourceProgress>>, {resourceId: string;data: BodyType<LearningResourceProgressInput>}> = (props) => {
+          const {resourceId,data} = props ?? {};
+
+          return  saveLearningResourceProgress(resourceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveLearningResourceProgressMutationResult = NonNullable<Awaited<ReturnType<typeof saveLearningResourceProgress>>>
+    export type SaveLearningResourceProgressMutationBody = BodyType<LearningResourceProgressInput>
+    export type SaveLearningResourceProgressMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Save the authenticated learner's position in a learning resource
+ */
+export const useSaveLearningResourceProgress = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveLearningResourceProgress>>, TError,{resourceId: string;data: BodyType<LearningResourceProgressInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveLearningResourceProgress>>,
+        TError,
+        {resourceId: string;data: BodyType<LearningResourceProgressInput>},
+        TContext
+      > => {
+      return useMutation(getSaveLearningResourceProgressMutationOptions(options));
     }
 
 export const getTransitionLearningStateUrl = () => {

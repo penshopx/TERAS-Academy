@@ -312,6 +312,31 @@ export const learningTransitionEventsTable = pgTable("teras_learning_transition_
   index("teras_learning_transition_state_lookup_idx").on(table.activityId, table.learnerId, table.pathwayId, table.createdAt),
 ]);
 
+/**
+ * Mutable presentation position only. It intentionally does not participate in
+ * the canonical learning-state transition lifecycle, which remains event-sourced.
+ */
+export const learningResourceProgressTable = pgTable("teras_learning_resource_progress", {
+  id: text("id").primaryKey(),
+  learnerId: text("learner_id").notNull().references(() => peopleTable.id),
+  enrollmentId: text("enrollment_id").notNull().references(() => enrollmentsTable.id),
+  pathwayId: text("pathway_id").notNull().references(() => pathwaysTable.id),
+  activityId: text("activity_id").notNull().references(() => learningActivitiesTable.id),
+  resourceId: text("resource_id").notNull().references(() => contentResourcesTable.id),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  createdBy: text("created_by").notNull().default("system"),
+}, table => [
+  check("teras_learning_resource_progress_position_check", sql`${table.position} >= 0`),
+  uniqueIndex("teras_learning_resource_progress_scope_unique").on(
+    table.learnerId, table.enrollmentId, table.activityId, table.resourceId,
+  ),
+  index("teras_learning_resource_progress_lookup_idx").on(
+    table.learnerId, table.enrollmentId, table.activityId, table.resourceId,
+  ),
+]);
+
 const lmsTables = {
   coursesTable,
   courseModulesTable,
@@ -325,6 +350,7 @@ const lmsTables = {
   reassessmentLinksTable,
   readinessTransferEventsTable,
   learningTransitionEventsTable,
+  learningResourceProgressTable,
 };
 
 export const lmsInsertSchemas = Object.fromEntries(
@@ -337,4 +363,5 @@ export const lmsInsertSchemas = Object.fromEntries(
 export type Course = typeof coursesTable.$inferSelect;
 export type LearningActivity = typeof learningActivitiesTable.$inferSelect;
 export type LearningTransitionEvent = typeof learningTransitionEventsTable.$inferSelect;
+export type LearningResourceProgress = typeof learningResourceProgressTable.$inferSelect;
 export type InsertCourse = z.infer<typeof lmsInsertSchemas.coursesTable>;

@@ -337,6 +337,22 @@ export interface LearningResourceInput {
   sequence: number;
 }
 
+export interface LearningResourceProgressInput {
+  /**
+     * @minimum 0
+     * @maximum 2147483647
+     */
+  position: number;
+}
+
+export interface LearningResourceProgress {
+  resourceId: string;
+  activityId: string;
+  /** @minimum 0 */
+  position: number;
+  updatedAt: string;
+}
+
 export interface LearningTransitionReferences {
   outcomeId?: string;
   practiceAttemptId?: string;

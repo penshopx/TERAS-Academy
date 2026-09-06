@@ -1,11 +1,11 @@
-import { useListLearningCourses, useGetLearnerDashboard, useTransitionLearningState, LearningActivity, LearningState, getListLearningCoursesQueryKey } from "@workspace/api-client-react";
+import { useListLearningCourses, useGetLearnerDashboard, useTransitionLearningState, useGetLearningResourceProgress, useSaveLearningResourceProgress, LearningActivity, LearningState, getListLearningCoursesQueryKey } from "@workspace/api-client-react";
 import { isLearningCompleted } from "@/lib/learning-progress";
 import { useParams, Link } from "wouter";
 import { Activity as ActivityIcon, CheckCircle2, ChevronLeft, PlayCircle, FileText, Video, Headphones, MessagesSquare, FileArchive, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { trackLearningAction, trackResourceOpened } from "@/lib/analytics";
@@ -35,6 +35,48 @@ function isSupportedResourceUri(uri: string | null | undefined): uri is string {
 }
 
 export function LearningResourceLink({ activityId, resource }: LearningResourceLinkProps) {
+  const { data: savedProgress } = useGetLearningResourceProgress(resource.id);
+  const saveProgress = useSaveLearningResourceProgress();
+  const scrollContainer = useRef<HTMLDivElement>(null);
+  const initialPositionApplied = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestPosition = useRef(0);
+  const requestInFlight = useRef(false);
+  const sentPosition = useRef<number | null>(null);
+
+  const persistLatestPosition = () => {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
+    sentPosition.current = latestPosition.current;
+    saveProgress.mutate(
+      { resourceId: resource.id, data: { position: latestPosition.current } },
+      {
+        onSettled: () => {
+          requestInFlight.current = false;
+          if (sentPosition.current !== latestPosition.current) persistLatestPosition();
+        },
+      },
+    );
+  };
+  const schedulePositionSave = (position: number) => {
+    latestPosition.current = position;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveTimer.current = null;
+      persistLatestPosition();
+    }, 500);
+  };
+
+  useEffect(() => {
+    if (initialPositionApplied.current || !savedProgress || !scrollContainer.current) return;
+    scrollContainer.current.scrollTop = savedProgress.position;
+    latestPosition.current = savedProgress.position;
+    initialPositionApplied.current = true;
+  }, [savedProgress]);
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+  }, []);
+
   // If it's type TEXT, render it inline accessibly
   if (resource.type === "TEXT") {
     return (
@@ -49,7 +91,12 @@ export function LearningResourceLink({ activityId, resource }: LearningResourceL
           <span className="text-sm font-semibold">{resource.title}</span>
         </div>
         {resource.content ? (
-          <div className="text-sm text-muted-foreground whitespace-pre-wrap font-mono p-4 bg-muted/20 rounded-md border border-border/30">
+          <div
+            ref={scrollContainer}
+            onScroll={(event) => schedulePositionSave(Math.round(event.currentTarget.scrollTop))}
+            className="text-sm text-muted-foreground whitespace-pre-wrap font-mono p-4 bg-muted/20 rounded-md border border-border/30 max-h-80 overflow-y-auto"
+            data-testid={`activity-resource-position-${resource.id}`}
+          >
             {resource.content}
           </div>
         ) : (
@@ -86,11 +133,19 @@ export function LearningResourceLink({ activityId, resource }: LearningResourceL
   return (
     <a
       href={resolvedUri}
-      onClick={() => trackResourceOpened({
-        activityId,
-        resourceId: resource.id,
-        resourceType: resource.type,
-      })}
+      onClick={() => {
+        // External viewers do not expose a readable position to this origin;
+        // retain that the authenticated learner opened this material instead.
+        latestPosition.current = 1;
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+        persistLatestPosition();
+        trackResourceOpened({
+          activityId,
+          resourceId: resource.id,
+          resourceType: resource.type,
+        });
+      }}
       target="_blank"
       rel="noreferrer"
       className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-background/50 hover:bg-muted/30 hover:border-primary/30 transition-all group/link"

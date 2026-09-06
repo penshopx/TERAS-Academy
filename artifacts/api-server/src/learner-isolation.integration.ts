@@ -2,6 +2,7 @@ import type { AddressInfo } from "node:net";
 import {
   activityCompletionEventsTable,
   assessmentAttemptsTable,
+  contentResourcesTable,
   db,
   enrollmentsTable,
   evidenceReviewsTable,
@@ -9,6 +10,7 @@ import {
   gapEventsTable,
   gapsTable,
   learningTransitionEventsTable,
+  learningResourceProgressTable,
   peopleTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -23,12 +25,15 @@ const gapB = `gap-isolation-${crypto.randomUUID()}`;
 const gapEventB = `gap-event-isolation-${crypto.randomUUID()}`;
 const attemptB = `attempt-isolation-${crypto.randomUUID()}`;
 const transitionKey = `transition-isolation-${crypto.randomUUID()}`;
+const resourceB = `resource-isolation-${crypto.randomUUID()}`;
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
 async function cleanup() {
+  await db.delete(learningResourceProgressTable).where(eq(learningResourceProgressTable.resourceId, resourceB));
+  await db.delete(contentResourcesTable).where(eq(contentResourcesTable.id, resourceB));
   const transitions = await db.select({ id: learningTransitionEventsTable.id })
     .from(learningTransitionEventsTable)
     .where(eq(learningTransitionEventsTable.idempotencyKey, transitionKey));
@@ -115,6 +120,15 @@ async function seed() {
     decision: "Competent",
     createdBy: learnerB,
   });
+  await db.insert(contentResourcesTable).values({
+    id: resourceB,
+    activityId: "activity-b04-protection",
+    type: "TEXT",
+    title: "Private learner B material",
+    content: "This material is only reachable through learner B's active enrollment.",
+    sequence: 999,
+    createdBy: learnerB,
+  });
 }
 
 async function run() {
@@ -194,6 +208,15 @@ async function run() {
       coursesAfterA.every(course => course.resumeAction?.activityId !== "activity-b04-protection"),
       "Learner B resume state leaked into learner A courses",
     );
+    await request(`/learning/resources/${resourceB}/progress`, "learner-a", undefined, 404);
+    const savedPosition = await request<any>(`/learning/resources/${resourceB}/progress`, "learner-b", {
+      method: "PUT",
+      body: JSON.stringify({ position: 184 }),
+    });
+    assert(savedPosition.position === 184 && savedPosition.activityId === "activity-b04-protection", "Resource position was not saved in learner B scope");
+    // A fresh read models reloading the lesson in another browser session.
+    const restoredPosition = await request<any>(`/learning/resources/${resourceB}/progress`, "learner-b");
+    assert(restoredPosition.position === 184, "Resource position was not restored after reload");
 
     for (const path of ["/learner/dashboard", "/evidence", "/gaps", "/readiness", "/passport", "/learning/courses", "/assessments"]) {
       await request(path, "anonymous", undefined, 401);

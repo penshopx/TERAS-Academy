@@ -596,6 +596,35 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /learning/resources/{resourceId}/progress:
+    get:
+      operationId: getLearningResourceProgress
+      tags: [learning]
+      summary: Get the authenticated learner's position in a learning resource
+      parameters: [{ $ref: "#/components/parameters/ResourceId" }]
+      responses:
+        "200":
+          description: Learner-scoped resource position
+          content: { application/json: { schema: { $ref: "#/components/schemas/LearningResourceProgress" } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: saveLearningResourceProgress
+      tags: [learning]
+      summary: Save the authenticated learner's position in a learning resource
+      parameters: [{ $ref: "#/components/parameters/ResourceId" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/LearningResourceProgressInput" } } }
+      responses:
+        "200":
+          description: Learner-scoped resource position saved
+          content: { application/json: { schema: { $ref: "#/components/schemas/LearningResourceProgress" } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /learning/transitions:
     post:
       operationId: transitionLearningState
@@ -1991,6 +2020,7 @@ components:
     CohortId: { name: cohortId, in: path, required: true, schema: { type: string } }
     EnrollmentId: { name: enrollmentId, in: path, required: true, schema: { type: string } }
     CourseId: { name: courseId, in: path, required: true, schema: { type: string } }
+    ResourceId: { name: resourceId, in: path, required: true, schema: { type: string, minLength: 1 } }
     ProgramId:
       name: programId
       in: path
@@ -2196,6 +2226,20 @@ components:
         content: { type: ["string", "null"] }
         sequence: { type: integer, minimum: 1 }
       required: [id, activityId, type, title, sequence]
+    LearningResourceProgressInput:
+      type: object
+      additionalProperties: false
+      required: [position]
+      properties:
+        position: { type: integer, minimum: 0, maximum: 2147483647 }
+    LearningResourceProgress:
+      type: object
+      required: [resourceId, activityId, position, updatedAt]
+      properties:
+        resourceId: { type: string }
+        activityId: { type: string }
+        position: { type: integer, minimum: 0 }
+        updatedAt: { type: string, format: date-time }
     LearningOutcome:
       type: object
       properties:

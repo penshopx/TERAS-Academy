@@ -7,6 +7,7 @@ import {
   coursesTable,
   db,
   learningActivitiesTable,
+  learningResourceProgressTable,
   learningRecordLinksTable,
   learningOutcomesTable,
   learningTransitionEventsTable,
@@ -17,7 +18,12 @@ import {
 import {
   CreateLearningResourceBody,
   CreateLearningResourceResponse,
+  GetLearningResourceProgressParams,
+  GetLearningResourceProgressResponse,
   ListLearningCoursesResponse,
+  SaveLearningResourceProgressBody,
+  SaveLearningResourceProgressParams,
+  SaveLearningResourceProgressResponse,
   TransitionLearningStateBody,
   TransitionLearningStateResponse,
 } from "@workspace/api-zod";
@@ -28,7 +34,7 @@ import {
   type LearningState,
   type LearningTransitionCommand,
 } from "../lib/learning-transition";
-import { learnerContext } from "../lib/teras";
+import { activeLearnerPathwayContext, learnerContext } from "../lib/teras";
 import { RESOURCE_URI_ERROR, validateResourceUri } from "../lib/resource-uri";
 import { applyCourseAuthoring, trainerHasAssignment } from "../lib/course-authoring";
 import { resolveLearningResumeAction } from "../lib/learning-resume";
@@ -267,6 +273,98 @@ router.post("/learning/resources", async (req, res): Promise<void> => {
     "Learning resource created",
   );
   res.status(201).json(CreateLearningResourceResponse.parse(resource));
+});
+
+async function authorizedResourceProgressScope(learnerId: string, resourceId: string) {
+  const [resource] = await db.select({
+    resourceId: contentResourcesTable.id,
+    resourceStatus: contentResourcesTable.status,
+    activityId: learningActivitiesTable.id,
+    activityStatus: learningActivitiesTable.status,
+    pathwayId: learningActivitiesTable.pathwayId,
+    programId: learningActivitiesTable.programId,
+  })
+    .from(contentResourcesTable)
+    .innerJoin(learningActivitiesTable, eq(learningActivitiesTable.id, contentResourcesTable.activityId))
+    .where(eq(contentResourcesTable.id, resourceId))
+    .limit(1);
+  if (!resource || resource.resourceStatus === "ARCHIVED" || resource.activityStatus === "ARCHIVED") return null;
+  const context = await activeLearnerPathwayContext(learnerId, resource.pathwayId);
+  if (!context || context.program.id !== resource.programId) return null;
+  return { resource, context };
+}
+
+router.get("/learning/resources/:resourceId/progress", async (req, res): Promise<void> => {
+  const learnerId = await authorizeLearner(req, res);
+  if (!learnerId) return;
+  const params = GetLearningResourceProgressParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const scope = await authorizedResourceProgressScope(learnerId, params.data.resourceId);
+  if (!scope) {
+    // Do not disclose resource membership outside the authenticated learner's
+    // active enrollment/pathway scope.
+    res.status(404).json({ error: "Learning resource not found" });
+    return;
+  }
+  const [progress] = await db.select().from(learningResourceProgressTable).where(and(
+    eq(learningResourceProgressTable.learnerId, learnerId),
+    eq(learningResourceProgressTable.enrollmentId, scope.context.enrollment.id),
+    eq(learningResourceProgressTable.activityId, scope.resource.activityId),
+    eq(learningResourceProgressTable.resourceId, scope.resource.resourceId),
+  )).limit(1);
+  res.json(GetLearningResourceProgressResponse.parse({
+    resourceId: scope.resource.resourceId,
+    activityId: scope.resource.activityId,
+    position: progress?.position ?? 0,
+    updatedAt: progress?.updatedAt ?? new Date(0),
+  }));
+});
+
+router.put("/learning/resources/:resourceId/progress", async (req, res): Promise<void> => {
+  const learnerId = await authorizeLearner(req, res);
+  if (!learnerId) return;
+  const [params, body] = [
+    SaveLearningResourceProgressParams.safeParse(req.params),
+    SaveLearningResourceProgressBody.safeParse(req.body),
+  ];
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  const scope = await authorizedResourceProgressScope(learnerId, params.data.resourceId);
+  if (!scope) {
+    res.status(404).json({ error: "Learning resource not found" });
+    return;
+  }
+  const now = new Date();
+  const [progress] = await db.insert(learningResourceProgressTable).values({
+    id: crypto.randomUUID(),
+    learnerId,
+    enrollmentId: scope.context.enrollment.id,
+    pathwayId: scope.resource.pathwayId,
+    activityId: scope.resource.activityId,
+    resourceId: scope.resource.resourceId,
+    position: body.data.position,
+    createdBy: learnerId,
+    updatedAt: now,
+  }).onConflictDoUpdate({
+    target: [
+      learningResourceProgressTable.learnerId,
+      learningResourceProgressTable.enrollmentId,
+      learningResourceProgressTable.activityId,
+      learningResourceProgressTable.resourceId,
+    ],
+    set: { position: body.data.position, updatedAt: now },
+  }).returning();
+  req.log.info({ learnerId, resourceId: progress.resourceId, activityId: progress.activityId }, "Learning resource position saved");
+  res.json(SaveLearningResourceProgressResponse.parse(progress));
 });
 
 router.post("/learning/transitions", async (req, res): Promise<void> => {

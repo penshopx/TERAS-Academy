@@ -1219,6 +1219,59 @@ export const CreateLearningResourceResponse = zod.object({
 
 
 /**
+ * @summary Get the authenticated learner's position in a learning resource
+ */
+
+
+
+export const GetLearningResourceProgressParams = zod.object({
+  "resourceId": zod.coerce.string().min(1)
+})
+
+export const getLearningResourceProgressResponsePositionMin = 0;
+
+
+
+export const GetLearningResourceProgressResponse = zod.object({
+  "resourceId": zod.string(),
+  "activityId": zod.string(),
+  "position": zod.int().min(getLearningResourceProgressResponsePositionMin),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Save the authenticated learner's position in a learning resource
+ */
+
+
+
+export const SaveLearningResourceProgressParams = zod.object({
+  "resourceId": zod.coerce.string().min(1)
+})
+
+export const saveLearningResourceProgressBodyPositionMin = 0;
+export const saveLearningResourceProgressBodyPositionMax = 2147483647;
+
+
+
+export const SaveLearningResourceProgressBody = zod.object({
+  "position": zod.int().min(saveLearningResourceProgressBodyPositionMin).max(saveLearningResourceProgressBodyPositionMax)
+})
+
+export const saveLearningResourceProgressResponsePositionMin = 0;
+
+
+
+export const SaveLearningResourceProgressResponse = zod.object({
+  "resourceId": zod.string(),
+  "activityId": zod.string(),
+  "position": zod.int().min(saveLearningResourceProgressResponsePositionMin),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Apply one authorized, prerequisite-aware learning state transition
  */
 

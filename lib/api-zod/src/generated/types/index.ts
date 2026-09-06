@@ -118,6 +118,8 @@ export * from './learningPlanItem';
 export * from './learningResource';
 export * from './learningResourceInput';
 export * from './learningResourceInputType';
+export * from './learningResourceProgress';
+export * from './learningResourceProgressInput';
 export * from './learningResourceType';
 export * from './learningResumeAction';
 export * from './learningState';
