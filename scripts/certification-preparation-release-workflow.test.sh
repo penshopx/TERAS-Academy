@@ -51,6 +51,8 @@ grep -Fq "TERAS_GATE_STORAGE_ADAPTER: test" "$workflow" ||
   fail "release evidence must refuse real object storage"
 grep -Fq 'TERAS_GATE_STORAGE_NAMESPACE: release-gate/${{ github.run_id }}/${{ github.run_attempt }}' "$workflow" ||
   fail "storage namespace must be unique per workflow attempt"
+grep -Fq "run: pnpm run setup:browser-admin-access" <<<"$evidence_block" ||
+  fail "release evidence job must install Chromium for the admin access gate"
 grep -Fq "run: pnpm run gate:certification-preparation" "$workflow" ||
   fail "workflow does not run the certification-preparation gate"
 grep -Fq "if: always()" "$workflow" &&
@@ -108,6 +110,9 @@ grep -Fq '"candidateSha":$(json_escape "$candidate_sha")' "$gate" &&
   grep -Fq 'Release candidate SHA: \`$candidate_sha\`' "$gate" &&
   grep -Fq '40-character Git commit SHA' "$gate" ||
   fail "JSON and Markdown reports must identify a valid full candidate SHA"
+grep -Fq 'pnpm --filter @workspace/api-server run test:browser-admin-access' "$gate" &&
+  grep -Fq 'reproduce locally with: pnpm --filter @workspace/api-server run test:browser-admin-access' "$gate" ||
+  fail "release gate must block on admin browser access with an actionable reproduction command"
 
 mock_dir="$(mktemp -d)"
 trap 'rm -rf "$mock_dir"' EXIT

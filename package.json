@@ -8,6 +8,7 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm --filter @workspace/api-spec run test && pnpm --filter @workspace/api-spec run validate && pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "setup:browser-idempotency": "pnpm --filter @workspace/api-server run setup:browser-idempotency",
+    "setup:browser-admin-access": "pnpm --filter @workspace/api-server run setup:browser-admin-access",
     "test:browser-idempotency": "pnpm --filter @workspace/api-server run test:browser-idempotency",
     "test:certification-preparation-release-workflow": "pnpm --filter @workspace/scripts run test:certification-preparation-release-workflow",
     "test:app-storage-sidecar-smoke-contract": "pnpm --filter @workspace/scripts run test:app-storage-sidecar-smoke-contract",

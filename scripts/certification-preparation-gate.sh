@@ -111,21 +111,24 @@ test_database_url="$(node -e 'const url = new URL(process.env.DATABASE_URL); url
 
 run_check() {
   local name="$1"
+  local failure_detail="${2:-command failed}"
+  shift
   shift
   if "$@"; then
     checks+=("$(printf '%s\t%s\t%s' "$name" "PASS" "completed against the disposable database" | base64)")
   else
-    checks+=("$(printf '%s\t%s\t%s' "$name" "FAIL" "command failed" | base64)")
-    failure="$name failed"
+    checks+=("$(printf '%s\t%s\t%s' "$name" "FAIL" "$failure_detail" | base64)")
+    failure="$name failed: $failure_detail"
     return 1
   fi
 }
 
 # Required by the resource URI constraint in a fresh schema; the gate does not
 # copy a production schema or seed demonstration data.
-run_check "resource URI policy helper" psql "$test_database_url" -v ON_ERROR_STOP=1 -c "CREATE FUNCTION teras_is_valid_resource_uri(value text) RETURNS boolean LANGUAGE sql IMMUTABLE AS \$\$ SELECT value ~ '^https?://[^[:space:]]+$' AND value !~ '[<>\"{}|\\\\^\`]' \$\$;" >/dev/null || exit 1
-run_check "schema provisioning" env DATABASE_URL="$test_database_url" pnpm --filter @workspace/db run push-force || exit 1
-run_check "authoring and safe-media input contract" env DATABASE_URL="$test_database_url" NODE_ENV=test pnpm --filter @workspace/api-server exec tsx ./src/course-authoring.contract.test.ts || exit 1
-run_check "shared certification preparation journey" env DATABASE_URL="$test_database_url" NODE_ENV=test TERAS_GATE_STORAGE_NAMESPACE="$storage_namespace" pnpm --filter @workspace/api-server exec tsx ./src/certification-preparation-journey.integration.ts || exit 1
+run_check "resource URI policy helper" "command failed" psql "$test_database_url" -v ON_ERROR_STOP=1 -c "CREATE FUNCTION teras_is_valid_resource_uri(value text) RETURNS boolean LANGUAGE sql IMMUTABLE AS \$\$ SELECT value ~ '^https?://[^[:space:]]+$' AND value !~ '[<>\"{}|\\\\^\`]' \$\$;" >/dev/null || exit 1
+run_check "schema provisioning" "command failed" env DATABASE_URL="$test_database_url" pnpm --filter @workspace/db run push-force || exit 1
+run_check "authoring and safe-media input contract" "command failed" env DATABASE_URL="$test_database_url" NODE_ENV=test pnpm --filter @workspace/api-server exec tsx ./src/course-authoring.contract.test.ts || exit 1
+run_check "shared certification preparation journey" "command failed" env DATABASE_URL="$test_database_url" NODE_ENV=test TERAS_GATE_STORAGE_NAMESPACE="$storage_namespace" pnpm --filter @workspace/api-server exec tsx ./src/certification-preparation-journey.integration.ts || exit 1
+run_check "admin browser access gate" "reproduce locally with: pnpm --filter @workspace/api-server run test:browser-admin-access" pnpm --filter @workspace/api-server run test:browser-admin-access || exit 1
 
 test_status="PASS"
