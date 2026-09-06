@@ -31,6 +31,11 @@ function chromiumExecutablePath() {
 }
 
 const adminCacheMarker = "DATA ADMIN A — RAHASIA";
+const workspaceMarkers = {
+  learner: { first: "LEARNER A — RAHASIA", second: "LEARNER B — TERISOLASI" },
+  trainer: { first: "TRAINER A — RAHASIA", second: "TRAINER B — TERISOLASI" },
+  assessor: { first: "ASSESSOR A — RAHASIA", second: "ASSESSOR B — TERISOLASI" },
+} as const;
 const summary = {
   generatedAt: new Date(0).toISOString(),
   metrics: [],
@@ -44,6 +49,77 @@ const summary = {
   queues: [],
   actions: [],
 };
+
+type WorkspaceRole = keyof typeof workspaceMarkers;
+type Account = "first" | "second";
+
+const profile = (role: WorkspaceRole, account: Account) => ({
+  id: `${role}-${account}`,
+  name: workspaceMarkers[role][account],
+  initials: account === "first" ? "AA" : "BB",
+  role,
+  organization: "TERAS integration",
+});
+
+const queueItem = (role: "trainer" | "assessor", account: Account) => ({
+  id: `${role}-${account}-queue`,
+  kind: role === "trainer" ? "Evidence" : "Assessment",
+  learnerId: `learner-${account}`,
+  learnerName: `${workspaceMarkers[role][account]} learner`,
+  moduleName: "Safety foundations",
+  title: `${workspaceMarkers[role][account]} queue`,
+  status: "Pending",
+  priority: "High",
+  updatedAt: new Date(0).toISOString(),
+  pathwayName: "Integration pathway",
+});
+
+function learnerDashboard(account: Account) {
+  const marker = workspaceMarkers.learner[account];
+  const gate = { id: "gate-1", code: "G1", name: "Foundation", status: "In progress", requirement: "Complete learning" };
+  return {
+    learner: profile("learner", account),
+    program: { id: "program-1", domain: "Energy", name: marker, description: "Integration fixture", moduleCount: 1, learnerCount: 1, status: "Active" },
+    pathway: { id: "pathway-1", name: "Integration pathway", type: "Learning", outcome: "Ready" },
+    capabilityProgress: 25,
+    readiness: { status: "IN PROGRESS", score: 25, currentGate: gate, nextGate: null, gates: [gate], blockers: [], outstandingGapCount: 0, missingEvidenceCount: 0 },
+    currentLearning: { id: "module-1", code: "M1", name: `${marker} module`, capability: "Safety", evidence: "Observation", progress: 25, status: "In progress" },
+    currentPractice: { id: "practice-1", moduleId: "module-1", title: "Safety practice", description: "Integration fixture", mode: "Guided", durationMinutes: 10, status: "Available", output: "Notes", safetyNote: null },
+    mainGap: null,
+    evidenceCounts: { total: 0, valid: 0, underReview: 0, needsRevision: 0 },
+    nextAction: { title: "Continue learning", description: "Integration fixture", href: "/learning", priority: "NORMAL" },
+  };
+}
+
+function trainerDashboard(account: Account) {
+  return {
+    trainer: profile("trainer", account),
+    assignedLearnerCount: 1,
+    pendingFeedbackCount: 1,
+    pendingEvidenceCount: 0,
+    activeRemediationCount: 0,
+    blockedLearnerCount: 0,
+    recentActivity: [queueItem("trainer", account)],
+    reviewHistory: [],
+    bottlenecks: {
+      asOf: new Date(0).toISOString(),
+      assignedContextCount: 0,
+      counts: {},
+      mostStalled: null,
+    },
+  };
+}
+
+function assessorDashboard(account: Account) {
+  return {
+    assessor: profile("assessor", account),
+    pendingAssessmentCount: 1,
+    pendingEvidenceCount: 0,
+    reassessmentCount: 0,
+    blockedGateCount: 0,
+    recentActivity: [queueItem("assessor", account)],
+  };
+}
 
 async function main() {
   await execFileAsync(
@@ -61,7 +137,8 @@ async function main() {
     },
   );
 
-  let role: "admin" | "learner" = "admin";
+  let role: "admin" | WorkspaceRole = "admin";
+  let account: Account = "first";
   let phase = "prime-admin-cache";
   let gateResolved = false;
   const requests: Array<{ phase: string; path: string; beforeGateResolved: boolean }> = [];
@@ -80,6 +157,26 @@ async function main() {
     requests.push({ phase, path: request.path, beforeGateResolved: !gateResolved });
     if (request.path === "/api/admin/summary") response.json(summary);
     else response.json([]);
+  });
+  app.get("/api/learner/dashboard", (request, response) => {
+    requests.push({ phase, path: request.path, beforeGateResolved: false });
+    if (role !== "learner") return response.status(403).json({ error: "Learner role required" });
+    return response.json(learnerDashboard(account));
+  });
+  app.get("/api/readiness", (request, response) => {
+    requests.push({ phase, path: request.path, beforeGateResolved: false });
+    if (role !== "learner") return response.status(403).json({ error: "Learner role required" });
+    return response.json(learnerDashboard(account).readiness);
+  });
+  app.get("/api/trainer/dashboard", (request, response) => {
+    requests.push({ phase, path: request.path, beforeGateResolved: false });
+    if (role !== "trainer") return response.status(403).json({ error: "Trainer role required" });
+    return response.json(trainerDashboard(account));
+  });
+  app.get("/api/assessor/dashboard", (request, response) => {
+    requests.push({ phase, path: request.path, beforeGateResolved: false });
+    if (role !== "assessor") return response.status(403).json({ error: "Assessor role required" });
+    return response.json(assessorDashboard(account));
   });
   app.use(express.static(frontend));
   app.get(/.*/, (_request, response) => response.sendFile(path.join(frontend, "index.html")));
@@ -162,7 +259,65 @@ async function main() {
       "An admin detail query started before the successful access gate completed",
     );
 
-    process.stdout.write("browser admin access integration passed\n");
+    const workspacePaths: Record<WorkspaceRole, string> = {
+      learner: "/dashboard",
+      trainer: "/trainer",
+      assessor: "/assessor",
+    };
+    const workspaceRequestPaths: Record<WorkspaceRole, string[]> = {
+      learner: ["/api/learner/dashboard", "/api/readiness"],
+      trainer: ["/api/trainer/dashboard"],
+      assessor: ["/api/assessor/dashboard"],
+    };
+
+    for (const workspaceRole of Object.keys(workspacePaths) as WorkspaceRole[]) {
+      role = workspaceRole;
+      account = "first";
+      phase = `${workspaceRole}-first-account`;
+      await page.goto(`${baseUrl}${workspacePaths[workspaceRole]}`);
+      await page.getByText(workspaceMarkers[workspaceRole].first).first().waitFor();
+
+      phase = `${workspaceRole}-signed-out`;
+      await page.evaluate(() => {
+        const browserGlobal = globalThis as typeof globalThis & {
+          dispatchEvent(event: unknown): boolean;
+          CustomEvent: new (type: string, init: { detail: string | null }) => unknown;
+        };
+        browserGlobal.dispatchEvent(new browserGlobal.CustomEvent("teras:test-identity-change", { detail: null }));
+      });
+      await page.getByRole("link", { name: "Masuk", exact: true }).first().waitFor();
+      assert(
+        await page.getByText(workspaceMarkers[workspaceRole].first).count() === 0,
+        `The signed-out page exposed cached ${workspaceRole} data from the previous account`,
+      );
+      assert(
+        requests.filter(request => request.phase === phase).length === 0,
+        `Signing out from ${workspaceRole} must not start authenticated requests`,
+      );
+
+      account = "second";
+      phase = `${workspaceRole}-second-account`;
+      await page.evaluate((nextUserId) => {
+        const browserGlobal = globalThis as typeof globalThis & {
+          dispatchEvent(event: unknown): boolean;
+          CustomEvent: new (type: string, init: { detail: string | null }) => unknown;
+        };
+        browserGlobal.dispatchEvent(new browserGlobal.CustomEvent("teras:test-identity-change", { detail: nextUserId }));
+      }, `integration-${workspaceRole}-second`);
+      await page.getByText(workspaceMarkers[workspaceRole].second).first().waitFor();
+      assert(
+        await page.getByText(workspaceMarkers[workspaceRole].first).count() === 0,
+        `The second ${workspaceRole} account saw cached data from the first account`,
+      );
+      const secondAccountRequests = requests.filter(request => request.phase === phase);
+      assert(
+        workspaceRequestPaths[workspaceRole].every(expected => secondAccountRequests.some(request => request.path === expected))
+          && secondAccountRequests.every(request => workspaceRequestPaths[workspaceRole].includes(request.path)),
+        `The second ${workspaceRole} account loaded data outside its workspace; saw ${secondAccountRequests.map(request => request.path).join(", ")}`,
+      );
+    }
+
+    process.stdout.write("browser account-switch isolation integration passed\n");
   } finally {
     await browser.close();
     await new Promise<void>(resolve => server.close(() => resolve()));

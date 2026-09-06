@@ -713,6 +713,9 @@ function IntegrationTestApp() {
               <Switch>
                 <Route path="/practice" component={Practice} />
                 <Route path="/evidence" component={Evidence} />
+                <Route path="/dashboard" component={Dashboard} />
+                <Route path="/trainer" component={TrainerDesk} />
+                <Route path="/assessor" component={AssessorDesk} />
                 <Route path="/admin" component={Admin} />
                 <Route component={NotFound} />
               </Switch>
