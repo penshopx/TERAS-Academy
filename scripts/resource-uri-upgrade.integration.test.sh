@@ -3,15 +3,40 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
+source "$repo_root/scripts/cleanup-diagnostics.sh"
 
 : "${DATABASE_URL:?DATABASE_URL must be set}"
 
 schema="teras_uri_upgrade_test_$$"
 test_database="teras_uri_upgrade_db_$$"
 cleanup() {
-  dropdb --maintenance-db="$DATABASE_URL" --if-exists "$test_database" >/dev/null 2>&1 || true
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
-    -c "DROP SCHEMA IF EXISTS \"$schema\" CASCADE" >/dev/null
+  local test_exit=$?
+  local cleanup_exit=0
+  local command_exit=0
+  local cleanup_output=""
+  trap - EXIT
+
+  if cleanup_output="$(dropdb --maintenance-db="$DATABASE_URL" --if-exists "$test_database" 2>&1)"; then
+    :
+  else
+    command_exit=$?
+    cleanup_exit=$command_exit
+    report_cleanup_failure "dropdb" "$command_exit" "$cleanup_output"
+  fi
+
+  if cleanup_output="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+    -c "DROP SCHEMA IF EXISTS \"$schema\" CASCADE" 2>&1)"; then
+    :
+  else
+    command_exit=$?
+    (( cleanup_exit == 0 )) && cleanup_exit=$command_exit
+    report_cleanup_failure "psql schema cleanup" "$command_exit" "$cleanup_output"
+  fi
+
+  if (( test_exit != 0 )); then
+    exit "$test_exit"
+  fi
+  exit "$cleanup_exit"
 }
 trap cleanup EXIT
 

@@ -1,11 +1,28 @@
 #!/bin/bash
 set -euo pipefail
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cleanup-diagnostics.sh"
+
 : "${DATABASE_URL:?DATABASE_URL must be set}"
 
 test_database="teras_authoring_${RANDOM}_$$"
 cleanup() {
-  dropdb --maintenance-db="$DATABASE_URL" --if-exists "$test_database" >/dev/null 2>&1 || true
+  local test_exit=$?
+  local cleanup_exit=0
+  local cleanup_output=""
+  trap - EXIT
+
+  if cleanup_output="$(dropdb --maintenance-db="$DATABASE_URL" --if-exists "$test_database" 2>&1)"; then
+    :
+  else
+    cleanup_exit=$?
+    report_cleanup_failure "dropdb" "$cleanup_exit" "$cleanup_output"
+  fi
+
+  if (( test_exit != 0 )); then
+    exit "$test_exit"
+  fi
+  exit "$cleanup_exit"
 }
 trap cleanup EXIT
 

@@ -3,15 +3,31 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
+source "$repo_root/scripts/cleanup-diagnostics.sh"
 
 : "${DATABASE_URL:?DATABASE_URL must be set}"
 
 fresh_schema="teras_knowledge_fresh_upgrade_test_$$"
 legacy_schema="teras_knowledge_legacy_upgrade_test_$$"
 cleanup() {
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+  local test_exit=$?
+  local cleanup_exit=0
+  local cleanup_output=""
+  trap - EXIT
+
+  if cleanup_output="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
     "DROP SCHEMA IF EXISTS \"$fresh_schema\" CASCADE; DROP SCHEMA IF EXISTS \"$legacy_schema\" CASCADE" \
-    >/dev/null 2>&1 || true
+    2>&1)"; then
+    :
+  else
+    cleanup_exit=$?
+    report_cleanup_failure "psql schema cleanup" "$cleanup_exit" "$cleanup_output"
+  fi
+
+  if (( test_exit != 0 )); then
+    exit "$test_exit"
+  fi
+  exit "$cleanup_exit"
 }
 trap cleanup EXIT
 
