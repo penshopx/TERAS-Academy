@@ -17,3 +17,4 @@
 - [Publish-safe database checks](publish-safe-database-checks.md) — publish schema diffs may omit custom functions, so table constraints must be self-contained.
 - [Artifact base-path health](artifact-base-path-health.md) — runnable API artifacts must answer both their base path and configured health path with HTTP 200.
 - [Active-admin mutation serialization](active-admin-mutation-serialization.md) — status and role changes share one transaction lock so last-admin checks cannot race.
+- [Identity-scoped query lifecycle](identity-scoped-query-lifecycle.md) — auth changes must clear cache and remount query consumers; cache.clear alone can leave active observer data visible.

@@ -30,12 +30,13 @@ function chromiumExecutablePath() {
   return existsSync(replitChromiumPath) ? replitChromiumPath : undefined;
 }
 
+const adminCacheMarker = "DATA ADMIN A — RAHASIA";
 const summary = {
   generatedAt: new Date(0).toISOString(),
   metrics: [],
   bottleneck: {
     stage: "clear",
-    label: "Tidak ada bottleneck",
+    label: adminCacheMarker,
     description: "Semua antrean operasional bersih.",
     count: 0,
   },
@@ -96,19 +97,25 @@ async function main() {
 
     await page.goto(`${baseUrl}/admin`);
     await page.getByTestId("admin-operational-summary").waitFor();
+    await page.getByText(adminCacheMarker, { exact: true }).waitFor();
 
     role = "learner";
-    phase = "cached-admin-to-learner";
+    phase = "clerk-admin-to-learner";
     gateResolved = false;
-    await page.goto(`${baseUrl}/`);
-    await page.goto(`${baseUrl}/admin`);
+    await page.evaluate(() => {
+      window.dispatchEvent(new CustomEvent("teras:test-identity-change", { detail: "integration-learner" }));
+    });
     await page.getByTestId("admin-access-denied").waitFor();
     await page.waitForTimeout(150);
+    assert(
+      await page.getByText(adminCacheMarker, { exact: true }).count() === 0,
+      "The learner account saw cached dashboard data from the previous admin identity",
+    );
 
     const learnerRequests = requests.filter(request => request.phase === phase);
     assert(
       learnerRequests.length === 1 && learnerRequests[0]?.path === "/api/admin/access",
-      `A denied remount must call only the access gate; saw ${learnerRequests.map(request => request.path).join(", ")}`,
+      `A denied account switch must call only the access gate; saw ${learnerRequests.map(request => request.path).join(", ")}`,
     );
 
     role = "admin";

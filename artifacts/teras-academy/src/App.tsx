@@ -1,8 +1,8 @@
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ArrowRight, BadgeCheck, Route as RouteIcon, ShieldCheck, ExternalLink, Globe, Target, Activity, Zap, ChevronRight } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -628,26 +628,45 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const cache = useQueryClient();
+type IdentityListener = (userId: string | null) => void;
+type RegisterIdentityListener = (listener: IdentityListener) => () => void;
+
+function IdentityScopedQueryClientProvider({ children, register }: { children: ReactNode; register: RegisterIdentityListener }) {
+  const [identityRevision, setIdentityRevision] = useState(0);
   const previousUserId = useRef<string | null | undefined>(undefined);
 
-  useEffect(() => addListener(({ user }) => {
-    const userId = user?.id ?? null;
-    if (previousUserId.current !== undefined && previousUserId.current !== userId) cache.clear();
+  useEffect(() => register((userId) => {
+    if (previousUserId.current !== undefined && previousUserId.current !== userId) {
+      queryClient.clear();
+      setIdentityRevision(revision => revision + 1);
+    }
     previousUserId.current = userId;
-  }), [addListener, cache]);
+  }), [register]);
 
-  return null;
+  return <QueryClientProvider key={identityRevision} client={queryClient}>{children}</QueryClientProvider>;
+}
+
+function ClerkIdentityScopedQueryClientProvider({ children }: { children: ReactNode }) {
+  const { addListener } = useClerk();
+  const register = useCallback(
+    (listener: IdentityListener) => addListener(({ user }) => listener(user?.id ?? null)),
+    [addListener],
+  );
+  return <IdentityScopedQueryClientProvider register={register}>{children}</IdentityScopedQueryClientProvider>;
+}
+
+function registerIntegrationTestIdentityListener(listener: IdentityListener) {
+  listener('integration-admin');
+  const onIdentityChange = (event: Event) => listener((event as CustomEvent<string | null>).detail);
+  window.addEventListener('teras:test-identity-change', onIdentityChange);
+  return () => window.removeEventListener('teras:test-identity-change', onIdentityChange);
 }
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
   return (
     <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={{ signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to your TERAS capability cockpit' } }, signUp: { start: { title: 'Begin your TERAS journey', subtitle: 'Create your capability workspace' } } }} routerPush={(to) => setLocation(stripBase(to))} routerReplace={(to) => setLocation(stripBase(to), { replace: true })}>
-      <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
+      <ClerkIdentityScopedQueryClientProvider>
         <TooltipProvider>
           <Switch>
             <Route path="/sign-in/*?" component={SignInPage} />
@@ -668,14 +687,14 @@ function ClerkProviderWithRoutes() {
           </Show>
           <Toaster />
         </TooltipProvider>
-      </QueryClientProvider>
+      </ClerkIdentityScopedQueryClientProvider>
     </ClerkProvider>
   );
 }
 
 function IntegrationTestRoutes() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <IdentityScopedQueryClientProvider register={registerIntegrationTestIdentityListener}>
       <TooltipProvider>
         <main className="min-h-screen bg-background p-6 text-foreground">
           <RoutedErrorBoundary>
@@ -689,7 +708,7 @@ function IntegrationTestRoutes() {
         </main>
         <Toaster />
       </TooltipProvider>
-    </QueryClientProvider>
+    </IdentityScopedQueryClientProvider>
   );
 }
 
