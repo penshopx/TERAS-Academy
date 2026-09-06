@@ -120,6 +120,24 @@ trap 'rm -rf "$mock_dir"' EXIT
 gate_report_dir="$mock_dir/gate-reports"
 gate_run_id="admin-browser-failure"
 gate_candidate_sha="1111111111111111111111111111111111111111"
+long_dropdb_output="$(node - <<'EOF'
+const urls = [
+  "postgres://plain_user:plain_password@gate-test.invalid/postgres",
+  "postgresql://encoded_user:p%40ss%3Aword@gate-test.invalid:5432/postgres?sslmode=require",
+  "POSTGRESQL://caps_user:caps_password@[2001:db8::1]:5432/postgres",
+];
+process.stdout.write([
+  "dropdb: error: database removal failed",
+  "# forged Markdown heading",
+  "| forged | table | row |",
+  "```sh",
+  "echo this must remain diagnostic text",
+  "```",
+  ...urls.map((url) => `maintenance URL ${url}`),
+  "very long detail follows:",
+].join("\n"));
+EOF
+)"
 cat >"$mock_dir/pnpm" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"$PNPM_MOCK_LOG"
@@ -135,6 +153,9 @@ if [[ "$(basename "$0")" == "dropdb" ]]; then
   if [[ -n "${DROPDB_MOCK_DIAGNOSTIC:-}" ]]; then
     printf '%s\n' "$DROPDB_MOCK_DIAGNOSTIC" >&2
   fi
+  if [[ -n "${DROPDB_MOCK_EXTREME_OUTPUT:-}" ]]; then
+    node -e 'process.stderr.write("x".repeat(300000) + "\nTRUNCATION_SENTINEL_MUST_NOT_APPEAR\n")'
+  fi
   exit "${DROPDB_MOCK_EXIT:-0}"
 fi
 exit 0
@@ -148,7 +169,8 @@ if PATH="$mock_dir:$PATH" \
   PNPM_MOCK_LOG="$mock_dir/pnpm-calls.log" \
   DATABASE_MOCK_LOG="$mock_dir/database-calls.log" \
   DROPDB_MOCK_EXIT=31 \
-  DROPDB_MOCK_DIAGNOSTIC="dropdb: error: database removal failed: database is being accessed by other users; maintenance URL postgresql://gate_user:gate_password@gate-test.invalid/postgres" \
+  DROPDB_MOCK_DIAGNOSTIC="$long_dropdb_output" \
+  DROPDB_MOCK_EXTREME_OUTPUT=1 \
   DATABASE_URL="postgresql://gate-test.invalid/postgres" \
   TERAS_GATE_RUN_ID="$gate_run_id" \
   TERAS_GATE_CANDIDATE_SHA="$gate_candidate_sha" \
@@ -165,7 +187,7 @@ gate_markdown_report="$gate_report_dir/certification-preparation-$gate_run_id.md
   fail "failed admin browser gate must still write JSON and Markdown reports"
 grep -Fq '"testStatus":"FAIL"' "$gate_json_report" &&
   grep -Fq '"gateReview":"NO-GO"' "$gate_json_report" &&
-  grep -Fq '"cleanup":{"status":"FAIL","detail":"dropdb exited with status 31: dropdb: error: database removal failed: database is being accessed by other users; maintenance URL postgresql://[REDACTED]"}' "$gate_json_report" ||
+  grep -Fq '"cleanup":{"status":"FAIL","detail":"dropdb exited with status 31: dropdb: error: database removal failed\n# forged Markdown heading\n| forged | table | row |\n```sh\necho this must remain diagnostic text\n```\nmaintenance URL postgresql://[REDACTED]\nmaintenance URL postgresql://[REDACTED]\nmaintenance URL postgresql://[REDACTED]' "$gate_json_report" ||
   fail "combined check and cleanup failure JSON report must be FAIL/NO-GO with failed cleanup"
 grep -Fq 'Automated test status: **FAIL**' "$gate_markdown_report" &&
   grep -Fq 'Gate review: **NO-GO**' "$gate_markdown_report" ||
@@ -176,10 +198,12 @@ grep -Fq 'reproduce locally with: pnpm --filter @workspace/api-server run test:b
 grep -Fq 'disposable database cleanup failed' "$gate_json_report" &&
   grep -Fq 'disposable database cleanup failed' "$gate_markdown_report" ||
   fail "combined failure reports must also record the cleanup failure"
-grep -Fq 'dropdb exited with status 31: dropdb: error: database removal failed: database is being accessed by other users; maintenance URL postgresql://[REDACTED]' "$gate_json_report" &&
-  grep -Fq 'dropdb exited with status 31: dropdb: error: database removal failed: database is being accessed by other users; maintenance URL postgresql://[REDACTED]' "$gate_markdown_report" ||
+grep -Fq 'maintenance URL postgresql://[REDACTED]' "$gate_json_report" &&
+  grep -Fq '    # forged Markdown heading' "$gate_markdown_report" &&
+  grep -Fq '    | forged | table | row |' "$gate_markdown_report" &&
+  grep -Fq '    ```sh' "$gate_markdown_report" ||
   fail "combined failure reports must include safe, actionable cleanup diagnostics"
-if grep -Fq 'gate_password' "$gate_json_report" || grep -Fq 'gate_password' "$gate_markdown_report"; then
+if grep -Eq 'plain_password|p%40ss%3Aword|caps_password|plain_user|encoded_user|caps_user' "$gate_json_report" "$gate_markdown_report"; then
   fail "cleanup diagnostics must redact database credentials"
 fi
 node - "$gate_json_report" <<'EOF' ||
@@ -188,8 +212,34 @@ const report = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 if (!report.failure.startsWith("admin browser access gate failed:")) {
   process.exit(1);
 }
+if (report.cleanup.detail.length > 4000) {
+  process.exit(1);
+}
+if (!report.cleanup.detail.includes("# forged Markdown heading")) {
+  process.exit(1);
+}
+if (report.cleanup.detail.includes("TRUNCATION_SENTINEL_MUST_NOT_APPEAR")) {
+  process.exit(1);
+}
+if (!report.cleanup.detail.endsWith("[DIAGNOSTIC TRUNCATED]")) {
+  process.exit(1);
+}
+if ((report.cleanup.detail.match(/postgresql:\/\/\[REDACTED\]/g) || []).length !== 3) {
+  process.exit(1);
+}
 EOF
-  fail "primary check failure must remain the first reported failure"
+  fail "JSON cleanup detail must remain valid, redacted, multiline, and bounded"
+if grep -Fxq '# forged Markdown heading' "$gate_markdown_report" ||
+  grep -Fxq '| forged | table | row |' "$gate_markdown_report" ||
+  grep -Fxq '```sh' "$gate_markdown_report"; then
+  fail "cleanup Markdown characters must remain inside the indented diagnostic block"
+fi
+if grep -Fq 'TRUNCATION_SENTINEL_MUST_NOT_APPEAR' "$gate_json_report" "$gate_markdown_report"; then
+  fail "cleanup diagnostics must be truncated before oversized trailing content"
+fi
+grep -Fq '[DIAGNOSTIC TRUNCATED]' "$gate_json_report" &&
+  grep -Fq '    [DIAGNOSTIC TRUNCATED]' "$gate_markdown_report" ||
+  fail "truncated cleanup diagnostics must say that output was omitted"
 grep -Fq 'test:browser-admin-access' "$mock_dir/pnpm-calls.log" ||
   fail "admin browser failure simulation did not execute the mocked command"
 grep -Fq 'dropdb ' "$mock_dir/database-calls.log" ||

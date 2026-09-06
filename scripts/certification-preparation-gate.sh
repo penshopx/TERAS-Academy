@@ -27,13 +27,38 @@ json_escape() {
 
 sanitize_cleanup_diagnostic() {
   node -e '
-    let diagnostic = process.argv[1];
-    for (const secret of process.argv.slice(2)) {
+    let diagnostic = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { diagnostic += chunk; });
+    process.stdin.on("end", () => {
+    for (const secret of process.argv.slice(1)) {
       if (secret) diagnostic = diagnostic.split(secret).join("[REDACTED_DATABASE_URL]");
     }
     diagnostic = diagnostic.replace(/\bpostgres(?:ql)?:\/\/[^\s]+/gi, "postgresql://[REDACTED]");
     process.stdout.write(diagnostic.trim().slice(0, 4000));
-  ' "$1" "${DATABASE_URL:-}" "$test_database_url"
+    });
+  ' "${DATABASE_URL:-}" "$test_database_url"
+}
+
+capture_cleanup_diagnostic() {
+  node -e '
+    const limit = 3800;
+    const chunks = [];
+    let captured = 0;
+    let truncated = false;
+    process.stdin.on("data", (chunk) => {
+      if (captured < limit) {
+        const kept = chunk.subarray(0, limit - captured);
+        chunks.push(kept);
+        captured += kept.length;
+      }
+      if (captured >= limit && chunk.length > 0) truncated = true;
+    });
+    process.stdin.on("end", () => {
+      process.stdout.write(Buffer.concat(chunks).toString("utf8"));
+      if (truncated) process.stdout.write("\n[DIAGNOSTIC TRUNCATED]");
+    });
+  '
 }
 
 write_report() {
@@ -83,21 +108,30 @@ EOF
 
 cleanup() {
   local cleanup_exit=0
-  local cleanup_output=""
   if [[ -n "$test_database_url" ]]; then
-    if cleanup_output="$(dropdb --maintenance-db="$DATABASE_URL" --if-exists "$test_database" 2>&1)"; then
+    local cleanup_output_file
+    cleanup_output_file="$(mktemp "$report_dir/.cleanup-diagnostic.XXXXXX")"
+    dropdb --maintenance-db="$DATABASE_URL" --if-exists "$test_database" 2>&1 |
+      capture_cleanup_diagnostic >"$cleanup_output_file"
+    local dropdb_exit="${PIPESTATUS[0]}"
+    if [[ "$dropdb_exit" -eq 0 ]]; then
       cleanup_status="PASS"
     else
-      local dropdb_exit=$?
       cleanup_status="FAIL"
       test_status="FAIL"
-      cleanup_detail="dropdb exited with status $dropdb_exit"
-      if [[ -n "$cleanup_output" ]]; then
-        cleanup_detail+=": $(sanitize_cleanup_diagnostic "$cleanup_output")"
-      fi
+      cleanup_detail="$(
+        {
+          printf 'dropdb exited with status %s' "$dropdb_exit"
+          if [[ -s "$cleanup_output_file" ]]; then
+            printf ': '
+            cat "$cleanup_output_file"
+          fi
+        } | sanitize_cleanup_diagnostic
+      )"
       failure="${failure:+$failure; }disposable database cleanup failed"
       cleanup_exit=1
     fi
+    rm -f "$cleanup_output_file"
   else
     cleanup_status="NOT_REQUIRED"
   fi
