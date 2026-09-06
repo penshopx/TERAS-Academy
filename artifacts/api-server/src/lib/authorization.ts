@@ -4,9 +4,10 @@ import { learnerContext } from "./teras";
 import { db, peopleTable, personRolesTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { ensureConfiguredAdmin } from "@workspace/db/admin-membership";
+import { allowsDemoAccess } from "@workspace/db/demo-access";
 
 type WorkspaceRole = "trainer" | "assessor";
-type AdminRole = "admin";
+type AdminRole = "admin" | "super_admin";
 export type LearningActorRole = WorkspaceRole | "learner";
 export type LearningActor = { id: string; role: LearningActorRole };
 export type TestAuthorizationIdentity = {
@@ -16,7 +17,6 @@ export type TestAuthorizationIdentity = {
   learnerId?: string;
 };
 export type LearnerContext = Awaited<ReturnType<typeof learnerContext>>;
-const allowsDemoAccess = () => process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
 
 /**
  * This symbol is only populated by the in-process integration app factory.
@@ -30,8 +30,8 @@ function integrationIdentity(req: Request): TestAuthorizationIdentity | undefine
   })[testAuthorizationIdentity];
 }
 
-export type AdminActor = { clerkUserId: string; personId: string | null };
-export type KnowledgeRole = "admin" | "trainer" | "assessor" | "learner";
+export type AdminActor = { clerkUserId: string; personId: string | null; roles: AdminRole[] };
+export type KnowledgeRole = "super_admin" | "admin" | "trainer" | "assessor" | "learner";
 export type KnowledgeActor = { clerkUserId: string; roles: KnowledgeRole[] };
 export type CurrentSession = { personId: string; name: string; roles: KnowledgeRole[] };
 
@@ -71,7 +71,7 @@ export async function authorizeCurrentSession(req: Request, res: Response): Prom
     .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
     .where(and(eq(peopleTable.clerkUserId, userId), eq(peopleTable.status, "active")));
   const roles = [...new Set(assignments.map(assignment => assignment.role).filter((role): role is KnowledgeRole =>
-    ["admin", "trainer", "assessor", "learner"].includes(role),
+    ["super_admin", "admin", "trainer", "assessor", "learner"].includes(role),
   ))];
   if (!assignments[0] || !roles.length) {
     res.status(403).json({ error: "A local TERAS role is required" });
@@ -95,7 +95,7 @@ export async function authorizeKnowledgeActor(req: Request, res: Response): Prom
   const assignments = await db.select({ role: personRolesTable.role }).from(peopleTable).innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
     .where(and(eq(peopleTable.clerkUserId, userId), eq(peopleTable.status, "active")));
   const roles = [...new Set(assignments.map(assignment => assignment.role).filter((role): role is KnowledgeRole =>
-    ["admin", "trainer", "assessor", "learner"].includes(role),
+    ["super_admin", "admin", "trainer", "assessor", "learner"].includes(role),
   ))];
   if (!roles.length) { res.status(403).json({ error: "A local TERAS role is required" }); return null; }
   return { clerkUserId: userId, roles };
@@ -106,7 +106,7 @@ export async function authorizeKnowledgeActor(req: Request, res: Response): Prom
 export async function authorizeAdmin(req: Request, res: Response): Promise<AdminActor | null> {
   const identity = integrationIdentity(req);
   if (identity) {
-    if (identity.userId && identity.role === "admin") return { clerkUserId: identity.userId, personId: null };
+    if (identity.userId && (identity.role === "admin" || identity.role === "super_admin")) return { clerkUserId: identity.userId, personId: null, roles: [identity.role] };
     res.status(identity.userId ? 403 : 401).json({ error: "Administrator role required" });
     return null;
   }
@@ -116,16 +116,23 @@ export async function authorizeAdmin(req: Request, res: Response): Promise<Admin
     return null;
   }
   await ensureConfiguredBootstrapAdmin(userId);
-  const [assignment] = await db.select({ personId: peopleTable.id }).from(peopleTable)
+  const assignments = await db.select({ personId: peopleTable.id, role: personRolesTable.role }).from(peopleTable)
     .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
-    .where(and(eq(peopleTable.clerkUserId, userId), eq(peopleTable.status, "active"), eq(personRolesTable.role, "admin")))
-    .limit(1);
-  if (!assignment) {
+    .where(and(eq(peopleTable.clerkUserId, userId), eq(peopleTable.status, "active"), sql`${personRolesTable.role} IN ('admin', 'super_admin')`));
+  if (!assignments.length) {
     req.log.warn({ userId }, "Unauthorized admin mutation");
     res.status(403).json({ error: "Administrator role required" });
     return null;
   }
-  return { clerkUserId: userId, personId: assignment.personId };
+  return { clerkUserId: userId, personId: assignments[0].personId, roles: assignments.map(item => item.role as AdminRole) };
+}
+
+export async function authorizeSuperAdmin(req: Request, res: Response): Promise<AdminActor | null> {
+  const actor = await authorizeAdmin(req, res);
+  if (!actor) return null;
+  if (actor.roles.includes("super_admin")) return actor;
+  res.status(403).json({ error: "Super administrator role required" });
+  return null;
 }
 
 /**

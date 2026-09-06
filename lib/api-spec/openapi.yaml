@@ -789,6 +789,42 @@ paths:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AdminUser" } } } }
         "400": { $ref: "#/components/responses/BadRequest" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /admin/access-requests:
+    get:
+      operationId: listAdminAccessRequests
+      tags: [admin]
+      responses:
+        "200": { description: Administrative access requests, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AdminAccessRequest" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createAdminAccessRequest
+      tags: [admin]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdminAccessRequestInput" } } } }
+      responses:
+        "201": { description: Request recorded, content: { application/json: { schema: { $ref: "#/components/schemas/AdminAccessRequest" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /admin/access-requests/{requestId}/approve:
+    post:
+      operationId: approveAdminAccessRequest
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/RequestId" }]
+      requestBody: { required: false, content: { application/json: { schema: { $ref: "#/components/schemas/AdminAccessRequestReview" } } } }
+      responses:
+        "200": { description: Approved request, content: { application/json: { schema: { $ref: "#/components/schemas/AdminAccessRequest" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /admin/access-requests/{requestId}/reject:
+    post:
+      operationId: rejectAdminAccessRequest
+      tags: [admin]
+      parameters: [{ $ref: "#/components/parameters/RequestId" }]
+      requestBody: { required: false, content: { application/json: { schema: { $ref: "#/components/schemas/AdminAccessRequestReview" } } } }
+      responses:
+        "200": { description: Rejected request, content: { application/json: { schema: { $ref: "#/components/schemas/AdminAccessRequest" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /admin/summary:
     get:
       operationId: getAdminOperationalSummary
@@ -1545,7 +1581,7 @@ x-pathway-selection-components:
         organization: { type: ["string", "null"] }
         clerkUserId: { type: ["string", "null"] }
         status: { type: string, enum: [active, inactive] }
-        roles: { type: array, items: { type: string, enum: [admin, trainer, assessor, learner] } }
+        roles: { type: array, items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] } }
     LegacyAdminUserInput:
       allOf: [{ $ref: "#/components/schemas/AdminUser" }]
     LegacyAdminUserUpdate:
@@ -1560,7 +1596,7 @@ x-pathway-selection-components:
     LegacyRoleAssignmentInput:
       type: object
       required: [roles]
-      properties: { roles: { type: array, minItems: 1, items: { type: string, enum: [admin, trainer, assessor, learner] } } }
+      properties: { roles: { type: array, minItems: 1, items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] } } }
     LegacyAdminProgram:
       type: object
       required: [id, domain, name, description, status]
@@ -1620,7 +1656,7 @@ x-pathway-selection-components:
         organization: { type: ["string", "null"] }
         clerkUserId: { type: ["string", "null"] }
         status: { type: string, enum: [active, inactive] }
-        roles: { type: array, minItems: 1, items: { type: string, enum: [admin, trainer, assessor, learner] } }
+        roles: { type: array, minItems: 1, items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] } }
     AdminUserUpdate:
       type: object
       properties:
@@ -1633,7 +1669,31 @@ x-pathway-selection-components:
     RoleAssignmentInput:
       type: object
       required: [roles]
-      properties: { roles: { type: array, minItems: 1, items: { type: string, enum: [admin, trainer, assessor, learner] } } }
+      properties: { roles: { type: array, minItems: 1, items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] } } }
+    AdminAccessRequest:
+      type: object
+      required: [id, requesterPersonId, targetPersonId, requestedRole, status, reason, reviewNote, reviewedByPersonId, reviewedAt, createdAt]
+      properties:
+        id: { type: string }
+        requesterPersonId: { type: string }
+        targetPersonId: { type: string }
+        requestedRole: { type: string, enum: [admin] }
+        status: { type: string, enum: [pending, approved, rejected] }
+        reason: { type: [string, "null"] }
+        reviewNote: { type: [string, "null"] }
+        reviewedByPersonId: { type: [string, "null"] }
+        reviewedAt: { type: [string, "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    AdminAccessRequestInput:
+      type: object
+      required: [targetPersonId, requestedRole, reason]
+      properties:
+        targetPersonId: { type: string, minLength: 1 }
+        requestedRole: { type: string, enum: [admin] }
+        reason: { type: string, minLength: 1, maxLength: 2000 }
+    AdminAccessRequestReview:
+      type: object
+      properties: { reviewNote: { type: [string, "null"], maxLength: 2000 } }
     AdminProgram:
       type: object
       required: [id, domain, name, description, status]
@@ -2046,6 +2106,7 @@ x-pathway-selection-components:
 components:
   parameters:
     PersonId: { name: personId, in: path, required: true, schema: { type: string } }
+    RequestId: { name: requestId, in: path, required: true, schema: { type: string, minLength: 1 } }
     PathwayId: { name: pathwayId, in: path, required: true, schema: { type: string } }
     CohortId: { name: cohortId, in: path, required: true, schema: { type: string } }
     EnrollmentId: { name: enrollmentId, in: path, required: true, schema: { type: string } }
@@ -2429,7 +2490,31 @@ components:
     AdminUser:
       type: object
       required: [id, name, initials, email, organization, clerkUserId, status, roles]
-      properties: { id: { type: string }, name: { type: string }, initials: { type: string }, email: { type: ["string", "null"] }, organization: { type: ["string", "null"] }, clerkUserId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive] }, roles: { type: array, items: { type: string, enum: [admin, trainer, assessor, learner] } } }
+      properties: { id: { type: string }, name: { type: string }, initials: { type: string }, email: { type: ["string", "null"] }, organization: { type: ["string", "null"] }, clerkUserId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive] }, roles: { type: array, items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] } } }
+    AdminAccessRequest:
+      type: object
+      required: [id, requesterPersonId, targetPersonId, requestedRole, status, reason, reviewNote, reviewedByPersonId, reviewedAt, createdAt]
+      properties:
+        id: { type: string }
+        requesterPersonId: { type: string }
+        targetPersonId: { type: string }
+        requestedRole: { type: string, enum: [admin] }
+        status: { type: string, enum: [pending, approved, rejected] }
+        reason: { type: [string, "null"] }
+        reviewNote: { type: [string, "null"] }
+        reviewedByPersonId: { type: [string, "null"] }
+        reviewedAt: { type: [string, "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    AdminAccessRequestInput:
+      type: object
+      required: [targetPersonId, requestedRole, reason]
+      properties:
+        targetPersonId: { type: string, minLength: 1 }
+        requestedRole: { type: string, enum: [admin] }
+        reason: { type: string, minLength: 1, maxLength: 2000 }
+    AdminAccessRequestReview:
+      type: object
+      properties: { reviewNote: { type: [string, "null"], maxLength: 2000 } }
     AdminOperationalMetric:
       type: object
       required: [id, label, value, description]
@@ -2515,7 +2600,7 @@ components:
     RoleAssignmentInput:
       type: object
       required: [roles]
-      properties: { roles: { type: array, minItems: 1, items: { type: string, enum: [admin, trainer, assessor, learner] } } }
+      properties: { roles: { type: array, minItems: 1, items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] } } }
     AdminProgram:
       type: object
       required: [id, domain, name, description, status]
@@ -2608,7 +2693,7 @@ components:
           type: array
           minItems: 1
           uniqueItems: true
-          items: { type: string, enum: [admin, trainer, assessor, learner] }
+          items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] }
     ErrorResponse:
       type: object
       properties:

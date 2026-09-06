@@ -62,7 +62,9 @@ async function main() {
     await admin.connect();
     await admin.query(`CREATE DATABASE "${databaseName}"`);
     await run("pnpm", ["--filter", "@workspace/db", "exec", "drizzle-kit", "push", "--force", "--config", "./drizzle.config.ts"], databaseUrl.toString());
-    await run("pnpm", ["--filter", "@workspace/scripts", "run", "seed:demo"], databaseUrl.toString());
+    await run("pnpm", ["--filter", "@workspace/scripts", "run", "seed:demo"], databaseUrl.toString(), {
+      TERAS_ENABLE_DEMO_FIXTURES: "1",
+    });
     await run("pnpm", ["--filter", "@workspace/teras-academy", "exec", "vite", "build", "--config", "vite.config.ts", "--mode", "test"], databaseUrl.toString(), {
       BASE_PATH: "/",
       PORT: "4173",

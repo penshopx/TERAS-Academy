@@ -3,6 +3,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   adminAuditEventsTable,
+  adminAccessRequestsTable,
   db,
   peopleTable,
   personRolesTable,
@@ -11,6 +12,7 @@ import {
 export type AdminMutationActor = {
   clerkUserId: string;
   personId: string | null;
+  roles?: string[];
 };
 
 export type AdminMutationScope = {
@@ -38,6 +40,17 @@ type SeedPerson = {
 };
 
 const mutationLock = sql`select pg_advisory_xact_lock(hashtext('teras_active_admin_mutations'))`;
+export const OPERATIONAL_ROLES = ["learner", "trainer", "assessor"] as const;
+export const PRIVILEGED_ROLES = ["admin", "super_admin"] as const;
+const effectiveAdminRoles = ["admin", "super_admin"];
+// Omitted roles are reserved for trusted non-HTTP maintenance callers; HTTP
+// authorization always supplies the locally-derived role set.
+const actorIsSuperAdmin = (actor: AdminMutationActor) => actor.roles === undefined || actor.roles.includes("super_admin");
+const rolesPermittedFor = (roles: string[], before: string[] | null = null) => {
+  const addedPrivileged = roles.some(role => PRIVILEGED_ROLES.includes(role as typeof PRIVILEGED_ROLES[number])
+    && !(before ?? []).includes(role));
+  return !addedPrivileged;
+};
 
 async function audit(tx: any, actor: AdminMutationActor, action: string, entityId: string, before: unknown, after: unknown) {
   await tx.insert(adminAuditEventsTable).values({
@@ -62,7 +75,7 @@ async function user(tx: any, id: string) {
   return { ...person, roles: roles.map(item => item.role) };
 }
 
-async function activeAdminCount(tx: any, scope?: AdminMutationScope) {
+async function activeRoleCount(tx: any, roles: string[], scope?: AdminMutationScope) {
   const fixtureIds = process.env.NODE_ENV === "test"
     ? scope?.activeAdminFixtureIds
     : undefined;
@@ -71,12 +84,19 @@ async function activeAdminCount(tx: any, scope?: AdminMutationScope) {
     .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
     .where(and(
       eq(peopleTable.status, "active"),
-      eq(personRolesTable.role, "admin"),
+       inArray(personRolesTable.role, roles),
       fixtureIds ? inArray(peopleTable.id, [...fixtureIds]) : undefined,
     ))).length;
 }
+async function activeAdminCount(tx: any, scope?: AdminMutationScope) {
+  return activeRoleCount(tx, effectiveAdminRoles, scope);
+}
+async function activeSuperAdminCount(tx: any, scope?: AdminMutationScope) {
+  return activeRoleCount(tx, ["super_admin"], scope);
+}
 
 export async function createManagedUser(input: UserInput, actor: AdminMutationActor) {
+  if (!rolesPermittedFor(input.roles)) return { kind: "forbidden" as const };
   return db.transaction(async tx => {
     await tx.execute(mutationLock);
     await tx.insert(peopleTable).values({
@@ -91,7 +111,7 @@ export async function createManagedUser(input: UserInput, actor: AdminMutationAc
     })));
     const result = { ...input };
     await audit(tx, actor, "create", input.id, null, result);
-    return result;
+    return { kind: "created" as const, value: result };
   });
 }
 
@@ -105,11 +125,16 @@ export async function updateManagedUser(
     await tx.execute(mutationLock);
     const before = await user(tx, personId);
     if (!before) return { kind: "not_found" as const };
+    if (!actorIsSuperAdmin(actor) && before.roles.some(role => PRIVILEGED_ROLES.includes(role as typeof PRIVILEGED_ROLES[number]))) {
+      return { kind: "forbidden" as const };
+    }
     if (
       input.status === "inactive"
-      && before.roles.includes("admin")
+      && before.roles.some(role => effectiveAdminRoles.includes(role))
       && await activeAdminCount(tx, scope) === 1
     ) return { kind: "last_admin" as const };
+    if (input.status === "inactive" && before.roles.includes("super_admin")
+      && await activeSuperAdminCount(tx, scope) === 1) return { kind: "last_super_admin" as const };
     const [updated] = await tx.update(peopleTable)
       .set(input)
       .where(eq(peopleTable.id, personId))
@@ -130,12 +155,20 @@ export async function replaceManagedUserRoles(
     await tx.execute(mutationLock);
     const before = await user(tx, personId);
     if (!before) return { kind: "not_found" as const };
+    if (!rolesPermittedFor(roles, before.roles)) return { kind: "forbidden" as const };
+    if (!actorIsSuperAdmin(actor) && before.roles.some(role => PRIVILEGED_ROLES.includes(role as typeof PRIVILEGED_ROLES[number]))) {
+      return { kind: "forbidden" as const };
+    }
     if (
-      before.roles.includes("admin")
-      && !roles.includes("admin")
+      before.roles.some(role => effectiveAdminRoles.includes(role))
+      && !roles.some(role => effectiveAdminRoles.includes(role))
       && before.status === "active"
       && await activeAdminCount(tx, scope) === 1
     ) return { kind: "last_admin" as const };
+    if (before.roles.includes("super_admin") && !roles.includes("super_admin")
+      && before.status === "active" && await activeSuperAdminCount(tx, scope) === 1) {
+      return { kind: "last_super_admin" as const };
+    }
     await tx.delete(personRolesTable).where(eq(personRolesTable.personId, personId));
     await tx.insert(personRolesTable).values(roles.map(role => ({
       personId,
@@ -145,6 +178,70 @@ export async function replaceManagedUserRoles(
     const result = { ...before, roles };
     await audit(tx, actor, "replace_roles", personId, before, result);
     return { kind: "updated" as const, value: result };
+  });
+}
+
+export async function createAdminAccessRequest(
+  requesterPersonId: string,
+  targetPersonId: string,
+  requestedRole: "admin",
+  reason: string,
+  actor: AdminMutationActor,
+) {
+  return db.transaction(async tx => {
+    await tx.execute(mutationLock);
+    const [request] = await tx.insert(adminAccessRequestsTable).values({
+      id: crypto.randomUUID(), requesterPersonId, targetPersonId, requestedRole, reason,
+      createdBy: actor.clerkUserId,
+    }).returning();
+    await audit(tx, actor, "admin_request", request.id, null, request);
+    return request;
+  });
+}
+
+export async function reviewAdminAccessRequest(
+  requestId: string, decision: "approved" | "rejected", note: string | null, actor: AdminMutationActor,
+) {
+  if (!actorIsSuperAdmin(actor)) return { kind: "forbidden" as const };
+  return db.transaction(async tx => {
+    await tx.execute(mutationLock);
+    const [before] = await tx.select().from(adminAccessRequestsTable).where(eq(adminAccessRequestsTable.id, requestId));
+    if (!before) return { kind: "not_found" as const };
+    if (before.status !== "pending") return { kind: "already_reviewed" as const };
+    const [value] = await tx.update(adminAccessRequestsTable).set({
+      status: decision, reviewNote: note, reviewedByPersonId: actor.personId, reviewedAt: new Date(),
+    }).where(eq(adminAccessRequestsTable.id, requestId)).returning();
+    if (decision === "approved") await tx.insert(personRolesTable).values({
+      personId: before.targetPersonId, role: before.requestedRole, createdBy: actor.clerkUserId,
+    }).onConflictDoNothing();
+    await audit(tx, actor, decision === "approved" ? "admin_request_approved" : "admin_request_rejected", requestId, before, value);
+    return { kind: "updated" as const, value };
+  });
+}
+
+/** One-time operator provisioning after the identity has been verified by Clerk. */
+export async function provisionSuperAdmin(identity: {
+  clerkUserId: string; email: string; name: string; initials: string;
+}) {
+  return db.transaction(async tx => {
+    await tx.execute(mutationLock);
+    let [person] = await tx.select().from(peopleTable).where(eq(peopleTable.clerkUserId, identity.clerkUserId)).limit(1);
+    if (!person) {
+      [person] = await tx.insert(peopleTable).values({
+        id: crypto.randomUUID(), name: identity.name, initials: identity.initials,
+        email: identity.email, role: "Super Administrator", clerkUserId: identity.clerkUserId,
+        status: "active", createdBy: "super-admin-provisioning",
+      }).returning();
+    } else {
+      [person] = await tx.update(peopleTable).set({
+        name: identity.name, initials: identity.initials, email: identity.email, status: "active",
+      }).where(eq(peopleTable.id, person.id)).returning();
+    }
+    await tx.insert(personRolesTable).values({
+      personId: person.id, role: "super_admin", createdBy: "super-admin-provisioning",
+    }).onConflictDoNothing();
+    await audit(tx, { clerkUserId: identity.clerkUserId, personId: person.id }, "super_admin_provisioned", person.id, null, { clerkUserId: identity.clerkUserId });
+    return person;
   });
 }
 

@@ -11,8 +11,9 @@ import {
 } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import crypto from "node:crypto";
+import { createIntegrationTestApp } from "./integration-test-app";
 
-const baseUrl = process.env.TERAS_API_URL ?? "http://localhost:80/api";
+let baseUrl = "";
 const fixtureScopedKey = (operation: string, key: string) =>
   `${operation}:${crypto.createHash("sha256").update(JSON.stringify({ learnerId: "learner-demo", key })).digest("hex")}`;
 
@@ -219,8 +220,29 @@ async function completeB04WithCausalApiFlow() {
 }
 
 async function run() {
-  await removePreviousIntegrationRecords();
-  await post("/learner/pathway", { pathwayId: "path-b" }, 201);
+  const app = createIntegrationTestApp((req) => ({
+    userId: "pathway-isolation-learner",
+    learnerId: "learner-demo",
+    // The learner identity is the default. Staff-only transitions use their
+    // corresponding injected test actor, never an unauthenticated demo path.
+    role: req.path.includes("/assessor/")
+      ? "assessor"
+      : req.path.includes("/trainer/")
+        ? "trainer"
+        : "learner",
+  }));
+  const server = await new Promise<ReturnType<typeof app.listen>>((resolve) => {
+    const listener = app.listen(0, () => resolve(listener));
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    server.close();
+    throw new Error("Pathway isolation test server did not bind to an ephemeral port");
+  }
+  baseUrl = `http://127.0.0.1:${address.port}/api`;
+  try {
+    await removePreviousIntegrationRecords();
+    await post("/learner/pathway", { pathwayId: "path-b" }, 201);
 
   const detail = await request<AssessmentDetail>("/assessments/assessment-b01");
   await post(
@@ -387,7 +409,10 @@ async function run() {
     throw new Error("Path B dashboard or assessor queue included Path A state");
   }
 
-  process.stdout.write("Pathway isolation integration check passed\n");
+    process.stdout.write("Pathway isolation integration check passed\n");
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 }
 
 run().catch((error: unknown) => {

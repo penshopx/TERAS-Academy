@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./admin-membership": "./src/admin-membership.ts",
+    "./demo-access": "./src/demo-access.ts",
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {

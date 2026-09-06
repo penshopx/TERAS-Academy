@@ -745,6 +745,9 @@ importers:
 
   scripts:
     dependencies:
+      '@clerk/backend':
+        specifier: ^3.17.0
+        version: 3.17.0(react-dom@19.1.4(react@19.1.4))(react@19.1.4)
       '@workspace/db':
         specifier: workspace:*
         version: link:../lib/db

@@ -7,6 +7,9 @@
     "hello": "tsx ./src/hello.ts",
     "seed": "tsx ./src/seed.ts",
     "seed:demo": "tsx ./src/seed.ts --demo",
+    "provision:super-admin": "tsx ./src/provision-super-admin.ts",
+    "demo:fixtures-enabled": "tsx ./src/demo-fixtures-enabled.ts",
+    "test:demo-access-policy": "tsx ./src/demo-access-policy.test.ts",
     "audit:resource-uris": "tsx ./src/audit-resource-uris.ts",
     "test:resource-uri-audit": "tsx ./src/resource-uri-policy.test.ts",
     "test:resource-uri-upgrade": "bash ./resource-uri-upgrade.integration.test.sh",
@@ -26,6 +29,7 @@
     "tsx": "catalog:"
   },
   "dependencies": {
+    "@clerk/backend": "^3.17.0",
     "@workspace/db": "workspace:*",
     "drizzle-orm": "catalog:"
   }

@@ -10,6 +10,7 @@ export type AdminUserRolesItem = typeof AdminUserRolesItem[keyof typeof AdminUse
 
 
 export const AdminUserRolesItem = {
+  super_admin: 'super_admin',
   admin: 'admin',
   trainer: 'trainer',
   assessor: 'assessor',

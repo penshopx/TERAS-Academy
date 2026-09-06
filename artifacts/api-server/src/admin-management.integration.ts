@@ -22,7 +22,7 @@ async function run() {
     throw new Error("Admin management migration 0005 is not installed; refusing to run integration fixtures against an unupgraded database");
   }
   const app = createIntegrationTestApp(
-    () => ({ userId: `admin-${suffix}`, role: "admin" }),
+    () => ({ userId: `admin-${suffix}`, role: "super_admin" }),
     { activeAdminFixtureIds: [ids.administrator, ids.controlAdministrator] },
   );
   const server = await new Promise<ReturnType<typeof app.listen>>(resolve => { const listener = app.listen(0, () => resolve(listener)); });
@@ -35,11 +35,13 @@ async function run() {
       assert(response.status === 201, `Admin user create failed: ${await response.text()}`);
     }
     let response = await request("/admin/users", { id: ids.administrator, name: "Sole Managed Admin", initials: "SA", email: `${ids.administrator}@example.test`, organization: null, clerkUserId: null, status: "active", roles: ["admin"] });
-    assert(response.status === 201, `Admin bootstrap fixture failed: ${await response.text()}`);
+    assert(response.status === 403, "Direct privileged-role creation must be rejected even for super administrators");
+    await db.insert(peopleTable).values({ id: ids.administrator, name: "Sole Managed Admin", initials: "SA", email: `${ids.administrator}@example.test`, role: "Administrator", status: "active", createdBy: `admin-${suffix}` });
+    await db.insert(personRolesTable).values({ personId: ids.administrator, role: "admin", createdBy: `admin-${suffix}` });
     response = await request(`/admin/users/${ids.administrator}/roles`, { roles: ["learner"] }, "PUT");
     assert(response.status === 409, "Removing the last active fixture admin must return 409 even when other admins exist");
-    response = await request("/admin/users", { id: ids.controlAdministrator, name: "Control Administrator", initials: "CA", email: `${ids.controlAdministrator}@example.test`, organization: null, clerkUserId: null, status: "active", roles: ["admin"] });
-    assert(response.status === 201, `Admin control fixture failed: ${await response.text()}`);
+    await db.insert(peopleTable).values({ id: ids.controlAdministrator, name: "Control Administrator", initials: "CA", email: `${ids.controlAdministrator}@example.test`, role: "Administrator", status: "active", createdBy: `admin-${suffix}` });
+    await db.insert(personRolesTable).values({ personId: ids.controlAdministrator, role: "admin", createdBy: `admin-${suffix}` });
     const concurrentResponses = await Promise.all([
       request(`/admin/users/${ids.administrator}/roles`, { roles: ["learner"] }, "PUT"),
       request(`/admin/users/${ids.controlAdministrator}`, { status: "inactive" }, "PATCH"),

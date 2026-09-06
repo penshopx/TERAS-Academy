@@ -1,10 +1,10 @@
 import { db, programsTable, pathwaysTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable, coursesTable, courseModulesTable, lessonsTable, learningActivitiesTable, contentResourcesTable, learningOutcomesTable } from "@workspace/db";
 import { seedManagedPeople } from "@workspace/db/admin-membership";
+import { allowsDemoFixtures } from "@workspace/db/demo-access";
 import { eq } from "drizzle-orm";
 
 const now = new Date("2025-02-14T10:00:00.000Z");
-const includeDemoFixtures = process.argv.includes("--demo") || process.env.TERAS_ENABLE_DEMO_FIXTURES === "1";
-const productionLike = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT === "1";
+const includeDemoFixtures = process.argv.includes("--demo");
 const modules = [
   ["m01","path-a","M01","PV foundations","System fundamentals"], ["m02","path-a","M02","Site assessment","Survey and shading"],
   ["m03","path-a","M03","Electrical safety","Safe isolation and verification"], ["m04","path-a","M04","Array design","PV array configuration"],
@@ -24,8 +24,8 @@ const pathBModules = [
   ["b08","path-b","B08","Design pack","Produce a traceable client-ready design pack"],
 ];
 async function seed(): Promise<void> {
-  if (productionLike && includeDemoFixtures) {
-    throw new Error("Refusing to seed TERAS demo learner fixtures in a production environment");
+  if (includeDemoFixtures && !allowsDemoFixtures()) {
+    throw new Error("Refusing to seed TERAS demo learner fixtures outside an explicitly enabled safe demo environment");
   }
   if (includeDemoFixtures) {
     await seedManagedPeople([

@@ -10,6 +10,7 @@ export type RoleAssignmentInputRolesItem = typeof RoleAssignmentInputRolesItem[k
 
 
 export const RoleAssignmentInputRolesItem = {
+  super_admin: 'super_admin',
   admin: 'admin',
   trainer: 'trainer',
   assessor: 'assessor',

@@ -27,7 +27,7 @@ export const HealthCheckResponse = zod.object({
 export const GetCurrentSessionResponse = zod.object({
   "personId": zod.string(),
   "name": zod.string(),
-  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner'])).min(1)
+  "roles": zod.array(zod.enum(['super_admin', 'admin', 'trainer', 'assessor', 'learner'])).min(1)
 })
 
 
@@ -1661,7 +1661,7 @@ export const ListAdminUsersResponseItem = zod.object({
   "organization": zod.string().nullable(),
   "clerkUserId": zod.string().nullable(),
   "status": zod.enum(['active', 'inactive']),
-  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner']))
+  "roles": zod.array(zod.enum(['super_admin', 'admin', 'trainer', 'assessor', 'learner']))
 })
 export const ListAdminUsersResponse = zod.array(ListAdminUsersResponseItem)
 
@@ -1674,7 +1674,7 @@ export const CreateAdminUserBody = zod.object({
   "organization": zod.string().nullable(),
   "clerkUserId": zod.string().nullable(),
   "status": zod.enum(['active', 'inactive']),
-  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner']))
+  "roles": zod.array(zod.enum(['super_admin', 'admin', 'trainer', 'assessor', 'learner']))
 })
 
 export const CreateAdminUserResponse = zod.object({
@@ -1685,7 +1685,105 @@ export const CreateAdminUserResponse = zod.object({
   "organization": zod.string().nullable(),
   "clerkUserId": zod.string().nullable(),
   "status": zod.enum(['active', 'inactive']),
-  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner']))
+  "roles": zod.array(zod.enum(['super_admin', 'admin', 'trainer', 'assessor', 'learner']))
+})
+
+
+export const ListAdminAccessRequestsResponseItem = zod.object({
+  "id": zod.string(),
+  "requesterPersonId": zod.string(),
+  "targetPersonId": zod.string(),
+  "requestedRole": zod.enum(['admin']),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "reason": zod.string().nullable(),
+  "reviewNote": zod.string().nullable(),
+  "reviewedByPersonId": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminAccessRequestsResponse = zod.array(ListAdminAccessRequestsResponseItem)
+
+
+
+export const createAdminAccessRequestBodyReasonMax = 2000;
+
+
+
+export const CreateAdminAccessRequestBody = zod.object({
+  "targetPersonId": zod.string().min(1),
+  "requestedRole": zod.enum(['admin']),
+  "reason": zod.string().min(1).max(createAdminAccessRequestBodyReasonMax)
+})
+
+export const CreateAdminAccessRequestResponse = zod.object({
+  "id": zod.string(),
+  "requesterPersonId": zod.string(),
+  "targetPersonId": zod.string(),
+  "requestedRole": zod.enum(['admin']),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "reason": zod.string().nullable(),
+  "reviewNote": zod.string().nullable(),
+  "reviewedByPersonId": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+
+
+
+export const ApproveAdminAccessRequestParams = zod.object({
+  "requestId": zod.coerce.string().min(1)
+})
+
+export const approveAdminAccessRequestBodyReviewNoteMax = 2000;
+
+
+
+export const ApproveAdminAccessRequestBody = zod.object({
+  "reviewNote": zod.string().max(approveAdminAccessRequestBodyReviewNoteMax).nullish()
+})
+
+export const ApproveAdminAccessRequestResponse = zod.object({
+  "id": zod.string(),
+  "requesterPersonId": zod.string(),
+  "targetPersonId": zod.string(),
+  "requestedRole": zod.enum(['admin']),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "reason": zod.string().nullable(),
+  "reviewNote": zod.string().nullable(),
+  "reviewedByPersonId": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+
+
+
+export const RejectAdminAccessRequestParams = zod.object({
+  "requestId": zod.coerce.string().min(1)
+})
+
+export const rejectAdminAccessRequestBodyReviewNoteMax = 2000;
+
+
+
+export const RejectAdminAccessRequestBody = zod.object({
+  "reviewNote": zod.string().max(rejectAdminAccessRequestBodyReviewNoteMax).nullish()
+})
+
+export const RejectAdminAccessRequestResponse = zod.object({
+  "id": zod.string(),
+  "requesterPersonId": zod.string(),
+  "targetPersonId": zod.string(),
+  "requestedRole": zod.enum(['admin']),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "reason": zod.string().nullable(),
+  "reviewNote": zod.string().nullable(),
+  "reviewedByPersonId": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
 })
 
 
@@ -1998,7 +2096,7 @@ export const UpdateAdminUserResponse = zod.object({
   "organization": zod.string().nullable(),
   "clerkUserId": zod.string().nullable(),
   "status": zod.enum(['active', 'inactive']),
-  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner']))
+  "roles": zod.array(zod.enum(['super_admin', 'admin', 'trainer', 'assessor', 'learner']))
 })
 
 
@@ -2010,7 +2108,7 @@ export const ReplaceAdminUserRolesParams = zod.object({
 
 
 export const ReplaceAdminUserRolesBody = zod.object({
-  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner'])).min(1)
+  "roles": zod.array(zod.enum(['super_admin', 'admin', 'trainer', 'assessor', 'learner'])).min(1)
 })
 
 export const ReplaceAdminUserRolesResponse = zod.object({
@@ -2021,7 +2119,7 @@ export const ReplaceAdminUserRolesResponse = zod.object({
   "organization": zod.string().nullable(),
   "clerkUserId": zod.string().nullable(),
   "status": zod.enum(['active', 'inactive']),
-  "roles": zod.array(zod.enum(['admin', 'trainer', 'assessor', 'learner']))
+  "roles": zod.array(zod.enum(['super_admin', 'admin', 'trainer', 'assessor', 'learner']))
 })
 
 

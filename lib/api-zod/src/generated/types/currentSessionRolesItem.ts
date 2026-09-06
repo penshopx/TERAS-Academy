@@ -10,6 +10,7 @@ export type CurrentSessionRolesItem = typeof CurrentSessionRolesItem[keyof typeo
 
 
 export const CurrentSessionRolesItem = {
+  super_admin: 'super_admin',
   admin: 'admin',
   trainer: 'trainer',
   assessor: 'assessor',

@@ -37,6 +37,8 @@ if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_people') IS
   # Preserve learner reading position when upgrading an existing installation.
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
     -f lib/db/migrations/0011_learning_resource_progress.sql
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+    -f lib/db/migrations/0012_super_admin_governance.sql
 fi
 if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_content_resources') IS NOT NULL")" = "t" ]; then
   TERAS_MIGRATION_ACTOR=post-merge-upgrade \
@@ -58,7 +60,13 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f lib/db/migrations/0010_seed_baseline_assistant_knowledge.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f lib/db/migrations/0011_learning_resource_progress.sql
-pnpm --filter @workspace/scripts run seed:demo
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+  -f lib/db/migrations/0012_super_admin_governance.sql
+if [ "$(pnpm --silent --filter @workspace/scripts run demo:fixtures-enabled)" = "1" ]; then
+  pnpm --filter @workspace/scripts run seed:demo
+else
+  echo "Skipping TERAS demo fixture seed; explicit safe demo fixture mode is not enabled."
+fi
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/schema-check.sql
 pnpm --filter @workspace/api-server run test:resource-uri
 pnpm --filter @workspace/scripts run test:resource-uri-audit

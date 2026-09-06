@@ -21,6 +21,9 @@ import type {
 
 import type {
   AdminAccess,
+  AdminAccessRequest,
+  AdminAccessRequestInput,
+  AdminAccessRequestReview,
   AdminAuditEvent,
   AdminCohort,
   AdminCohortInput,
@@ -3493,6 +3496,274 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateAdminUserMutationOptions(options));
+    }
+
+export const getListAdminAccessRequestsUrl = () => {
+
+
+
+
+  return `/api/admin/access-requests`
+}
+
+export const listAdminAccessRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminAccessRequest[]> => {
+
+  return customFetch<AdminAccessRequest[]>(getListAdminAccessRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminAccessRequestsQueryKey = () => {
+    return [
+    `/api/admin/access-requests`
+    ] as const;
+    }
+
+
+export const getListAdminAccessRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminAccessRequests>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAccessRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminAccessRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminAccessRequests>>> = ({ signal }) => listAdminAccessRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminAccessRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminAccessRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminAccessRequests>>>
+export type ListAdminAccessRequestsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+
+export function useListAdminAccessRequests<TData = Awaited<ReturnType<typeof listAdminAccessRequests>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAccessRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminAccessRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminAccessRequestUrl = () => {
+
+
+
+
+  return `/api/admin/access-requests`
+}
+
+export const createAdminAccessRequest = async (adminAccessRequestInput: AdminAccessRequestInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminAccessRequest> => {
+
+  return customFetch<AdminAccessRequest>(getCreateAdminAccessRequestUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminAccessRequestInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminAccessRequestMutationOptions = <TError = ErrorType<BadRequestResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminAccessRequest>>, TError,{data: BodyType<AdminAccessRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminAccessRequest>>, TError,{data: BodyType<AdminAccessRequestInput>}, TContext> => {
+
+const mutationKey = ['createAdminAccessRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminAccessRequest>>, {data: BodyType<AdminAccessRequestInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminAccessRequest(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminAccessRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminAccessRequest>>>
+    export type CreateAdminAccessRequestMutationBody = BodyType<AdminAccessRequestInput>
+    export type CreateAdminAccessRequestMutationError = ErrorType<BadRequestResponse | ConflictResponse>
+
+    export const useCreateAdminAccessRequest = <TError = ErrorType<BadRequestResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminAccessRequest>>, TError,{data: BodyType<AdminAccessRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminAccessRequest>>,
+        TError,
+        {data: BodyType<AdminAccessRequestInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminAccessRequestMutationOptions(options));
+    }
+
+export const getApproveAdminAccessRequestUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/admin/access-requests/${requestId}/approve`
+}
+
+export const approveAdminAccessRequest = async (requestId: string,
+    adminAccessRequestReview?: AdminAccessRequestReview, options?: Parameters<typeof customFetch>[1]): Promise<AdminAccessRequest> => {
+
+  return customFetch<AdminAccessRequest>(getApproveAdminAccessRequestUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminAccessRequestReview)
+  }
+);}
+
+
+
+
+
+export const getApproveAdminAccessRequestMutationOptions = <TError = ErrorType<NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveAdminAccessRequest>>, TError,{requestId: string;data?: BodyType<AdminAccessRequestReview>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveAdminAccessRequest>>, TError,{requestId: string;data?: BodyType<AdminAccessRequestReview>}, TContext> => {
+
+const mutationKey = ['approveAdminAccessRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveAdminAccessRequest>>, {requestId: string;data?: BodyType<AdminAccessRequestReview>}> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  approveAdminAccessRequest(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveAdminAccessRequestMutationResult = NonNullable<Awaited<ReturnType<typeof approveAdminAccessRequest>>>
+    export type ApproveAdminAccessRequestMutationBody = BodyType<AdminAccessRequestReview> | undefined
+    export type ApproveAdminAccessRequestMutationError = ErrorType<NotFoundResponse | ConflictResponse>
+
+    export const useApproveAdminAccessRequest = <TError = ErrorType<NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveAdminAccessRequest>>, TError,{requestId: string;data?: BodyType<AdminAccessRequestReview>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveAdminAccessRequest>>,
+        TError,
+        {requestId: string;data?: BodyType<AdminAccessRequestReview>},
+        TContext
+      > => {
+      return useMutation(getApproveAdminAccessRequestMutationOptions(options));
+    }
+
+export const getRejectAdminAccessRequestUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/admin/access-requests/${requestId}/reject`
+}
+
+export const rejectAdminAccessRequest = async (requestId: string,
+    adminAccessRequestReview?: AdminAccessRequestReview, options?: Parameters<typeof customFetch>[1]): Promise<AdminAccessRequest> => {
+
+  return customFetch<AdminAccessRequest>(getRejectAdminAccessRequestUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminAccessRequestReview)
+  }
+);}
+
+
+
+
+
+export const getRejectAdminAccessRequestMutationOptions = <TError = ErrorType<NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAdminAccessRequest>>, TError,{requestId: string;data?: BodyType<AdminAccessRequestReview>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectAdminAccessRequest>>, TError,{requestId: string;data?: BodyType<AdminAccessRequestReview>}, TContext> => {
+
+const mutationKey = ['rejectAdminAccessRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectAdminAccessRequest>>, {requestId: string;data?: BodyType<AdminAccessRequestReview>}> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  rejectAdminAccessRequest(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectAdminAccessRequestMutationResult = NonNullable<Awaited<ReturnType<typeof rejectAdminAccessRequest>>>
+    export type RejectAdminAccessRequestMutationBody = BodyType<AdminAccessRequestReview> | undefined
+    export type RejectAdminAccessRequestMutationError = ErrorType<NotFoundResponse | ConflictResponse>
+
+    export const useRejectAdminAccessRequest = <TError = ErrorType<NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAdminAccessRequest>>, TError,{requestId: string;data?: BodyType<AdminAccessRequestReview>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectAdminAccessRequest>>,
+        TError,
+        {requestId: string;data?: BodyType<AdminAccessRequestReview>},
+        TContext
+      > => {
+      return useMutation(getRejectAdminAccessRequestMutationOptions(options));
     }
 
 export const getGetAdminOperationalSummaryUrl = () => {

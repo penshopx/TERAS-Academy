@@ -7,6 +7,12 @@
  */
 
 export * from './adminAccess';
+export * from './adminAccessRequest';
+export * from './adminAccessRequestInput';
+export * from './adminAccessRequestInputRequestedRole';
+export * from './adminAccessRequestRequestedRole';
+export * from './adminAccessRequestReview';
+export * from './adminAccessRequestStatus';
 export * from './adminAuditEvent';
 export * from './adminCohort';
 export * from './adminCohortInput';

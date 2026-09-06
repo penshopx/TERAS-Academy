@@ -22,6 +22,21 @@ export const personRolesTable = pgTable("teras_person_roles", {
   personId: text("person_id").notNull().references(() => peopleTable.id, { onDelete: "cascade" }),
   role: text("role").notNull(), ...audit,
 }, table => [primaryKey({ columns: [table.personId, table.role] })]);
+/** Durable, reviewable requests for elevated administrative access. */
+export const adminAccessRequestsTable = pgTable("teras_admin_access_requests", {
+  id: text("id").primaryKey(),
+  requesterPersonId: text("requester_person_id").notNull().references(() => peopleTable.id, { onDelete: "cascade" }),
+  targetPersonId: text("target_person_id").notNull().references(() => peopleTable.id, { onDelete: "cascade" }),
+  requestedRole: text("requested_role").notNull(),
+  status: text("status").notNull().default("pending"),
+  reason: text("reason"),
+  reviewedByPersonId: text("reviewed_by_person_id").references(() => peopleTable.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  reviewNote: text("review_note"),
+  ...audit,
+}, table => [uniqueIndex("teras_admin_access_requests_pending_unique")
+  .on(table.targetPersonId, table.requestedRole)
+  .where(sql`${table.status} = 'pending'`)]);
 export const programsTable = pgTable("teras_programs", {
   id: text("id").primaryKey(), domain: text("domain").notNull(), name: text("name").notNull(),
   description: text("description").notNull(), status: text("status").notNull(), ...audit,
@@ -165,7 +180,7 @@ export const readinessEventsTable = pgTable("teras_readiness_events", {
 export const programRelations = relations(programsTable, ({ many }) => ({ modules: many(modulesTable), pathways: many(pathwaysTable) }));
 export const moduleRelations = relations(modulesTable, ({ many }) => ({ tasks: many(practiceTasksTable), assessments: many(assessmentsTable) }));
 
-const tables = { peopleTable, personRolesTable, programsTable, pathwaysTable, cohortsTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, adminAuditEventsTable, knowledgeArticlesTable, enrollmentPathwayEventsTable, practiceAttemptsTable, practiceReviewsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable };
+const tables = { peopleTable, personRolesTable, adminAccessRequestsTable, programsTable, pathwaysTable, cohortsTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, adminAuditEventsTable, knowledgeArticlesTable, enrollmentPathwayEventsTable, practiceAttemptsTable, practiceReviewsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable };
 export const insertSchemas = Object.fromEntries(Object.entries(tables).map(([name, table]) => [name, createInsertSchema(table).omit({ createdAt: true })]));
 export type Person = typeof peopleTable.$inferSelect;
 export type Program = typeof programsTable.$inferSelect;

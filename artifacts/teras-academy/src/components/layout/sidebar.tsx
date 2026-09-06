@@ -49,7 +49,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     },
   });
   const roles = new Set(session.data?.roles ?? []);
-  const isAdmin = roles.has("admin");
+  const isSuperAdmin = roles.has("super_admin");
+  const isAdmin = isSuperAdmin || roles.has("admin");
   const isLearner = roles.has("learner");
   const isTrainer = roles.has("trainer");
   const isAssessor = roles.has("assessor");
@@ -142,7 +143,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         </div>}
 
         {isAdmin && <div>
-            <h2 className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-3 px-2">Administration</h2>
+            <h2 className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-3 px-2">{isSuperAdmin ? "Super Administration" : "Administration"}</h2>
             <nav className="space-y-1">
               {ADMIN_VIEW_ITEMS.map((item) => {
                 const Icon = item.icon;

@@ -446,6 +446,7 @@ export type AdminUserRolesItem = typeof AdminUserRolesItem[keyof typeof AdminUse
 
 
 export const AdminUserRolesItem = {
+  super_admin: 'super_admin',
   admin: 'admin',
   trainer: 'trainer',
   assessor: 'assessor',
@@ -464,6 +465,65 @@ export interface AdminUser {
   clerkUserId: string | null;
   status: AdminUserStatus;
   roles: AdminUserRolesItem[];
+}
+
+export type AdminAccessRequestRequestedRole = typeof AdminAccessRequestRequestedRole[keyof typeof AdminAccessRequestRequestedRole];
+
+
+export const AdminAccessRequestRequestedRole = {
+  admin: 'admin',
+} as const;
+
+export type AdminAccessRequestStatus = typeof AdminAccessRequestStatus[keyof typeof AdminAccessRequestStatus];
+
+
+export const AdminAccessRequestStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface AdminAccessRequest {
+  id: string;
+  requesterPersonId: string;
+  targetPersonId: string;
+  requestedRole: AdminAccessRequestRequestedRole;
+  status: AdminAccessRequestStatus;
+  /** @nullable */
+  reason: string | null;
+  /** @nullable */
+  reviewNote: string | null;
+  /** @nullable */
+  reviewedByPersonId: string | null;
+  /** @nullable */
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export type AdminAccessRequestInputRequestedRole = typeof AdminAccessRequestInputRequestedRole[keyof typeof AdminAccessRequestInputRequestedRole];
+
+
+export const AdminAccessRequestInputRequestedRole = {
+  admin: 'admin',
+} as const;
+
+export interface AdminAccessRequestInput {
+  /** @minLength 1 */
+  targetPersonId: string;
+  requestedRole: AdminAccessRequestInputRequestedRole;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  reason: string;
+}
+
+export interface AdminAccessRequestReview {
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  reviewNote?: string | null;
 }
 
 export type AdminOperationalMetricId = typeof AdminOperationalMetricId[keyof typeof AdminOperationalMetricId];
@@ -632,6 +692,7 @@ export type RoleAssignmentInputRolesItem = typeof RoleAssignmentInputRolesItem[k
 
 
 export const RoleAssignmentInputRolesItem = {
+  super_admin: 'super_admin',
   admin: 'admin',
   trainer: 'trainer',
   assessor: 'assessor',
@@ -967,6 +1028,7 @@ export type CurrentSessionRolesItem = typeof CurrentSessionRolesItem[keyof typeo
 
 
 export const CurrentSessionRolesItem = {
+  super_admin: 'super_admin',
   admin: 'admin',
   trainer: 'trainer',
   assessor: 'assessor',
