@@ -21,6 +21,9 @@ type LearningResourceLinkProps = {
     mimeType?: string | null;
     content?: string | null;
   };
+  scrollContainer?: React.RefObject<HTMLDivElement | null>;
+  onPositionChange?: (position: number) => void;
+  onOpen?: () => void;
 };
 
 function isSupportedResourceUri(uri: string | null | undefined): uri is string {
@@ -34,7 +37,96 @@ function isSupportedResourceUri(uri: string | null | undefined): uri is string {
   }
 }
 
-export function LearningResourceLink({ activityId, resource }: LearningResourceLinkProps) {
+export function LearningResourceLink({
+  activityId,
+  resource,
+  scrollContainer,
+  onPositionChange,
+  onOpen,
+}: LearningResourceLinkProps) {
+  // If it's type TEXT, render it inline accessibly
+  if (resource.type === "TEXT") {
+    return (
+      <div
+        className="p-4 rounded-xl border border-border/50 bg-background/50 space-y-2"
+        data-testid={`activity-resource-text-${resource.id}`}
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            <FileText className="w-4 h-4" />
+          </div>
+          <span className="text-sm font-semibold">{resource.title}</span>
+        </div>
+        {resource.content ? (
+          <div
+            ref={scrollContainer}
+            onScroll={(event) => onPositionChange?.(Math.round(event.currentTarget.scrollTop))}
+            className="text-sm text-muted-foreground whitespace-pre-wrap font-mono p-4 bg-muted/20 rounded-md border border-border/30 max-h-80 overflow-y-auto"
+            data-testid={`activity-resource-position-${resource.id}`}
+          >
+            {resource.content}
+          </div>
+        ) : (
+          <span className="text-xs font-medium text-muted-foreground">Content not available</span>
+        )}
+      </div>
+    );
+  }
+
+  // Determine the active URI
+  let resolvedUri: string | null = null;
+
+  if (resource.objectPath) {
+    resolvedUri = `/api/storage${resource.objectPath}`;
+  } else if (isSupportedResourceUri(resource.uri)) {
+    resolvedUri = resource.uri;
+  }
+
+  if (!resolvedUri) {
+    return (
+      <div
+        className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-muted/20 text-muted-foreground"
+        data-testid={`activity-resource-unavailable-${resource.id}`}
+      >
+        <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center">
+          <FileText className="w-4 h-4" />
+        </div>
+        <span className="text-sm font-semibold flex-1 truncate">{resource.title}</span>
+        <span className="text-xs font-medium">Material not available yet</span>
+      </div>
+    );
+  }
+
+  return (
+    <a
+      href={resolvedUri}
+      onClick={() => {
+        onOpen?.();
+        trackResourceOpened({
+          activityId,
+          resourceId: resource.id,
+          resourceType: resource.type,
+        });
+      }}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-background/50 hover:bg-muted/30 hover:border-primary/30 transition-all group/link"
+      data-testid={`activity-resource-link-${resource.id}`}
+    >
+      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover/link:bg-primary group-hover/link:text-black transition-colors">
+        {resource.objectPath ? <FileArchive className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
+      </div>
+      <div className="flex flex-col flex-1 truncate">
+        <span className="text-sm font-semibold truncate">{resource.title}</span>
+        {resource.mimeType && (
+          <span className="text-[10px] font-mono text-muted-foreground uppercase">{resource.mimeType}</span>
+        )}
+      </div>
+    </a>
+  );
+}
+
+function ProgressAwareLearningResourceLink({ activityId, resource }: LearningResourceLinkProps) {
   const { data: savedProgress } = useGetLearningResourceProgress(resource.id);
   const saveProgress = useSaveLearningResourceProgress();
   const scrollContainer = useRef<HTMLDivElement>(null);
@@ -77,90 +169,21 @@ export function LearningResourceLink({ activityId, resource }: LearningResourceL
     if (saveTimer.current) clearTimeout(saveTimer.current);
   }, []);
 
-  // If it's type TEXT, render it inline accessibly
-  if (resource.type === "TEXT") {
-    return (
-      <div
-        className="p-4 rounded-xl border border-border/50 bg-background/50 space-y-2"
-        data-testid={`activity-resource-text-${resource.id}`}
-      >
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-            <FileText className="w-4 h-4" />
-          </div>
-          <span className="text-sm font-semibold">{resource.title}</span>
-        </div>
-        {resource.content ? (
-          <div
-            ref={scrollContainer}
-            onScroll={(event) => schedulePositionSave(Math.round(event.currentTarget.scrollTop))}
-            className="text-sm text-muted-foreground whitespace-pre-wrap font-mono p-4 bg-muted/20 rounded-md border border-border/30 max-h-80 overflow-y-auto"
-            data-testid={`activity-resource-position-${resource.id}`}
-          >
-            {resource.content}
-          </div>
-        ) : (
-          <span className="text-xs font-medium text-muted-foreground">Content not available</span>
-        )}
-      </div>
-    );
-  }
-
-  // Determine the active URI
-  let resolvedUri: string | null = null;
-
-  if (resource.objectPath) {
-    resolvedUri = `/api/storage${resource.objectPath}`;
-  } else if (isSupportedResourceUri(resource.uri)) {
-    resolvedUri = resource.uri;
-  }
-
-  if (!resolvedUri) {
-    return (
-      <div
-        className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-muted/20 text-muted-foreground"
-        data-testid={`activity-resource-unavailable-${resource.id}`}
-      >
-        <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center">
-          <FileText className="w-4 h-4" />
-        </div>
-        <span className="text-sm font-semibold flex-1 truncate">{resource.title}</span>
-        <span className="text-xs font-medium">Material not available yet</span>
-      </div>
-    );
-  }
-
   return (
-    <a
-      href={resolvedUri}
-      onClick={() => {
+    <LearningResourceLink
+      activityId={activityId}
+      resource={resource}
+      scrollContainer={scrollContainer}
+      onPositionChange={schedulePositionSave}
+      onOpen={() => {
         // External viewers do not expose a readable position to this origin;
         // retain that the authenticated learner opened this material instead.
         latestPosition.current = 1;
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = null;
         persistLatestPosition();
-        trackResourceOpened({
-          activityId,
-          resourceId: resource.id,
-          resourceType: resource.type,
-        });
       }}
-      target="_blank"
-      rel="noreferrer"
-      className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-background/50 hover:bg-muted/30 hover:border-primary/30 transition-all group/link"
-      data-testid={`activity-resource-link-${resource.id}`}
-    >
-      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover/link:bg-primary group-hover/link:text-black transition-colors">
-        {resource.objectPath ? <FileArchive className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
-      </div>
-      <div className="flex flex-col flex-1 truncate">
-        <span className="text-sm font-semibold truncate">{resource.title}</span>
-        {resource.mimeType && (
-          <span className="text-[10px] font-mono text-muted-foreground uppercase">{resource.mimeType}</span>
-        )}
-      </div>
-    </a>
+    />
   );
 }
 
@@ -391,7 +414,7 @@ export default function LearningLessonDetail() {
                       </p>
                       <div className="grid gap-2">
                         {activity.resources.map(res => (
-                          <LearningResourceLink
+                          <ProgressAwareLearningResourceLink
                             key={res.id}
                             activityId={activity.id}
                             resource={res}
