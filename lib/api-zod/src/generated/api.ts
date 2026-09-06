@@ -1757,6 +1757,222 @@ export const GetAdminOperationalSummaryResponse = zod.object({
 })
 
 
+/**
+ * Does not establish learner identity or permit learner mutations.
+ * @summary Read-only aggregate learner dashboard for an administrator
+ */
+export const getAdminLearnerDashboardProjectionResponseMetricsItemValueMin = 0;
+
+export const getAdminLearnerDashboardProjectionResponseIncompleteAssignmentsTrainerMin = 0;
+
+export const getAdminLearnerDashboardProjectionResponseIncompleteAssignmentsAssessorMin = 0;
+
+export const getAdminLearnerDashboardProjectionResponseIncompleteAssignmentsTotalMin = 0;
+
+export const getAdminLearnerDashboardProjectionResponseQueuesItemCountMin = 0;
+
+export const getAdminLearnerDashboardProjectionResponseBottleneckCountMin = 0;
+
+export const getAdminLearnerDashboardProjectionResponseActionsItemCountMin = 0;
+
+
+
+export const GetAdminLearnerDashboardProjectionResponse = zod.object({
+  "metrics": zod.array(zod.object({
+  "id": zod.enum(['learners', 'programs', 'cohorts', 'enrollments']),
+  "label": zod.string(),
+  "value": zod.int().min(getAdminLearnerDashboardProjectionResponseMetricsItemValueMin),
+  "description": zod.string()
+})),
+  "incompleteAssignments": zod.object({
+  "trainer": zod.int().min(getAdminLearnerDashboardProjectionResponseIncompleteAssignmentsTrainerMin),
+  "assessor": zod.int().min(getAdminLearnerDashboardProjectionResponseIncompleteAssignmentsAssessorMin),
+  "total": zod.int().min(getAdminLearnerDashboardProjectionResponseIncompleteAssignmentsTotalMin)
+}),
+  "queues": zod.array(zod.object({
+  "id": zod.enum(['evidence', 'assessment', 'remediation', 'reassessment']),
+  "label": zod.string(),
+  "count": zod.int().min(getAdminLearnerDashboardProjectionResponseQueuesItemCountMin),
+  "description": zod.string(),
+  "targetTab": zod.enum(['enrollments']),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "learnerId": zod.string(),
+  "learnerName": zod.string(),
+  "pathwayId": zod.string(),
+  "pathwayName": zod.string(),
+  "trainerId": zod.string().nullable(),
+  "trainerName": zod.string().nullable(),
+  "assessorId": zod.string().nullable(),
+  "assessorName": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "bottleneck": zod.object({
+  "stage": zod.enum(['evidence', 'assessment', 'remediation', 'reassessment', 'clear']),
+  "label": zod.string(),
+  "count": zod.int().min(getAdminLearnerDashboardProjectionResponseBottleneckCountMin),
+  "description": zod.string(),
+  "targetTab": zod.enum(['enrollments'])
+}),
+  "actions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "description": zod.string(),
+  "count": zod.int().min(getAdminLearnerDashboardProjectionResponseActionsItemCountMin),
+  "targetTab": zod.enum(['users', 'programs', 'cohorts', 'enrollments']),
+  "urgency": zod.enum(['normal', 'attention', 'critical'])
+})),
+  "generatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Does not establish trainer identity or permit trainer mutations.
+ * @summary Read-only aggregate trainer dashboard for an administrator
+ */
+export const getAdminTrainerDashboardProjectionResponseMetricsItemValueMin = 0;
+
+export const getAdminTrainerDashboardProjectionResponseIncompleteAssignmentsTrainerMin = 0;
+
+export const getAdminTrainerDashboardProjectionResponseIncompleteAssignmentsAssessorMin = 0;
+
+export const getAdminTrainerDashboardProjectionResponseIncompleteAssignmentsTotalMin = 0;
+
+export const getAdminTrainerDashboardProjectionResponseQueuesItemCountMin = 0;
+
+export const getAdminTrainerDashboardProjectionResponseBottleneckCountMin = 0;
+
+export const getAdminTrainerDashboardProjectionResponseActionsItemCountMin = 0;
+
+
+
+export const GetAdminTrainerDashboardProjectionResponse = zod.object({
+  "metrics": zod.array(zod.object({
+  "id": zod.enum(['learners', 'programs', 'cohorts', 'enrollments']),
+  "label": zod.string(),
+  "value": zod.int().min(getAdminTrainerDashboardProjectionResponseMetricsItemValueMin),
+  "description": zod.string()
+})),
+  "incompleteAssignments": zod.object({
+  "trainer": zod.int().min(getAdminTrainerDashboardProjectionResponseIncompleteAssignmentsTrainerMin),
+  "assessor": zod.int().min(getAdminTrainerDashboardProjectionResponseIncompleteAssignmentsAssessorMin),
+  "total": zod.int().min(getAdminTrainerDashboardProjectionResponseIncompleteAssignmentsTotalMin)
+}),
+  "queues": zod.array(zod.object({
+  "id": zod.enum(['evidence', 'assessment', 'remediation', 'reassessment']),
+  "label": zod.string(),
+  "count": zod.int().min(getAdminTrainerDashboardProjectionResponseQueuesItemCountMin),
+  "description": zod.string(),
+  "targetTab": zod.enum(['enrollments']),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "learnerId": zod.string(),
+  "learnerName": zod.string(),
+  "pathwayId": zod.string(),
+  "pathwayName": zod.string(),
+  "trainerId": zod.string().nullable(),
+  "trainerName": zod.string().nullable(),
+  "assessorId": zod.string().nullable(),
+  "assessorName": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "bottleneck": zod.object({
+  "stage": zod.enum(['evidence', 'assessment', 'remediation', 'reassessment', 'clear']),
+  "label": zod.string(),
+  "count": zod.int().min(getAdminTrainerDashboardProjectionResponseBottleneckCountMin),
+  "description": zod.string(),
+  "targetTab": zod.enum(['enrollments'])
+}),
+  "actions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "description": zod.string(),
+  "count": zod.int().min(getAdminTrainerDashboardProjectionResponseActionsItemCountMin),
+  "targetTab": zod.enum(['users', 'programs', 'cohorts', 'enrollments']),
+  "urgency": zod.enum(['normal', 'attention', 'critical'])
+})),
+  "generatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Does not establish assessor identity or permit assessor mutations.
+ * @summary Read-only aggregate assessor dashboard for an administrator
+ */
+export const getAdminAssessorDashboardProjectionResponseMetricsItemValueMin = 0;
+
+export const getAdminAssessorDashboardProjectionResponseIncompleteAssignmentsTrainerMin = 0;
+
+export const getAdminAssessorDashboardProjectionResponseIncompleteAssignmentsAssessorMin = 0;
+
+export const getAdminAssessorDashboardProjectionResponseIncompleteAssignmentsTotalMin = 0;
+
+export const getAdminAssessorDashboardProjectionResponseQueuesItemCountMin = 0;
+
+export const getAdminAssessorDashboardProjectionResponseBottleneckCountMin = 0;
+
+export const getAdminAssessorDashboardProjectionResponseActionsItemCountMin = 0;
+
+
+
+export const GetAdminAssessorDashboardProjectionResponse = zod.object({
+  "metrics": zod.array(zod.object({
+  "id": zod.enum(['learners', 'programs', 'cohorts', 'enrollments']),
+  "label": zod.string(),
+  "value": zod.int().min(getAdminAssessorDashboardProjectionResponseMetricsItemValueMin),
+  "description": zod.string()
+})),
+  "incompleteAssignments": zod.object({
+  "trainer": zod.int().min(getAdminAssessorDashboardProjectionResponseIncompleteAssignmentsTrainerMin),
+  "assessor": zod.int().min(getAdminAssessorDashboardProjectionResponseIncompleteAssignmentsAssessorMin),
+  "total": zod.int().min(getAdminAssessorDashboardProjectionResponseIncompleteAssignmentsTotalMin)
+}),
+  "queues": zod.array(zod.object({
+  "id": zod.enum(['evidence', 'assessment', 'remediation', 'reassessment']),
+  "label": zod.string(),
+  "count": zod.int().min(getAdminAssessorDashboardProjectionResponseQueuesItemCountMin),
+  "description": zod.string(),
+  "targetTab": zod.enum(['enrollments']),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "learnerId": zod.string(),
+  "learnerName": zod.string(),
+  "pathwayId": zod.string(),
+  "pathwayName": zod.string(),
+  "trainerId": zod.string().nullable(),
+  "trainerName": zod.string().nullable(),
+  "assessorId": zod.string().nullable(),
+  "assessorName": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "bottleneck": zod.object({
+  "stage": zod.enum(['evidence', 'assessment', 'remediation', 'reassessment', 'clear']),
+  "label": zod.string(),
+  "count": zod.int().min(getAdminAssessorDashboardProjectionResponseBottleneckCountMin),
+  "description": zod.string(),
+  "targetTab": zod.enum(['enrollments'])
+}),
+  "actions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "description": zod.string(),
+  "count": zod.int().min(getAdminAssessorDashboardProjectionResponseActionsItemCountMin),
+  "targetTab": zod.enum(['users', 'programs', 'cohorts', 'enrollments']),
+  "urgency": zod.enum(['normal', 'attention', 'critical'])
+})),
+  "generatedAt": zod.coerce.date()
+})
+
+
 export const UpdateAdminUserParams = zod.object({
   "personId": zod.coerce.string()
 })

@@ -1,13 +1,22 @@
-import { useGetTrainerDashboard } from "@workspace/api-client-react";
+import { getGetAdminTrainerDashboardProjectionQueryKey, getGetCurrentSessionQueryKey, getGetTrainerDashboardQueryKey, useGetAdminTrainerDashboardProjection, useGetCurrentSession, useGetTrainerDashboard } from "@workspace/api-client-react";
 import { Activity } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReviewQueue } from "@/components/trainer/review-queue";
 import { CourseAuthoring } from "@/components/trainer/authoring/course-authoring";
+import { AdminReadOnlyDashboard } from "@/components/admin-read-only-dashboard";
 
 export default function TrainerDesk() {
-  const { data: dashboard, isLoading, error } = useGetTrainerDashboard();
+  const session = useGetCurrentSession({ query: { queryKey: getGetCurrentSessionQueryKey(), staleTime: 60_000 } });
+  const roles = new Set(session.data?.roles ?? []);
+  const adminReadOnly = roles.has("admin") && !roles.has("trainer");
+  const trainerDashboard = useGetTrainerDashboard({ query: { queryKey: getGetTrainerDashboardQueryKey(), enabled: !adminReadOnly && !session.isLoading } });
+  const adminProjection = useGetAdminTrainerDashboardProjection({ query: { queryKey: getGetAdminTrainerDashboardProjectionQueryKey(), enabled: adminReadOnly } });
+  const dashboard = trainerDashboard.data;
+  const isLoading = session.isLoading || (adminReadOnly ? adminProjection.isLoading : trainerDashboard.isLoading);
+  const error = adminReadOnly ? adminProjection.error : trainerDashboard.error;
 
   if (isLoading) return <div className="h-full flex items-center justify-center"><Activity className="w-8 h-8 text-primary animate-pulse" /></div>;
+  if (adminReadOnly && adminProjection.data) return <AdminReadOnlyDashboard desk="Trainer" projection={adminProjection.data} />;
   if (error || !dashboard) return <div className="text-destructive">Failed to load trainer dashboard.</div>;
 
   return (

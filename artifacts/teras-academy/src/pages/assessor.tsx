@@ -1,4 +1,4 @@
-import { getGetAssessmentQueryKey, getGetAssessorDashboardQueryKey, getGetAssessorQueueQueryKey, getGetCapabilityPassportQueryKey, getGetLearnerDashboardQueryKey, getGetLearnerJourneyQueryKey, getGetLearnerLearningPlanQueryKey, getGetLearnerReadinessQueryKey, getGetModuleQueryKey, getGetProgramQueryKey, getListAssessmentsQueryKey, getListGapsQueryKey, useGetAssessment, useGetAssessorDashboard, useSubmitAssessmentDecision } from "@workspace/api-client-react";
+import { getGetAdminAssessorDashboardProjectionQueryKey, getGetAssessmentQueryKey, getGetAssessorDashboardQueryKey, getGetAssessorQueueQueryKey, getGetCapabilityPassportQueryKey, getGetCurrentSessionQueryKey, getGetLearnerDashboardQueryKey, getGetLearnerJourneyQueryKey, getGetLearnerLearningPlanQueryKey, getGetLearnerReadinessQueryKey, getGetModuleQueryKey, getGetProgramQueryKey, getListAssessmentsQueryKey, getListGapsQueryKey, useGetAdminAssessorDashboardProjection, useGetAssessment, useGetAssessorDashboard, useGetCurrentSession, useSubmitAssessmentDecision } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,9 +12,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { DecisionSummary, enforceInternalRecommendation, hasCriticalFailure, prioritizeDecisionQueue, recommendationLabel, restoreDecisionFocus, type LegacyAssessmentDecision } from "@/components/assessor-decision";
 import { trackReadinessDecisionRecorded, trackReadinessQueueOpened } from "@/lib/analytics";
+import { AdminReadOnlyDashboard } from "@/components/admin-read-only-dashboard";
 
 export default function AssessorDesk() {
-  const { data: dashboard, isLoading, error } = useGetAssessorDashboard();
+  const session = useGetCurrentSession({ query: { queryKey: getGetCurrentSessionQueryKey(), staleTime: 60_000 } });
+  const roles = new Set(session.data?.roles ?? []);
+  const adminReadOnly = roles.has("admin") && !roles.has("assessor");
+  const assessorDashboard = useGetAssessorDashboard({ query: { queryKey: getGetAssessorDashboardQueryKey(), enabled: !adminReadOnly && !session.isLoading } });
+  const adminProjection = useGetAdminAssessorDashboardProjection({ query: { queryKey: getGetAdminAssessorDashboardProjectionQueryKey(), enabled: adminReadOnly } });
+  const dashboard = assessorDashboard.data;
   const [selectedAssessment, setSelectedAssessment] = useState<{ assessmentId: string; learnerId: string } | null>(null);
   const assessmentId = selectedAssessment?.assessmentId ?? "";
   const learnerId = selectedAssessment?.learnerId ?? "";
@@ -63,8 +69,9 @@ export default function AssessorDesk() {
     const criticalFail = hasCriticalFailure(detail.criteria, scores);
     decisionMutation.mutate({ assessmentId, data: { learnerId, decision: enforceInternalRecommendation(decision, criticalFail), observation, criteria: detail.criteria.map(c => ({ criterionId: c.id, score: scores[c.id]!, observation: observations[c.id] || null, evidenceId: null })) } }, { onSuccess: () => { const recommendation = recommendationLabel(enforceInternalRecommendation(decision, criticalFail)); trackReadinessDecisionRecorded({ queueType: "assessor_readiness", pathway: decisionAnalyticsRef.current.pathway, hasBlocker: criticalFail, outcome: criticalFail || decision === "Not competent" ? "needs_reinforcement" : "ready_for_next_stage" }); setDecisionHistory(current => [{ id: `${assessmentId}-${Date.now()}`, assessment: detail.assessment.name, recommendation, recordedAt: new Date().toLocaleString() }, ...current]); toast({ title: "Recommendation recorded", description: criticalFail ? "Critical criterion failure recorded. Readiness remains blocked." : "The internal evaluation recommendation has been recorded." }); closeFocusTargetRef.current = queueTitleRef.current; setSelectedAssessment(null); [getListAssessmentsQueryKey(), getListGapsQueryKey(), getGetLearnerDashboardQueryKey(), getGetLearnerJourneyQueryKey(), getGetLearnerLearningPlanQueryKey(), getGetLearnerReadinessQueryKey(), getGetCapabilityPassportQueryKey(), getGetAssessorDashboardQueryKey(), getGetAssessorQueueQueryKey(), getGetAssessmentQueryKey(assessmentId, assessmentParams), getGetModuleQueryKey(detail.assessment.moduleId), getGetProgramQueryKey("solar-pv-tech")].forEach(queryKey => queryClient.invalidateQueries({ queryKey })); }, onError: () => toast({ title: "Recommendation failed", description: "The internal recommendation could not be recorded.", variant: "destructive" }) });
   };
-  if (isLoading) return <div className="h-full flex items-center justify-center"><Activity className="w-8 h-8 text-primary animate-pulse" /></div>;
-  if (error || !dashboard) return <div className="text-destructive">Failed to load assessor dashboard.</div>;
+  if (session.isLoading || (adminReadOnly ? adminProjection.isLoading : assessorDashboard.isLoading)) return <div className="h-full flex items-center justify-center"><Activity className="w-8 h-8 text-primary animate-pulse" /></div>;
+  if (adminReadOnly && adminProjection.data) return <AdminReadOnlyDashboard desk="Assessor" projection={adminProjection.data} />;
+  if ((adminReadOnly ? adminProjection.error : assessorDashboard.error) || !dashboard) return <div className="text-destructive">Failed to load assessor dashboard.</div>;
   const detail = detailQuery.data;
   const criticalFailure = detail ? hasCriticalFailure(detail.criteria, scores) : false;
   const storedDecision = detail?.attempts.find(attempt => attempt.decision)?.decision ?? null;

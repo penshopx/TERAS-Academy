@@ -27,6 +27,13 @@ const STAFF_ITEMS = [
   { href: "/assessor", label: "Assessor Desk", icon: BookOpen },
 ];
 
+const ADMIN_VIEW_ITEMS = [
+  { href: "/dashboard", label: "Learner View", icon: Activity },
+  { href: "/trainer", label: "Trainer View", icon: UserSquare2 },
+  { href: "/assessor", label: "Assessor View", icon: BookOpen },
+  { href: "/admin", label: "Admin Control Room", icon: Settings },
+];
+
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
   const { signOut } = useClerk();
@@ -137,20 +144,29 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         {isAdmin && <div>
             <h2 className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-3 px-2">Administration</h2>
             <nav className="space-y-1">
-              <Link
-                href="/admin"
-                onClick={onNavigate}
-                data-testid="link-admin-control-room"
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                  location.startsWith("/admin")
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-                )}
-              >
-                <Settings className={cn("w-4 h-4", location.startsWith("/admin") ? "text-primary" : "text-sidebar-foreground/50")} />
-                Admin Control Room
-              </Link>
+              {ADMIN_VIEW_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.href === "/dashboard"
+                  ? location === item.href
+                  : location.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    data-testid={item.href === "/admin" ? "link-admin-control-room" : `link-admin-${item.href.slice(1)}`}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                    )}
+                  >
+                    <Icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-sidebar-foreground/50")} />
+                    {item.label}
+                  </Link>
+                );
+              })}
             </nav>
           </div>}
       </div>

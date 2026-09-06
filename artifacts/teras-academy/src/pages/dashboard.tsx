@@ -1,4 +1,4 @@
-import { useGetLearnerDashboard } from "@workspace/api-client-react";
+import { getGetAdminLearnerDashboardProjectionQueryKey, getGetCurrentSessionQueryKey, getGetLearnerDashboardQueryKey, useGetAdminLearnerDashboardProjection, useGetCurrentSession, useGetLearnerDashboard } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -7,12 +7,24 @@ import { Activity, AlertTriangle, ArrowRight, Briefcase, FileSignature, Target, 
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { LearnerCondition } from "@/components/learner-condition";
+import { AdminReadOnlyDashboard } from "@/components/admin-read-only-dashboard";
 
 export default function Dashboard() {
-  const { data: dashboard, isLoading, error } = useGetLearnerDashboard();
+  const session = useGetCurrentSession({ query: { queryKey: getGetCurrentSessionQueryKey(), staleTime: 60_000 } });
+  const roles = new Set(session.data?.roles ?? []);
+  const adminReadOnly = roles.has("admin") && !roles.has("learner");
+  const learnerDashboard = useGetLearnerDashboard({ query: { queryKey: getGetLearnerDashboardQueryKey(), enabled: !adminReadOnly && !session.isLoading } });
+  const adminProjection = useGetAdminLearnerDashboardProjection({ query: { queryKey: getGetAdminLearnerDashboardProjectionQueryKey(), enabled: adminReadOnly } });
+  const dashboard = learnerDashboard.data;
+  const isLoading = session.isLoading || (adminReadOnly ? adminProjection.isLoading : learnerDashboard.isLoading);
+  const error = adminReadOnly ? adminProjection.error : learnerDashboard.error;
 
   if (isLoading) {
     return <div className="h-full flex items-center justify-center"><Activity className="w-8 h-8 text-primary animate-pulse" /></div>;
+  }
+
+  if (adminReadOnly && adminProjection.data) {
+    return <AdminReadOnlyDashboard desk="Learner" projection={adminProjection.data} />;
   }
 
   if (error || !dashboard) {

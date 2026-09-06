@@ -74,10 +74,49 @@ const latestAssessmentAttempts = <T extends { assessmentId: string; learnerId: s
   return result;
 };
 
+/** Aggregate-only view for administrators who do not hold the requested
+ * operational role. It intentionally contains no actor identity, assignment,
+ * or mutation capability. */
+async function readOnlyDashboardProjection() {
+  const [roles, people, programs, cohorts, enrollments] = await Promise.all([
+    db.select().from(personRolesTable),
+    db.select().from(peopleTable),
+    db.select().from(programsTable),
+    db.select().from(cohortsTable),
+    db.select().from(enrollmentsTable),
+  ]);
+  const activePeople = new Set(people.filter(person => person.status === "active").map(person => person.id));
+  const activeEnrollments = enrollments.filter(enrollment => enrollment.status === "active" && activePeople.has(enrollment.learnerId));
+  const trainerMissing = activeEnrollments.filter(enrollment => !enrollment.trainerId).length;
+  const assessorMissing = activeEnrollments.filter(enrollment => !enrollment.assessorId).length;
+  const learners = new Set(roles.filter(role => role.role === "learner" && activePeople.has(role.personId)).map(role => role.personId)).size;
+  return GetAdminOperationalSummaryResponse.parse({
+    metrics: [
+      { id: "learners", label: "Learner aktif", value: learners, description: "Pengguna aktif dengan peran learner." },
+      { id: "programs", label: "Program aktif", value: programs.filter(program => program.status === "active").length, description: "Program yang siap menerima enrollment." },
+      { id: "cohorts", label: "Cohort aktif", value: cohorts.filter(cohort => cohort.status === "active").length, description: "Cohort yang saat ini aktif." },
+      { id: "enrollments", label: "Enrollment aktif", value: activeEnrollments.length, description: "Konteks lifecycle aktif di seluruh organisasi." },
+    ],
+    incompleteAssignments: { trainer: trainerMissing, assessor: assessorMissing, total: activeEnrollments.filter(enrollment => !enrollment.trainerId || !enrollment.assessorId).length },
+    queues: [],
+    bottleneck: { stage: "clear", label: "Gunakan Admin Control Room", count: 0, description: "Mode ini hanya menampilkan ringkasan organisasi dan tidak menjalankan pekerjaan atas nama role operasional.", targetTab: "enrollments" },
+    actions: [],
+    generatedAt: new Date(),
+  });
+}
+
 router.get("/admin/access", async (req, res): Promise<void> => {
   if (!await authorizeAdmin(req, res)) return;
   res.json(GetAdminAccessResponse.parse({ authorized: true }));
 });
+
+const serveReadOnlyDashboardProjection = async (req: any, res: any): Promise<void> => {
+  if (!await authorizeAdmin(req, res)) return;
+  res.json(await readOnlyDashboardProjection());
+};
+router.get("/admin/projections/learner-dashboard", serveReadOnlyDashboardProjection);
+router.get("/admin/projections/trainer-dashboard", serveReadOnlyDashboardProjection);
+router.get("/admin/projections/assessor-dashboard", serveReadOnlyDashboardProjection);
 
 router.get("/admin/summary", async (req, res): Promise<void> => {
   if (!await authorizeAdmin(req, res)) return;

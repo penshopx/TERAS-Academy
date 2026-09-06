@@ -802,6 +802,36 @@ paths:
                 $ref: "#/components/schemas/AdminOperationalSummary"
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/projections/learner-dashboard:
+    get:
+      operationId: getAdminLearnerDashboardProjection
+      tags: [admin, learner]
+      summary: Read-only aggregate learner dashboard for an administrator
+      description: Does not establish learner identity or permit learner mutations.
+      responses:
+        "200": { description: Read-only learner operational projection, content: { application/json: { schema: { $ref: "#/components/schemas/AdminOperationalSummary" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/projections/trainer-dashboard:
+    get:
+      operationId: getAdminTrainerDashboardProjection
+      tags: [admin, trainer]
+      summary: Read-only aggregate trainer dashboard for an administrator
+      description: Does not establish trainer identity or permit trainer mutations.
+      responses:
+        "200": { description: Read-only trainer operational projection, content: { application/json: { schema: { $ref: "#/components/schemas/AdminOperationalSummary" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/projections/assessor-dashboard:
+    get:
+      operationId: getAdminAssessorDashboardProjection
+      tags: [admin, assessor]
+      summary: Read-only aggregate assessor dashboard for an administrator
+      description: Does not establish assessor identity or permit assessor mutations.
+      responses:
+        "200": { description: Read-only assessor operational projection, content: { application/json: { schema: { $ref: "#/components/schemas/AdminOperationalSummary" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /admin/users/{personId}:
     patch:
       operationId: updateAdminUser

@@ -3566,6 +3566,240 @@ export function useGetAdminOperationalSummary<TData = Awaited<ReturnType<typeof 
 
 
 
+export const getGetAdminLearnerDashboardProjectionUrl = () => {
+
+
+
+
+  return `/api/admin/projections/learner-dashboard`
+}
+
+/**
+ * Does not establish learner identity or permit learner mutations.
+ * @summary Read-only aggregate learner dashboard for an administrator
+ */
+export const getAdminLearnerDashboardProjection = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminOperationalSummary> => {
+
+  return customFetch<AdminOperationalSummary>(getGetAdminLearnerDashboardProjectionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminLearnerDashboardProjectionQueryKey = () => {
+    return [
+    `/api/admin/projections/learner-dashboard`
+    ] as const;
+    }
+
+
+export const getGetAdminLearnerDashboardProjectionQueryOptions = <TData = Awaited<ReturnType<typeof getAdminLearnerDashboardProjection>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminLearnerDashboardProjection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminLearnerDashboardProjectionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminLearnerDashboardProjection>>> = ({ signal }) => getAdminLearnerDashboardProjection({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminLearnerDashboardProjection>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminLearnerDashboardProjectionQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminLearnerDashboardProjection>>>
+export type GetAdminLearnerDashboardProjectionQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Read-only aggregate learner dashboard for an administrator
+ */
+
+export function useGetAdminLearnerDashboardProjection<TData = Awaited<ReturnType<typeof getAdminLearnerDashboardProjection>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminLearnerDashboardProjection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminLearnerDashboardProjectionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminTrainerDashboardProjectionUrl = () => {
+
+
+
+
+  return `/api/admin/projections/trainer-dashboard`
+}
+
+/**
+ * Does not establish trainer identity or permit trainer mutations.
+ * @summary Read-only aggregate trainer dashboard for an administrator
+ */
+export const getAdminTrainerDashboardProjection = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminOperationalSummary> => {
+
+  return customFetch<AdminOperationalSummary>(getGetAdminTrainerDashboardProjectionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminTrainerDashboardProjectionQueryKey = () => {
+    return [
+    `/api/admin/projections/trainer-dashboard`
+    ] as const;
+    }
+
+
+export const getGetAdminTrainerDashboardProjectionQueryOptions = <TData = Awaited<ReturnType<typeof getAdminTrainerDashboardProjection>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminTrainerDashboardProjection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminTrainerDashboardProjectionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminTrainerDashboardProjection>>> = ({ signal }) => getAdminTrainerDashboardProjection({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminTrainerDashboardProjection>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminTrainerDashboardProjectionQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminTrainerDashboardProjection>>>
+export type GetAdminTrainerDashboardProjectionQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Read-only aggregate trainer dashboard for an administrator
+ */
+
+export function useGetAdminTrainerDashboardProjection<TData = Awaited<ReturnType<typeof getAdminTrainerDashboardProjection>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminTrainerDashboardProjection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminTrainerDashboardProjectionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminAssessorDashboardProjectionUrl = () => {
+
+
+
+
+  return `/api/admin/projections/assessor-dashboard`
+}
+
+/**
+ * Does not establish assessor identity or permit assessor mutations.
+ * @summary Read-only aggregate assessor dashboard for an administrator
+ */
+export const getAdminAssessorDashboardProjection = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminOperationalSummary> => {
+
+  return customFetch<AdminOperationalSummary>(getGetAdminAssessorDashboardProjectionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminAssessorDashboardProjectionQueryKey = () => {
+    return [
+    `/api/admin/projections/assessor-dashboard`
+    ] as const;
+    }
+
+
+export const getGetAdminAssessorDashboardProjectionQueryOptions = <TData = Awaited<ReturnType<typeof getAdminAssessorDashboardProjection>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminAssessorDashboardProjection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminAssessorDashboardProjectionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminAssessorDashboardProjection>>> = ({ signal }) => getAdminAssessorDashboardProjection({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminAssessorDashboardProjection>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminAssessorDashboardProjectionQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminAssessorDashboardProjection>>>
+export type GetAdminAssessorDashboardProjectionQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Read-only aggregate assessor dashboard for an administrator
+ */
+
+export function useGetAdminAssessorDashboardProjection<TData = Awaited<ReturnType<typeof getAdminAssessorDashboardProjection>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminAssessorDashboardProjection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminAssessorDashboardProjectionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getUpdateAdminUserUrl = (personId: string,) => {
 
 

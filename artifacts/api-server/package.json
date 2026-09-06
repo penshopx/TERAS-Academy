@@ -20,6 +20,7 @@
     "test:admin-membership-write-guard": "tsx ./src/admin-membership-write-guard.test.ts",
     "test:admin-management": "pnpm run test:admin-membership-write-guard && NODE_ENV=test tsx ./src/admin-management.integration.ts",
     "test:admin-operational-summary": "NODE_ENV=test tsx ./src/admin-operational-summary.integration.ts",
+    "test:admin-read-only-projections": "NODE_ENV=test tsx ./src/admin-read-only-projections.integration.ts",
     "test:resource-uri": "NODE_ENV=test tsx ./src/lib/resource-uri.test.ts",
     "test:learning-resume": "NODE_ENV=test tsx --test ./src/lib/learning-resume.test.ts",
     "test:knowledge-safety": "NODE_ENV=test tsx ./src/lib/knowledge-safety.test.ts",

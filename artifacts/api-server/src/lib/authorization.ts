@@ -1,4 +1,4 @@
-import { clerkClient, getAuth } from "@clerk/express";
+import { getAuth } from "@clerk/express";
 import type { Request, Response } from "express";
 import { learnerContext } from "./teras";
 import { db, peopleTable, personRolesTable } from "@workspace/db";
@@ -199,18 +199,19 @@ export async function authorizeLearner(req: Request, res: Response): Promise<str
     return (await learnerContext()).learner.id;
   }
   if (userId) {
-    const clerkUser = await clerkClient.users.getUser(userId);
-    const primaryEmail = clerkUser.emailAddresses.find(
-      (email) => email.id === clerkUser.primaryEmailAddressId,
-    )?.emailAddress;
-    if (primaryEmail) {
-      const [learner] = await db.select().from(peopleTable).where(sql`lower(${peopleTable.email}) = lower(${primaryEmail})`).limit(1);
-      if (learner) {
-        try {
-          return (await learnerContext(learner.id)).learner.id;
-        } catch {
-          // Signed-in people without a valid enrollment are forbidden.
-        }
+    const [assignedLearner] = await db.select({ personId: peopleTable.id }).from(peopleTable)
+      .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+      .where(and(
+        eq(peopleTable.clerkUserId, userId),
+        eq(peopleTable.status, "active"),
+        eq(personRolesTable.role, "learner"),
+      ))
+      .limit(1);
+    if (assignedLearner) {
+      try {
+        return (await learnerContext(assignedLearner.personId)).learner.id;
+      } catch {
+        // A learner role still requires an active enrollment.
       }
     }
   }
@@ -280,19 +281,20 @@ export async function authorizeLearningActor(req: Request, res: Response): Promi
       };
     }
 
-    const clerkUser = await clerkClient.users.getUser(userId);
-    const primaryEmail = clerkUser.emailAddresses.find(
-      (email) => email.id === clerkUser.primaryEmailAddressId,
-    )?.emailAddress;
-    if (primaryEmail) {
-      const [learner] = await db.select().from(peopleTable).where(sql`lower(${peopleTable.email}) = lower(${primaryEmail})`).limit(1);
-      if (learner) {
-        try {
-          const context = await learnerContext(learner.id);
-          return { id: context.learner.id, role: "learner" };
-        } catch {
-          // Mapped users need an enrollment.
-        }
+    const [assignedLearner] = await db.select({ personId: peopleTable.id }).from(peopleTable)
+      .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+      .where(and(
+        eq(peopleTable.clerkUserId, userId),
+        eq(peopleTable.status, "active"),
+        eq(personRolesTable.role, "learner"),
+      ))
+      .limit(1);
+    if (assignedLearner) {
+      try {
+        const context = await learnerContext(assignedLearner.personId);
+        return { id: context.learner.id, role: "learner" };
+      } catch {
+        // Learner role requires an active enrollment.
       }
     }
   }
