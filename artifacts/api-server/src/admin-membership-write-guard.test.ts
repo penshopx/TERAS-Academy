@@ -355,6 +355,7 @@ assert.deepEqual(
     "replaceManagedUserRoles",
     "reviewAdminAccessRequest",
     "provisionSuperAdmin",
+    "claimInitialSuperAdmin",
     "ensureConfiguredAdmin",
     "seedManagedPeople",
   ],

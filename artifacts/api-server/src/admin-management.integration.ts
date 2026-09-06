@@ -1,7 +1,7 @@
 import { createIntegrationTestApp } from "./integration-test-app";
 import { adminAuditEventsTable, cohortsTable, db, enrollmentsTable, pathwaysTable, peopleTable, personRolesTable, programsTable } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { updateManagedUser } from "@workspace/db/admin-membership";
+import { claimInitialSuperAdmin, updateManagedUser } from "@workspace/db/admin-membership";
 import { ensureConfiguredBootstrapAdmin } from "./lib/authorization";
 
 const suffix = crypto.randomUUID();
@@ -10,6 +10,8 @@ const ids = {
   administrator: `admin-administrator-${suffix}`,
   controlAdministrator: `admin-control-administrator-${suffix}`,
   bootstrapAdministrator: `bootstrap-admin-bootstrap-${suffix}`,
+  initialClaimantOne: `initial-claimant-one-${suffix}`,
+  initialClaimantTwo: `initial-claimant-two-${suffix}`,
   program: `admin-program-${suffix}`, otherProgram: `admin-other-program-${suffix}`,
   pathway: `admin-path-${suffix}`, otherPathway: `admin-other-path-${suffix}`,
   cohort: `admin-cohort-${suffix}`, otherCohort: `admin-other-cohort-${suffix}`,
@@ -30,6 +32,58 @@ async function run() {
   const base = `http://127.0.0.1:${address.port}/api`;
   const request = async (path: string, body?: unknown, method = "POST") => fetch(`${base}${path}`, { method, headers: { "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
   try {
+    if (process.env.TERAS_TEST_INITIAL_SUPER_ADMIN_CLAIM === "1") {
+      // The isolated harness explicitly opts into first-claim coverage. Direct
+      // runs against Development may already have a legitimate super admin.
+      await db.insert(peopleTable).values([
+      {
+        id: ids.initialClaimantOne, name: "Initial Claimant One", initials: "IO",
+        email: `${ids.initialClaimantOne}@example.test`, role: "Learner",
+        clerkUserId: `initial-clerk-one-${suffix}`, status: "active", createdBy: `admin-${suffix}`,
+      },
+      {
+        id: ids.initialClaimantTwo, name: "Initial Claimant Two", initials: "IT",
+        email: `${ids.initialClaimantTwo}@example.test`, role: "Learner",
+        clerkUserId: `initial-clerk-two-${suffix}`, status: "active", createdBy: `admin-${suffix}`,
+      },
+      ]);
+      const initialClaims = await Promise.all([
+      claimInitialSuperAdmin({
+        clerkUserId: `initial-clerk-one-${suffix}`,
+        email: `${ids.initialClaimantOne}@example.test`,
+        name: "Initial Claimant One",
+        initials: "IO",
+      }),
+      claimInitialSuperAdmin({
+        clerkUserId: `initial-clerk-two-${suffix}`,
+        email: `${ids.initialClaimantTwo}@example.test`,
+        name: "Initial Claimant Two",
+        initials: "IT",
+      }),
+      ]);
+      assert(
+        initialClaims.filter(claim => claim.kind === "claimed").length === 1
+          && initialClaims.filter(claim => claim.kind === "already_claimed").length === 1,
+        "Concurrent initial super-admin claims must have exactly one winner",
+      );
+      const initialSuperAdmins = await db.select({ personId: personRolesTable.personId })
+      .from(personRolesTable)
+      .innerJoin(peopleTable, eq(peopleTable.id, personRolesTable.personId))
+      .where(and(
+        inArray(personRolesTable.personId, [ids.initialClaimantOne, ids.initialClaimantTwo]),
+        eq(peopleTable.status, "active"),
+        eq(personRolesTable.role, "super_admin"),
+      ));
+      assert(initialSuperAdmins.length === 1, "Concurrent claims must leave exactly one active initial super_admin");
+      const initialBootstrapAudits = await db.select({ id: adminAuditEventsTable.id })
+      .from(adminAuditEventsTable)
+      .where(and(
+        inArray(adminAuditEventsTable.entityId, [ids.initialClaimantOne, ids.initialClaimantTwo]),
+        eq(adminAuditEventsTable.action, "initial_super_admin_bootstrap"),
+      ));
+      assert(initialBootstrapAudits.length === 1, "Concurrent claims must record exactly one immutable bootstrap audit event");
+    }
+
     for (const [id, name, roles] of [[ids.learner, "Managed Learner", ["learner"]], [ids.trainer, "Managed Trainer", ["trainer"]]] as const) {
       const response = await request("/admin/users", { id, name, initials: name.slice(0, 2), email: `${id}@example.test`, organization: null, clerkUserId: null, status: "active", roles });
       assert(response.status === 201, `Admin user create failed: ${await response.text()}`);
@@ -161,8 +215,14 @@ async function run() {
     await db.delete(cohortsTable).where(inArray(cohortsTable.id, [ids.cohort, ids.otherCohort]));
     await db.delete(pathwaysTable).where(inArray(pathwaysTable.id, [ids.pathway, ids.otherPathway]));
     await db.delete(programsTable).where(inArray(programsTable.id, [ids.program, ids.otherProgram]));
-    await db.delete(personRolesTable).where(inArray(personRolesTable.personId, [ids.learner, ids.trainer, ids.administrator, ids.controlAdministrator, ids.bootstrapAdministrator]));
-    await db.delete(peopleTable).where(inArray(peopleTable.id, [ids.learner, ids.trainer, ids.administrator, ids.controlAdministrator, ids.bootstrapAdministrator]));
+    await db.delete(personRolesTable).where(inArray(personRolesTable.personId, [
+      ids.learner, ids.trainer, ids.administrator, ids.controlAdministrator, ids.bootstrapAdministrator,
+      ids.initialClaimantOne, ids.initialClaimantTwo,
+    ]));
+    await db.delete(peopleTable).where(inArray(peopleTable.id, [
+      ids.learner, ids.trainer, ids.administrator, ids.controlAdministrator, ids.bootstrapAdministrator,
+      ids.initialClaimantOne, ids.initialClaimantTwo,
+    ]));
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 }

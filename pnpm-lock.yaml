@@ -170,6 +170,9 @@ importers:
 
   artifacts/api-server:
     dependencies:
+      '@clerk/backend':
+        specifier: ^3.17.0
+        version: 3.17.0(react-dom@19.1.4(react@19.1.4))(react@19.1.4)
       '@clerk/express':
         specifier: ^2.1.65
         version: 2.1.65(express@5.2.1)(react-dom@19.1.4(react@19.1.4))(react@19.1.4)

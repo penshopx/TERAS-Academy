@@ -1,6 +1,29 @@
 import { createClerkClient } from "@clerk/backend";
 import { provisionSuperAdmin } from "@workspace/db/admin-membership";
 
+const productionIntent = process.env.TERAS_PROVISION_ENV === "production"
+  || process.env.NODE_ENV === "production"
+  || process.env.REPLIT_DEPLOYMENT === "1";
+const productionRuntime = process.env.NODE_ENV === "production"
+  && process.env.REPLIT_DEPLOYMENT === "1";
+if (productionIntent && !productionRuntime) {
+  throw new Error(
+    "Refusing production provisioning from a non-production runtime/database. "
+    + "This CLI cannot reach Production from Development; use the published runtime with NODE_ENV=production and REPLIT_DEPLOYMENT=1.",
+  );
+}
+if (productionRuntime && process.env.TERAS_PROVISION_ALLOW_PRODUCTION !== "1") {
+  throw new Error(
+    "Production provisioning requires TERAS_PROVISION_ALLOW_PRODUCTION=1. "
+    + "Use the one-time login bootstrap where possible.",
+  );
+}
+process.stdout.write(
+  productionRuntime
+    ? "Provisioning against the explicitly enabled Production runtime/database.\n"
+    : "Provisioning against the Development runtime/database only.\n",
+);
+
 const email = process.argv[2]?.trim().toLowerCase();
 if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
   throw new Error("Usage: pnpm --filter @workspace/scripts provision:super-admin <verified-email>");

@@ -95,6 +95,14 @@ async function activeSuperAdminCount(tx: any, scope?: AdminMutationScope) {
   return activeRoleCount(tx, ["super_admin"], scope);
 }
 
+/** Used by the login bootstrap pre-check only; authority is still role-derived. */
+export async function hasActiveSuperAdmin() {
+  return db.transaction(async tx => {
+    await tx.execute(mutationLock);
+    return (await activeSuperAdminCount(tx)) > 0;
+  });
+}
+
 export async function createManagedUser(input: UserInput, actor: AdminMutationActor) {
   if (!rolesPermittedFor(input.roles)) return { kind: "forbidden" as const };
   return db.transaction(async tx => {
@@ -242,6 +250,71 @@ export async function provisionSuperAdmin(identity: {
     }).onConflictDoNothing();
     await audit(tx, { clerkUserId: identity.clerkUserId, personId: person.id }, "super_admin_provisioned", person.id, null, { clerkUserId: identity.clerkUserId });
     return person;
+  });
+}
+
+/**
+ * Creates TERAS's first super administrator only after the caller has verified
+ * the Clerk identity out-of-band.  The configured email is deliberately not an
+ * authorization input here: this durable link is keyed exclusively by Clerk ID.
+ *
+ * An immutable bootstrap audit event makes this a one-time path even if a
+ * future maintenance operation removes the resulting role assignment.
+ */
+export async function claimInitialSuperAdmin(identity: {
+  clerkUserId: string; email: string; name: string; initials: string;
+}) {
+  return db.transaction(async tx => {
+    await tx.execute(mutationLock);
+    const existingRole = await tx.select({ personId: personRolesTable.personId })
+      .from(personRolesTable)
+      .where(eq(personRolesTable.role, "super_admin"))
+      .limit(1);
+    const previousBootstrap = await tx.select({ id: adminAuditEventsTable.id })
+      .from(adminAuditEventsTable)
+      .where(eq(adminAuditEventsTable.action, "initial_super_admin_bootstrap"))
+      .limit(1);
+    if (existingRole.length || previousBootstrap.length) return { kind: "already_claimed" as const };
+
+    let [person] = await tx.select().from(peopleTable)
+      .where(eq(peopleTable.clerkUserId, identity.clerkUserId))
+      .limit(1);
+    const before = person ? await user(tx, person.id) : null;
+    if (!person) {
+      [person] = await tx.insert(peopleTable).values({
+        id: crypto.randomUUID(),
+        name: identity.name,
+        initials: identity.initials,
+        email: identity.email,
+        role: "Super Administrator",
+        clerkUserId: identity.clerkUserId,
+        status: "active",
+        createdBy: "initial-super-admin-bootstrap",
+      }).returning();
+    } else {
+      [person] = await tx.update(peopleTable).set({
+        name: identity.name,
+        initials: identity.initials,
+        email: identity.email,
+        role: "Super Administrator",
+        status: "active",
+      }).where(eq(peopleTable.id, person.id)).returning();
+    }
+    await tx.insert(personRolesTable).values({
+      personId: person.id,
+      role: "super_admin",
+      createdBy: "initial-super-admin-bootstrap",
+    });
+    const after = { ...person, roles: ["super_admin"] };
+    await audit(
+      tx,
+      { clerkUserId: identity.clerkUserId, personId: person.id, roles: ["super_admin"] },
+      "initial_super_admin_bootstrap",
+      person.id,
+      before,
+      after,
+    );
+    return { kind: "claimed" as const, value: person };
   });
 }
 

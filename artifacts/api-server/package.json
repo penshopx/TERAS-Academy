@@ -18,6 +18,7 @@
     "test:readiness-dashboard-isolation": "NODE_ENV=test tsx ./src/readiness-dashboard-isolation.integration.ts",
     "test:admin-authorization": "NODE_ENV=test tsx ./src/admin-authorization.integration.ts",
     "test:admin-membership-write-guard": "tsx ./src/admin-membership-write-guard.test.ts",
+    "test:initial-super-admin-bootstrap": "NODE_ENV=test tsx ./src/lib/initial-super-admin-bootstrap.test.ts",
     "test:admin-management": "pnpm run test:admin-membership-write-guard && NODE_ENV=test tsx ./src/admin-management.integration.ts",
     "test:admin-operational-summary": "NODE_ENV=test tsx ./src/admin-operational-summary.integration.ts",
     "test:admin-read-only-projections": "NODE_ENV=test tsx ./src/admin-read-only-projections.integration.ts",
@@ -39,6 +40,7 @@
   },
   "dependencies": {
     "@clerk/express": "^2.1.65",
+    "@clerk/backend": "^3.17.0",
     "@clerk/shared": "^4.30.2",
     "@google-cloud/storage": "^8.0.1",
     "@workspace/api-zod": "workspace:*",

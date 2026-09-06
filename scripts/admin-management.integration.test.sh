@@ -28,4 +28,6 @@ createdb --maintenance-db="$DATABASE_URL" "$test_database"
 test_database_url="$(node -e 'const url = new URL(process.env.DATABASE_URL); url.pathname = `/${process.argv[1]}`; process.stdout.write(url.href);' "$test_database")"
 pg_dump "$DATABASE_URL" --schema-only --no-owner --no-privileges | psql "$test_database_url" -v ON_ERROR_STOP=1 >/dev/null
 DATABASE_URL="$test_database_url" psql "$test_database_url" -v ON_ERROR_STOP=1 -f lib/db/migrations/0005_admin_management.sql >/dev/null
-DATABASE_URL="$test_database_url" pnpm --filter @workspace/api-server run test:admin-management
+TERAS_TEST_INITIAL_SUPER_ADMIN_CLAIM=1 \
+  DATABASE_URL="$test_database_url" \
+  pnpm --filter @workspace/api-server run test:admin-management
