@@ -17,11 +17,23 @@ storage_namespace=""
 declare -a checks=()
 test_status="FAIL"
 failure=""
+cleanup_detail=""
 
 mkdir -p "$report_dir"
 
 json_escape() {
   node -e 'process.stdout.write(JSON.stringify(process.argv[1]))' "$1"
+}
+
+sanitize_cleanup_diagnostic() {
+  node -e '
+    let diagnostic = process.argv[1];
+    for (const secret of process.argv.slice(2)) {
+      if (secret) diagnostic = diagnostic.split(secret).join("[REDACTED_DATABASE_URL]");
+    }
+    diagnostic = diagnostic.replace(/\bpostgres(?:ql)?:\/\/[^\s]+/gi, "postgresql://[REDACTED]");
+    process.stdout.write(diagnostic.trim().slice(0, 4000));
+  ' "$1" "${DATABASE_URL:-}" "$test_database_url"
 }
 
 write_report() {
@@ -33,7 +45,7 @@ write_report() {
     checks_json+="{\"name\":$(json_escape "$name"),\"status\":$(json_escape "$status"),\"detail\":$(json_escape "$detail")}"
   done
   cat >"$json_report" <<EOF
-{"gate":"certification-preparation","runId":$(json_escape "$run_id"),"candidateSha":$(json_escape "$candidate_sha"),"testStatus":"$test_status","gateReview":"$([[ "$test_status" == PASS ]] && echo PENDING || echo NO-GO)","reviewer":null,"reviewedAt":null,"rationale":null,"storageEvidence":{"adapter":{"kind":"test-only in-process ObjectStorageService adapter","namespace":$(json_escape "$storage_namespace"),"coveredByThisReport":true},"realAppStorage":{"kind":"Replit App Storage sidecar integration","command":"pnpm run smoke:app-storage","coveredByThisReport":false,"releaseApproval":false},"note":"The scheduled sidecar smoke is operational early warning only. It is separate from this candidate-specific release gate and can never approve a release."},"database":{"name":$(json_escape "$test_database"),"isolated":true},"cleanup":{"status":"${cleanup_status:-NOT_RUN}"},"checks":[$checks_json],"failure":$(json_escape "$failure")}
+{"gate":"certification-preparation","runId":$(json_escape "$run_id"),"candidateSha":$(json_escape "$candidate_sha"),"testStatus":"$test_status","gateReview":"$([[ "$test_status" == PASS ]] && echo PENDING || echo NO-GO)","reviewer":null,"reviewedAt":null,"rationale":null,"storageEvidence":{"adapter":{"kind":"test-only in-process ObjectStorageService adapter","namespace":$(json_escape "$storage_namespace"),"coveredByThisReport":true},"realAppStorage":{"kind":"Replit App Storage sidecar integration","command":"pnpm run smoke:app-storage","coveredByThisReport":false,"releaseApproval":false},"note":"The scheduled sidecar smoke is operational early warning only. It is separate from this candidate-specific release gate and can never approve a release."},"database":{"name":$(json_escape "$test_database"),"isolated":true},"cleanup":{"status":"${cleanup_status:-NOT_RUN}","detail":$(json_escape "$cleanup_detail")},"checks":[$checks_json],"failure":$(json_escape "$failure")}
 EOF
   {
     echo "# Certification-preparation release gate"
@@ -55,6 +67,14 @@ EOF
       echo "| $name | $status | $detail |"
     done
     if [[ -n "$failure" ]]; then echo; echo "Failure: $failure"; fi
+    if [[ -n "$cleanup_detail" ]]; then
+      echo
+      echo "## Cleanup diagnostic"
+      echo
+      while IFS= read -r line; do
+        printf '    %s\n' "$line"
+      done <<<"$cleanup_detail"
+    fi
     echo
     echo "This report records internal readiness-preparation evidence only. It is not an official competency or certification decision."
   } >"$markdown_report"
@@ -63,12 +83,18 @@ EOF
 
 cleanup() {
   local cleanup_exit=0
+  local cleanup_output=""
   if [[ -n "$test_database_url" ]]; then
-    if dropdb --maintenance-db="$DATABASE_URL" --if-exists "$test_database" >/dev/null 2>&1; then
+    if cleanup_output="$(dropdb --maintenance-db="$DATABASE_URL" --if-exists "$test_database" 2>&1)"; then
       cleanup_status="PASS"
     else
+      local dropdb_exit=$?
       cleanup_status="FAIL"
       test_status="FAIL"
+      cleanup_detail="dropdb exited with status $dropdb_exit"
+      if [[ -n "$cleanup_output" ]]; then
+        cleanup_detail+=": $(sanitize_cleanup_diagnostic "$cleanup_output")"
+      fi
       failure="${failure:+$failure; }disposable database cleanup failed"
       cleanup_exit=1
     fi

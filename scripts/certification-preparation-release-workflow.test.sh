@@ -132,6 +132,9 @@ cat >"$mock_dir/database-command" <<'EOF'
 #!/usr/bin/env bash
 printf '%s %s\n' "$(basename "$0")" "$*" >>"$DATABASE_MOCK_LOG"
 if [[ "$(basename "$0")" == "dropdb" ]]; then
+  if [[ -n "${DROPDB_MOCK_DIAGNOSTIC:-}" ]]; then
+    printf '%s\n' "$DROPDB_MOCK_DIAGNOSTIC" >&2
+  fi
   exit "${DROPDB_MOCK_EXIT:-0}"
 fi
 exit 0
@@ -145,6 +148,7 @@ if PATH="$mock_dir:$PATH" \
   PNPM_MOCK_LOG="$mock_dir/pnpm-calls.log" \
   DATABASE_MOCK_LOG="$mock_dir/database-calls.log" \
   DROPDB_MOCK_EXIT=31 \
+  DROPDB_MOCK_DIAGNOSTIC="dropdb: error: database removal failed: database is being accessed by other users; maintenance URL postgresql://gate_user:gate_password@gate-test.invalid/postgres" \
   DATABASE_URL="postgresql://gate-test.invalid/postgres" \
   TERAS_GATE_RUN_ID="$gate_run_id" \
   TERAS_GATE_CANDIDATE_SHA="$gate_candidate_sha" \
@@ -161,7 +165,7 @@ gate_markdown_report="$gate_report_dir/certification-preparation-$gate_run_id.md
   fail "failed admin browser gate must still write JSON and Markdown reports"
 grep -Fq '"testStatus":"FAIL"' "$gate_json_report" &&
   grep -Fq '"gateReview":"NO-GO"' "$gate_json_report" &&
-  grep -Fq '"cleanup":{"status":"FAIL"}' "$gate_json_report" ||
+  grep -Fq '"cleanup":{"status":"FAIL","detail":"dropdb exited with status 31: dropdb: error: database removal failed: database is being accessed by other users; maintenance URL postgresql://[REDACTED]"}' "$gate_json_report" ||
   fail "combined check and cleanup failure JSON report must be FAIL/NO-GO with failed cleanup"
 grep -Fq 'Automated test status: **FAIL**' "$gate_markdown_report" &&
   grep -Fq 'Gate review: **NO-GO**' "$gate_markdown_report" ||
@@ -172,6 +176,20 @@ grep -Fq 'reproduce locally with: pnpm --filter @workspace/api-server run test:b
 grep -Fq 'disposable database cleanup failed' "$gate_json_report" &&
   grep -Fq 'disposable database cleanup failed' "$gate_markdown_report" ||
   fail "combined failure reports must also record the cleanup failure"
+grep -Fq 'dropdb exited with status 31: dropdb: error: database removal failed: database is being accessed by other users; maintenance URL postgresql://[REDACTED]' "$gate_json_report" &&
+  grep -Fq 'dropdb exited with status 31: dropdb: error: database removal failed: database is being accessed by other users; maintenance URL postgresql://[REDACTED]' "$gate_markdown_report" ||
+  fail "combined failure reports must include safe, actionable cleanup diagnostics"
+if grep -Fq 'gate_password' "$gate_json_report" || grep -Fq 'gate_password' "$gate_markdown_report"; then
+  fail "cleanup diagnostics must redact database credentials"
+fi
+node - "$gate_json_report" <<'EOF' ||
+const fs = require("fs");
+const report = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+if (!report.failure.startsWith("admin browser access gate failed:")) {
+  process.exit(1);
+}
+EOF
+  fail "primary check failure must remain the first reported failure"
 grep -Fq 'test:browser-admin-access' "$mock_dir/pnpm-calls.log" ||
   fail "admin browser failure simulation did not execute the mocked command"
 grep -Fq 'dropdb ' "$mock_dir/database-calls.log" ||
