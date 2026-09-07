@@ -20,7 +20,9 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE teras_people SET clerk_user_i
 export PGOPTIONS="-c search_path=$schema -c teras.admin_clerk_user_ids=clerk-bootstrap"
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f lib/db/migrations/0005_admin_management.sql >/dev/null
 state="$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('teras_person_roles') IS NOT NULL, to_regclass('teras_cohorts') IS NOT NULL, to_regclass('teras_admin_audit_events') IS NOT NULL, (SELECT count(*) FROM information_schema.columns WHERE table_schema = '$schema' AND table_name = 'teras_people' AND column_name IN ('clerk_user_id','status')), (SELECT count(*) FROM teras_person_roles WHERE person_id = 'legacy-trainer' AND role = 'trainer'), (SELECT count(*) FROM teras_person_roles WHERE person_id = 'bootstrap-admin' AND role = 'admin'), (SELECT status FROM teras_people WHERE id = 'bootstrap-admin')")"
-if [ "$state" != "t|t|t|2|1|1|active" ]; then
+# Legacy environment-driven bootstrap must remain disabled. Administrator
+# elevation is now an explicit, provider-verified operator action.
+if [ "$state" != "t|t|t|2|1|0|active" ]; then
   echo "Admin management upgrade was not additive and idempotent: $state" >&2
   exit 1
 fi

@@ -123,7 +123,8 @@ export async function createManagedUser(input: UserInput, actor: AdminMutationAc
       role,
       createdBy: actorCreatedBy(actor),
     })));
-    const result = { ...input };
+    const result = await user(tx, input.id);
+    if (!result) throw new Error("Managed user was not found after creation.");
     await audit(tx, actor, "create", input.id, null, result);
     return { kind: "created" as const, value: result };
   });

@@ -107,11 +107,16 @@ export async function authorizeSuperAdmin(req: Request, res: Response): Promise<
 
 export async function authorizeWorkspaceRole(req: Request, res: Response, role: WorkspaceRole): Promise<string | null> {
   const actor = await identity(req);
+  const test = integrationIdentity(req);
+  if (actor?.test && test?.role !== role) {
+    return deny(req, res, true, "You are not authorized for this action");
+  }
   if (actor) {
     const [assigned] = await assignments(actor.subject, actor.test, [role]);
     if (assigned) return assigned.personId;
-    if (actor.test && process.env.NODE_ENV === "test") {
-      const context = await learnerContext(); return role === "trainer" ? context.enrollment.trainerId : context.enrollment.assessorId;
+    if (actor.test && test?.role === role) {
+      const context = await learnerContext(test.learnerId);
+      return role === "trainer" ? context.enrollment.trainerId : context.enrollment.assessorId;
     }
     return deny(req, res, true, "You are not authorized for this action");
   }
