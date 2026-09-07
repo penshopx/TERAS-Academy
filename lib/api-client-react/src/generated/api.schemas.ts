@@ -1014,9 +1014,19 @@ export interface KnowledgeCitation {
   version: number;
 }
 
+export type KnowledgeSearchResultMode = typeof KnowledgeSearchResultMode[keyof typeof KnowledgeSearchResultMode];
+
+
+export const KnowledgeSearchResultMode = {
+  ai: 'ai',
+  knowledge_fallback: 'knowledge_fallback',
+  not_found: 'not_found',
+} as const;
+
 export interface KnowledgeSearchResult {
   answer: string;
   found: boolean;
+  mode: KnowledgeSearchResultMode;
   citations: KnowledgeCitation[];
 }
 

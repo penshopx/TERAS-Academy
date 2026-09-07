@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Headphones, Leaf, Send, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 import { useSearchAssistantKnowledge } from "@workspace/api-client-react";
 
 type AssistantKind = "help" | "energy";
-type Message = { id: number; role: "assistant" | "user"; text: string; citations?: Array<{ title: string; version: number }> };
+type AnswerMode = "ai" | "knowledge_fallback" | "not_found";
+type Message = { id: number; role: "assistant" | "user"; text: string; citations?: Array<{ title: string; version: number }>; mode?: AnswerMode };
 
 const assistantCopy = {
   help: {
@@ -28,15 +29,24 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
   const copy = assistantCopy[kind];
   const Icon = copy.icon;
   const nextId = useRef(1);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
   const knowledge = useSearchAssistantKnowledge();
   const [messages, setMessages] = useState<Message[]>([
     { id: 0, role: "assistant", text: copy.greeting },
   ]);
+  const statusCopy: Record<AnswerMode, string> = {
+    ai: "AI berbasis Knowledge TERAS",
+    knowledge_fallback: "Jawaban dari sumber terkurasi",
+    not_found: "Tidak ditemukan",
+  };
+
+  // Keep the most recent question and answer visible without moving the page.
+  useEffect(() => messagesEndRef.current?.scrollIntoView({ block: "end" }), [messages, knowledge.isPending]);
 
   const respond = (question: string) => {
     const clean = question.trim();
-    if (!clean) return;
+    if (!clean || knowledge.isPending) return;
     const id = nextId.current;
     nextId.current += 2;
     setMessages((current) => [
@@ -44,7 +54,7 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
       { id, role: "user", text: clean },
     ]);
     knowledge.mutate({ data: { category: kind, question: clean } }, {
-      onSuccess: (result) => setMessages((current) => [...current, { id: id + 1, role: "assistant", text: result.answer, citations: result.citations }]),
+      onSuccess: (result) => setMessages((current) => [...current, { id: id + 1, role: "assistant", text: result.answer, citations: result.citations, mode: result.mode }]),
       onError: () => setMessages((current) => [...current, { id: id + 1, role: "assistant", text: "Maaf, pengetahuan TERAS sedang tidak dapat dimuat. Silakan coba lagi." }]),
     });
     setInput("");
@@ -59,7 +69,7 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
     <section
       className={cn(
         "fixed bottom-24 z-50 flex h-[min(34rem,calc(100dvh-8rem))] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl",
-        kind === "help" ? "left-4 md:left-6" : "right-4 md:right-6",
+        kind === "help" ? "left-4 md:left-6 lg:left-72" : "right-4 md:right-6",
       )}
       aria-label={copy.title}
     >
@@ -85,17 +95,20 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
               message.role === "assistant" ? "rounded-tl-sm bg-muted" : "rounded-tr-sm bg-primary text-primary-foreground",
             )}>
               {message.text}
+              {message.mode ? <p className="mt-2 text-[11px] font-medium text-muted-foreground">{statusCopy[message.mode]}</p> : null}
               {message.citations?.length ? <p className="mt-2 border-t border-border/50 pt-2 text-xs text-muted-foreground">Rujukan: {message.citations.map(citation => `${citation.title} (v${citation.version})`).join(", ")}</p> : null}
             </div>
             {message.role === "user" && <User className="mt-1 h-4 w-4 shrink-0 text-primary" />}
           </div>
         ))}
+        {knowledge.isPending ? <div className="flex gap-2"><Bot className="mt-1 h-4 w-4 shrink-0 text-primary" /><p className="rounded-2xl rounded-tl-sm bg-muted px-3 py-2 text-sm text-muted-foreground">Menyiapkan jawaban dari Knowledge TERAS…</p></div> : null}
+        <div ref={messagesEndRef} />
       </div>
 
       <div className="border-t border-border p-3">
         <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
           {copy.prompts.map((prompt) => (
-            <button key={prompt} type="button" onClick={() => respond(prompt)} className="shrink-0 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <button key={prompt} type="button" disabled={knowledge.isPending} onClick={() => respond(prompt)} className="shrink-0 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
               {prompt}
             </button>
           ))}

@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { KnowledgeCitation } from './knowledgeCitation';
+import type { KnowledgeSearchResultMode } from './knowledgeSearchResultMode';
 
 export interface KnowledgeSearchResult {
   answer: string;
   found: boolean;
+  mode: KnowledgeSearchResultMode;
   citations: KnowledgeCitation[];
 }

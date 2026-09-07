@@ -2671,10 +2671,11 @@ components:
       properties: { articleId: { type: string }, title: { type: string }, version: { type: integer } }
     KnowledgeSearchResult:
       type: object
-      required: [answer, found, citations]
+      required: [answer, found, mode, citations]
       properties:
         answer: { type: string }
         found: { type: boolean }
+        mode: { type: string, enum: [ai, knowledge_fallback, not_found] }
         citations: { type: array, items: { $ref: "#/components/schemas/KnowledgeCitation" } }
     HealthStatus:
       type: object

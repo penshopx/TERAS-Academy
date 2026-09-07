@@ -2368,6 +2368,7 @@ export const SearchAssistantKnowledgeBody = zod.object({
 export const SearchAssistantKnowledgeResponse = zod.object({
   "answer": zod.string(),
   "found": zod.boolean(),
+  "mode": zod.enum(['ai', 'knowledge_fallback', 'not_found']),
   "citations": zod.array(zod.object({
   "articleId": zod.string(),
   "title": zod.string(),

@@ -11,6 +11,7 @@ import {
 import { adminAuditEventsTable, db, knowledgeArticlesTable } from "@workspace/db";
 import { authorizeAdmin, authorizeKnowledgeActor, type AdminActor } from "../lib/authorization";
 import { hasUnsafeKnowledgeLink, isUnsafeKnowledgeInput, withReadinessDisclaimer } from "../lib/knowledge-safety";
+import { buildGroundedAssistantMessages } from "../lib/assistant-grounding";
 
 const router: IRouter = Router();
 const parse = (schema: any, value: unknown, res: any) => {
@@ -37,16 +38,37 @@ router.post("/assistant/knowledge/search", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Unsafe or instruction-like input is not accepted." }); return;
   }
   const terms = input.question.trim().split(/\s+/).filter((term: string) => term.length > 2).slice(0, 8);
-  if (!terms.length) { res.json(SearchAssistantKnowledgeResponse.parse({ found: false, answer: "Saya belum menemukan informasi yang sesuai. Coba gunakan kata kunci yang lebih spesifik.", citations: [] })); return; }
+  if (!terms.length) { res.json(SearchAssistantKnowledgeResponse.parse({ found: false, mode: "not_found", answer: "Saya belum menemukan informasi yang sesuai. Coba gunakan kata kunci yang lebih spesifik.", citations: [] })); return; }
   const clauses = terms.map((term: string) => or(ilike(knowledgeArticlesTable.title, `%${term}%`), ilike(knowledgeArticlesTable.body, `%${term}%`)));
   const matches = await db.select().from(knowledgeArticlesTable).where(and(eq(knowledgeArticlesTable.category, input.category), eq(knowledgeArticlesTable.status, "published"), audienceOverlap(actor.roles), or(...clauses))).orderBy(desc(knowledgeArticlesTable.version)).limit(12);
   const seen = new Set<string>();
   const articles = matches.filter(article => { const key = article.parentArticleId ?? article.id; if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, 3);
   if (!articles.length) {
-    res.json(SearchAssistantKnowledgeResponse.parse({ found: false, answer: "Saya belum menemukan artikel terbit yang sesuai. Saya tidak akan menebak; coba ubah pertanyaan atau hubungi admin TERAS.", citations: [] })); return;
+    res.json(SearchAssistantKnowledgeResponse.parse({ found: false, mode: "not_found", answer: "Saya belum menemukan artikel terbit yang sesuai. Saya tidak akan menebak; coba ubah pertanyaan atau hubungi admin TERAS.", citations: [] })); return;
   }
-  const answer = withReadinessDisclaimer(articles.map(article => article.body).join("\n\n"));
-  res.json(SearchAssistantKnowledgeResponse.parse({ found: true, answer, citations: articles.map(article => ({ articleId: article.id, title: article.title, version: article.version })) }));
+  const citations = articles.map(article => ({ articleId: article.id, title: article.title, version: article.version }));
+  const fallback = withReadinessDisclaimer(articles.map(article => article.body).join("\n\n"));
+  if (process.env.NODE_ENV === "test") {
+    res.json(SearchAssistantKnowledgeResponse.parse({ found: true, mode: "knowledge_fallback", answer: fallback, citations }));
+    return;
+  }
+  try {
+    // Import only after retrieval: unavailable provider configuration must not
+    // prevent deterministic, access-controlled knowledge answers.
+    const { openrouter } = await import("@workspace/integrations-openrouter-ai");
+    const completion = await openrouter.chat.completions.create({
+        model: "qwen/qwen3.8-flash",
+        max_tokens: 8192,
+        temperature: 0.1,
+        messages: buildGroundedAssistantMessages(input.category, input.question, articles),
+      }, { timeout: 15_000 });
+    const answer = completion.choices[0]?.message?.content?.trim();
+    if (!answer) throw new Error("OpenRouter returned no answer");
+    res.json(SearchAssistantKnowledgeResponse.parse({ found: true, mode: "ai", answer, citations }));
+  } catch {
+    req.log?.warn("Grounded assistant provider unavailable; using knowledge fallback");
+    res.json(SearchAssistantKnowledgeResponse.parse({ found: true, mode: "knowledge_fallback", answer: fallback, citations }));
+  }
 });
 
 router.get("/admin/knowledge", async (req, res): Promise<void> => {

@@ -109,6 +109,7 @@ export * from './knowledgeCitation';
 export * from './knowledgeSearchInput';
 export * from './knowledgeSearchInputCategory';
 export * from './knowledgeSearchResult';
+export * from './knowledgeSearchResultMode';
 export * from './learnerDashboard';
 export * from './learnerEnrollment';
 export * from './learnerProfile';
