@@ -978,6 +978,16 @@ paths:
       tags: [admin]
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticleInput" } } } }
       responses: { "201": { description: Draft created, content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeArticle" } } } }, "400": { $ref: "#/components/responses/BadRequest" }, "401": { $ref: "#/components/responses/Unauthorized" }, "403": { $ref: "#/components/responses/Forbidden" }, "409": { $ref: "#/components/responses/Conflict" }, "500": { description: Creation failure } }
+  /admin/knowledge/not-found-topics:
+    get:
+      operationId: listAdminKnowledgeNotFoundTopics
+      tags: [admin]
+      responses:
+        "200":
+          description: Anonymous aggregated unanswered knowledge topics
+          content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeNotFoundTopicReport" } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /admin/knowledge/{articleId}:
     patch:
       operationId: updateAdminKnowledgeArticle
@@ -2687,6 +2697,23 @@ components:
         found: { type: boolean }
         mode: { type: string, enum: [ai, knowledge_fallback, not_found] }
         citations: { type: array, items: { $ref: "#/components/schemas/KnowledgeCitation" } }
+    KnowledgeNotFoundTopic:
+      type: object
+      required: [category, topic, count, firstSeenAt, lastSeenAt]
+      properties:
+        category: { type: string, enum: [help, energy] }
+        topic: { type: string }
+        count: { type: integer, minimum: 1 }
+        firstSeenAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+    KnowledgeNotFoundTopicReport:
+      type: object
+      required: [retentionDays, topics]
+      properties:
+        retentionDays: { type: integer, minimum: 1 }
+        topics:
+          type: array
+          items: { $ref: "#/components/schemas/KnowledgeNotFoundTopic" }
     HealthStatus:
       type: object
       properties:

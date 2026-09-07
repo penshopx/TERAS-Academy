@@ -106,6 +106,21 @@ export const knowledgeArticlesTable = pgTable("teras_knowledge_articles", {
   publishedAt: timestamp("published_at", { withTimezone: true }), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   ...audit,
 }, table => [uniqueIndex("teras_knowledge_articles_family_version_unique").on(sql`coalesce(${table.parentArticleId}, ${table.id})`, table.version)]);
+/** Anonymous category-scoped aggregates of assistant questions that had no answer. */
+export const knowledgeNotFoundTopicsTable = pgTable("teras_knowledge_not_found_topics", {
+  category: text("category").notNull(),
+  topicKey: text("topic_key").notNull(),
+  topicLabel: text("topic_label").notNull(),
+  occurrenceCount: integer("occurrence_count").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+}, table => [
+  primaryKey({ columns: [table.category, table.topicKey] }),
+  check("teras_knowledge_not_found_topics_category_check", sql`${table.category} IN ('help', 'energy')`),
+  check("teras_knowledge_not_found_topics_count_check", sql`${table.occurrenceCount} > 0`),
+]);
 /** Pathway changes are immutable learner decisions; the enrollment row remains the original assignment. */
 export const enrollmentPathwayEventsTable = pgTable("teras_enrollment_pathway_events", {
   id: text("id").primaryKey(), enrollmentId: text("enrollment_id").notNull().references(() => enrollmentsTable.id),
@@ -187,7 +202,7 @@ export const readinessEventsTable = pgTable("teras_readiness_events", {
 export const programRelations = relations(programsTable, ({ many }) => ({ modules: many(modulesTable), pathways: many(pathwaysTable) }));
 export const moduleRelations = relations(modulesTable, ({ many }) => ({ tasks: many(practiceTasksTable), assessments: many(assessmentsTable) }));
 
-const tables = { peopleTable, personRolesTable, adminAccessRequestsTable, programsTable, pathwaysTable, cohortsTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, adminAuditEventsTable, knowledgeArticlesTable, enrollmentPathwayEventsTable, practiceAttemptsTable, practiceReviewsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable };
+const tables = { peopleTable, personRolesTable, adminAccessRequestsTable, programsTable, pathwaysTable, cohortsTable, modulesTable, practiceTasksTable, evidenceRequirementsTable, assessmentsTable, assessmentCriteriaTable, enrollmentsTable, adminAuditEventsTable, knowledgeArticlesTable, knowledgeNotFoundTopicsTable, enrollmentPathwayEventsTable, practiceAttemptsTable, practiceReviewsTable, evidenceTable, evidenceReviewsTable, assessmentAttemptsTable, criterionObservationsTable, gapsTable, gapEventsTable, remediationPlansTable, remediationActivitiesTable, remediationEventsTable, readinessGatesTable, readinessEventsTable };
 export const insertSchemas = Object.fromEntries(Object.entries(tables).map(([name, table]) => [name, createInsertSchema(table).omit({ createdAt: true })]));
 export type Person = typeof peopleTable.$inferSelect;
 export type Program = typeof programsTable.$inferSelect;

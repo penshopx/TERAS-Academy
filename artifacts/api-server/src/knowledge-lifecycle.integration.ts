@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { createIntegrationTestApp } from "./integration-test-app";
-import { adminAuditEventsTable, db, knowledgeArticlesTable } from "@workspace/db";
-import { eq, inArray, sql } from "drizzle-orm";
+import { adminAuditEventsTable, db, knowledgeArticlesTable, knowledgeNotFoundTopicsTable } from "@workspace/db";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { normalizeNotFoundTopic } from "./lib/knowledge-not-found-topics";
 
 const suffix = crypto.randomUUID();
 const articleId = `knowledge-${suffix}`;
 const evidenceQuestion = `evidence-${suffix}`;
+const unansweredQuestion = `login keselamatan frobnicator-${suffix}`;
+const sensitiveQuestion = "Nama Rahasia Nusantara EMPABC123 membahas kondisi kesehatan pribadi";
 const createdArticleIds = new Set([articleId]);
 const app = createIntegrationTestApp(req => {
   const role = req.header("x-test-role") as "admin" | "learner" | "trainer" | "assessor" | undefined;
@@ -99,6 +102,36 @@ async function run() {
     response = await request("/assistant/knowledge/search", "learner", { category: "help", question: `not-found-${suffix}` });
     assert.equal((await readResponse(response, 200) as any).found, false, "Not-found answer must be explicit");
 
+    response = await request("/admin/knowledge/not-found-topics", "learner", undefined, "GET");
+    await readResponse(response, 403);
+    await db.delete(knowledgeNotFoundTopicsTable).where(inArray(knowledgeNotFoundTopicsTable.topicKey, ["access-login", "safety"]));
+    for (const category of ["help", "help", "energy"] as const) {
+      response = await request("/assistant/knowledge/search", "learner", { category, question: unansweredQuestion });
+      assert.equal((await readResponse(response, 200) as any).mode, "not_found");
+    }
+    response = await request("/assistant/knowledge/search", "learner", { category: "energy", question: sensitiveQuestion });
+    assert.equal((await readResponse(response, 200) as any).mode, "not_found");
+    response = await request("/admin/knowledge/not-found-topics", "admin", undefined, "GET");
+    const report = await readResponse(response, 200) as any;
+    assert.equal(report.retentionDays, 90);
+    const unansweredTopic = normalizeNotFoundTopic("help", unansweredQuestion);
+    const energyUnansweredTopic = normalizeNotFoundTopic("energy", unansweredQuestion);
+    const helpTopic = report.topics.find((topic: any) => topic.category === "help" && topic.topic === unansweredTopic.label);
+    const energyTopic = report.topics.find((topic: any) => topic.category === "energy" && topic.topic === energyUnansweredTopic.label);
+    assert.equal(helpTopic?.count, 2, "Help Desk not-found events must aggregate independently");
+    assert.equal(energyTopic?.count, 1, "Energy not-found events must remain category-scoped");
+    assert.equal("personId" in helpTopic, false, "Topic reports must not expose identity");
+    assert.equal("question" in helpTopic, false, "Topic reports must not expose raw transcripts");
+    assert.doesNotMatch(JSON.stringify(report), /Rahasia|Nusantara|EMPABC123|kesehatan|pribadi/i, "Admin API must never return arbitrary question text");
+
+    await db.update(knowledgeNotFoundTopicsTable).set({ expiresAt: new Date(0) }).where(and(
+      eq(knowledgeNotFoundTopicsTable.category, "energy"),
+      eq(knowledgeNotFoundTopicsTable.topicKey, energyUnansweredTopic.key),
+    ));
+    response = await request("/admin/knowledge/not-found-topics", "admin", undefined, "GET");
+    const cleanedReport = await readResponse(response, 200) as any;
+    assert.equal(cleanedReport.topics.some((topic: any) => topic.category === "energy" && topic.topic === energyUnansweredTopic.label), false, "Expired aggregates must be cleaned");
+
     response = await request(`/admin/knowledge/${articleId}`, "admin", { title: `Evidence guidance revised ${suffix}`, body: "Panduan versi terbaru.", category: "help", audience: ["learner"] }, "PATCH");
     const revised = await readResponse(response, 200) as any;
     createdArticleIds.add(revised.id);
@@ -143,6 +176,8 @@ async function run() {
     await db.delete(adminAuditEventsTable).where(inArray(adminAuditEventsTable.entityId, [...createdArticleIds]));
     await db.execute(sql`delete from teras_knowledge_articles where parent_article_id = ${articleId}`);
     await db.delete(knowledgeArticlesTable).where(eq(knowledgeArticlesTable.id, articleId));
+    const topicKeys = [normalizeNotFoundTopic("help", evidenceQuestion).key, normalizeNotFoundTopic("help", `not-found-${suffix}`).key, normalizeNotFoundTopic("help", unansweredQuestion).key, normalizeNotFoundTopic("energy", unansweredQuestion).key, normalizeNotFoundTopic("energy", sensitiveQuestion).key];
+    if (topicKeys.length) await db.delete(knowledgeNotFoundTopicsTable).where(inArray(knowledgeNotFoundTopicsTable.topicKey, topicKeys));
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
 }

@@ -67,6 +67,7 @@ import type {
   KnowledgeArticle,
   KnowledgeArticleInput,
   KnowledgeArticleUpdate,
+  KnowledgeNotFoundTopicReport,
   KnowledgeSearchInput,
   KnowledgeSearchResult,
   LearnerDashboard,
@@ -5282,6 +5283,77 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateAdminKnowledgeArticleMutationOptions(options));
     }
+
+export const getListAdminKnowledgeNotFoundTopicsUrl = () => {
+
+
+
+
+  return `/api/admin/knowledge/not-found-topics`
+}
+
+export const listAdminKnowledgeNotFoundTopics = async ( options?: Parameters<typeof customFetch>[1]): Promise<KnowledgeNotFoundTopicReport> => {
+
+  return customFetch<KnowledgeNotFoundTopicReport>(getListAdminKnowledgeNotFoundTopicsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminKnowledgeNotFoundTopicsQueryKey = () => {
+    return [
+    `/api/admin/knowledge/not-found-topics`
+    ] as const;
+    }
+
+
+export const getListAdminKnowledgeNotFoundTopicsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminKnowledgeNotFoundTopics>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminKnowledgeNotFoundTopics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminKnowledgeNotFoundTopicsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminKnowledgeNotFoundTopics>>> = ({ signal }) => listAdminKnowledgeNotFoundTopics({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminKnowledgeNotFoundTopics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminKnowledgeNotFoundTopicsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminKnowledgeNotFoundTopics>>>
+export type ListAdminKnowledgeNotFoundTopicsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+
+export function useListAdminKnowledgeNotFoundTopics<TData = Awaited<ReturnType<typeof listAdminKnowledgeNotFoundTopics>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminKnowledgeNotFoundTopics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminKnowledgeNotFoundTopicsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getUpdateAdminKnowledgeArticleUrl = (articleId: string,) => {
 

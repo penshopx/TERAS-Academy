@@ -1,17 +1,18 @@
 // @ts-nocheck
 import { Router, type IRouter } from "express";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, ilike, or, sql } from "drizzle-orm";
 import {
-  CreateAdminKnowledgeArticleBody, CreateAdminKnowledgeArticleResponse,
+  CreateAdminKnowledgeArticleBody, CreateAdminKnowledgeArticleResponse, ListAdminKnowledgeNotFoundTopicsResponse,
   ListAdminKnowledgeArticlesResponse, PublishAdminKnowledgeArticleParams,
   PublishAdminKnowledgeArticleResponse, SearchAssistantKnowledgeBody,
   SearchAssistantKnowledgeResponse, UpdateAdminKnowledgeArticleBody,
   UpdateAdminKnowledgeArticleParams, UpdateAdminKnowledgeArticleResponse,
 } from "@workspace/api-zod";
-import { adminAuditEventsTable, db, knowledgeArticlesTable } from "@workspace/db";
+import { adminAuditEventsTable, db, knowledgeArticlesTable, knowledgeNotFoundTopicsTable } from "@workspace/db";
 import { authorizeAdmin, authorizeKnowledgeActor, type AdminActor } from "../lib/authorization";
 import { hasUnsafeKnowledgeLink, isUnsafeKnowledgeInput, withReadinessDisclaimer } from "../lib/knowledge-safety";
 import { buildGroundedAssistantMessages } from "../lib/assistant-grounding";
+import { KNOWLEDGE_NOT_FOUND_RETENTION_DAYS, normalizeNotFoundTopic } from "../lib/knowledge-not-found-topics";
 
 const router: IRouter = Router();
 const parse = (schema: any, value: unknown, res: any) => {
@@ -30,6 +31,24 @@ async function lockFamily(tx: any, familyId: string) {
 async function audit(tx: any, actor: AdminActor, action: string, id: string, before: unknown, after: unknown) {
   await tx.insert(adminAuditEventsTable).values({ id: crypto.randomUUID(), actorPersonId: actor.personId, actorClerkUserId: actor.authSubject, actorAuthProvider: "supabase", actorAuthSubject: actor.authSubject, action, entityType: "knowledge_article", entityId: id, before, after, createdBy: `supabase:${actor.authSubject}` });
 }
+async function recordNotFoundTopic(category: "help" | "energy", question: string) {
+  const topic = normalizeNotFoundTopic(category, question);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + KNOWLEDGE_NOT_FOUND_RETENTION_DAYS * 86_400_000);
+  await db.transaction(async tx => {
+    await tx.delete(knowledgeNotFoundTopicsTable).where(sql`${knowledgeNotFoundTopicsTable.expiresAt} <= ${now}`);
+    await tx.insert(knowledgeNotFoundTopicsTable).values({
+      category, topicKey: topic.key, topicLabel: topic.label, firstSeenAt: now, lastSeenAt: now, expiresAt,
+    }).onConflictDoUpdate({
+      target: [knowledgeNotFoundTopicsTable.category, knowledgeNotFoundTopicsTable.topicKey],
+      set: {
+        occurrenceCount: sql`${knowledgeNotFoundTopicsTable.occurrenceCount} + 1`,
+        lastSeenAt: now,
+        expiresAt,
+      },
+    });
+  });
+}
 
 router.post("/assistant/knowledge/search", async (req, res): Promise<void> => {
   const actor = await authorizeKnowledgeActor(req, res); if (!actor) return;
@@ -38,12 +57,13 @@ router.post("/assistant/knowledge/search", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Unsafe or instruction-like input is not accepted." }); return;
   }
   const terms = input.question.trim().split(/\s+/).filter((term: string) => term.length > 2).slice(0, 8);
-  if (!terms.length) { res.json(SearchAssistantKnowledgeResponse.parse({ found: false, mode: "not_found", answer: "Saya belum menemukan informasi yang sesuai. Coba gunakan kata kunci yang lebih spesifik.", citations: [] })); return; }
+  if (!terms.length) { await recordNotFoundTopic(input.category, input.question); res.json(SearchAssistantKnowledgeResponse.parse({ found: false, mode: "not_found", answer: "Saya belum menemukan informasi yang sesuai. Coba gunakan kata kunci yang lebih spesifik.", citations: [] })); return; }
   const clauses = terms.map((term: string) => or(ilike(knowledgeArticlesTable.title, `%${term}%`), ilike(knowledgeArticlesTable.body, `%${term}%`)));
   const matches = await db.select().from(knowledgeArticlesTable).where(and(eq(knowledgeArticlesTable.category, input.category), eq(knowledgeArticlesTable.status, "published"), audienceOverlap(actor.roles), or(...clauses))).orderBy(desc(knowledgeArticlesTable.version)).limit(12);
   const seen = new Set<string>();
   const articles = matches.filter(article => { const key = article.parentArticleId ?? article.id; if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, 3);
   if (!articles.length) {
+    await recordNotFoundTopic(input.category, input.question);
     res.json(SearchAssistantKnowledgeResponse.parse({ found: false, mode: "not_found", answer: "Saya belum menemukan artikel terbit yang sesuai. Saya tidak akan menebak; coba ubah pertanyaan atau hubungi admin TERAS.", citations: [] })); return;
   }
   const citations = articles.map(article => ({ articleId: article.id, title: article.title, version: article.version }));
@@ -74,6 +94,23 @@ router.post("/assistant/knowledge/search", async (req, res): Promise<void> => {
 router.get("/admin/knowledge", async (req, res): Promise<void> => {
   if (!await authorizeAdmin(req, res)) return;
   res.json(ListAdminKnowledgeArticlesResponse.parse(await db.select().from(knowledgeArticlesTable).orderBy(desc(knowledgeArticlesTable.createdAt))));
+});
+router.get("/admin/knowledge/not-found-topics", async (req, res): Promise<void> => {
+  if (!await authorizeAdmin(req, res)) return;
+  const now = new Date();
+  await db.delete(knowledgeNotFoundTopicsTable).where(sql`${knowledgeNotFoundTopicsTable.expiresAt} <= ${now}`);
+  const selectCategory = (category: "help" | "energy") => db.select({
+      category: knowledgeNotFoundTopicsTable.category,
+      topic: knowledgeNotFoundTopicsTable.topicLabel,
+      count: knowledgeNotFoundTopicsTable.occurrenceCount,
+      firstSeenAt: knowledgeNotFoundTopicsTable.firstSeenAt,
+      lastSeenAt: knowledgeNotFoundTopicsTable.lastSeenAt,
+    }).from(knowledgeNotFoundTopicsTable)
+      .where(and(eq(knowledgeNotFoundTopicsTable.category, category), gt(knowledgeNotFoundTopicsTable.expiresAt, now)))
+      .orderBy(desc(knowledgeNotFoundTopicsTable.occurrenceCount), desc(knowledgeNotFoundTopicsTable.lastSeenAt))
+      .limit(25);
+  const topics = (await Promise.all([selectCategory("help"), selectCategory("energy")])).flat();
+  res.json(ListAdminKnowledgeNotFoundTopicsResponse.parse({ retentionDays: KNOWLEDGE_NOT_FOUND_RETENTION_DAYS, topics }));
 });
 router.post("/admin/knowledge", async (req, res): Promise<void> => {
   const actor = await authorizeAdmin(req, res); const input = parse(CreateAdminKnowledgeArticleBody, req.body, res);

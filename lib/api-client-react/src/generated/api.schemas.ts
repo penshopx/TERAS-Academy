@@ -672,6 +672,44 @@ export interface AdminOperationalSummary {
 }
 
 export type AdminUserInputStatus = typeof AdminUserInputStatus[keyof typeof AdminUserInputStatus];
+
+
+export const AdminUserInputStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export type AdminUserInputRolesItem = typeof AdminUserInputRolesItem[keyof typeof AdminUserInputRolesItem];
+
+
+export const AdminUserInputRolesItem = {
+  super_admin: 'super_admin',
+  admin: 'admin',
+  trainer: 'trainer',
+  assessor: 'assessor',
+  learner: 'learner',
+} as const;
+
+export interface AdminUserInput {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  initials: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  organization?: string | null;
+  /** @nullable */
+  authProvider?: string | null;
+  /** @nullable */
+  authSubject?: string | null;
+  status: AdminUserInputStatus;
+  /** @minItems 1 */
+  roles: AdminUserInputRolesItem[];
+}
+
 export type AdminUserUpdateStatus = typeof AdminUserUpdateStatus[keyof typeof AdminUserUpdateStatus];
 
 
@@ -1036,6 +1074,29 @@ export interface KnowledgeSearchResult {
   found: boolean;
   mode: KnowledgeSearchResultMode;
   citations: KnowledgeCitation[];
+}
+
+export type KnowledgeNotFoundTopicCategory = typeof KnowledgeNotFoundTopicCategory[keyof typeof KnowledgeNotFoundTopicCategory];
+
+
+export const KnowledgeNotFoundTopicCategory = {
+  help: 'help',
+  energy: 'energy',
+} as const;
+
+export interface KnowledgeNotFoundTopic {
+  category: KnowledgeNotFoundTopicCategory;
+  topic: string;
+  /** @minimum 1 */
+  count: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+}
+
+export interface KnowledgeNotFoundTopicReport {
+  /** @minimum 1 */
+  retentionDays: number;
+  topics: KnowledgeNotFoundTopic[];
 }
 
 export interface HealthStatus {
@@ -1642,38 +1703,3 @@ export type CompleteRemediation409 = {
   error: CompleteRemediation409Error;
   message: string;
 };
-
-export type AdminUserInputRolesItem = typeof AdminUserInputRolesItem[keyof typeof AdminUserInputRolesItem];
-
-export const AdminUserInputRolesItem = {
-  super_admin: 'super_admin',
-  admin: 'admin',
-  trainer: 'trainer',
-  assessor: 'assessor',
-  learner: 'learner',
-} as const;
-
-export interface AdminUserInput {
-  /** @minLength 1 */
-  id: string;
-  /** @minLength 1 */
-  name: string;
-  /** @minLength 1 */
-  initials: string;
-  /** @nullable */
-  email?: string | null;
-  /** @nullable */
-  organization?: string | null;
-  /** @nullable */
-  authProvider?: string | null;
-  /** @nullable */
-  authSubject?: string | null;
-  status: AdminUserInputStatus;
-  /** @minItems 1 */
-  roles: AdminUserInputRolesItem[];
-}
-
-export const AdminUserInputStatus = {
-  active: 'active',
-  inactive: 'inactive',
-} as const;
