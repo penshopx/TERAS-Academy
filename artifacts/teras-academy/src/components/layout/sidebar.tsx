@@ -5,7 +5,7 @@ import { getGetCurrentSessionQueryKey, useGetCurrentSession } from "@workspace/a
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { 
-  Activity, BookOpen, CheckCircle, Target, ListTodo, Map, Award, UserSquare2, Layers, Briefcase, FileSignature, ShieldAlert, Settings
+  Activity, BookOpen, CheckCircle, Target, ListTodo, Map, Award, UserSquare2, Layers, Briefcase, FileSignature, ShieldAlert, Settings, LogOut
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -172,7 +172,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </div>}
       </div>
 
-      <div className="p-4 border-t border-sidebar-border mt-auto shrink-0">
+      <div className="border-t border-sidebar-border p-4 pb-20 mt-auto shrink-0">
         <div className="mb-3">
           <ThemeToggle />
         </div>
@@ -180,18 +180,21 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs border border-primary/30">
             {initials}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-sm font-medium text-sidebar-foreground truncate max-w-32">{displayName}</div>
-            <button
-              type="button"
-              onClick={() => void handleSignOut()}
-              disabled={isSigningOut}
-              className="text-xs text-sidebar-foreground/50 hover:text-primary transition-colors disabled:cursor-wait disabled:opacity-60"
-            >
-              {isSigningOut ? "Signing out…" : "Sign out"}
-            </button>
+            <div className="text-xs text-sidebar-foreground/50">{isSuperAdmin ? "Super Admin" : isAdmin ? "Admin" : "Pengguna TERAS"}</div>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => void handleSignOut()}
+          disabled={isSigningOut}
+          className="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-3 text-sm font-medium text-sidebar-foreground transition-colors hover:border-primary/50 hover:bg-sidebar-accent hover:text-primary disabled:cursor-wait disabled:opacity-60"
+          data-testid="button-sign-out"
+        >
+          <LogOut className="h-4 w-4" />
+          {isSigningOut ? "Sedang keluar…" : "Keluar"}
+        </button>
         {signOutError && <p className="mt-2 text-xs text-destructive" role="alert">{signOutError}</p>}
       </div>
     </div>
