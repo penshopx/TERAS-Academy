@@ -21,16 +21,6 @@ export const supabase = createClient(url ?? "https://test.invalid", anonKey ?? "
   },
 });
 
-export const recoverySupabase = createClient(url ?? "https://test.invalid", anonKey ?? "test-anon-key", {
-  auth: {
-    storageKey: "teras-email-otp-auth",
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-    flowType: "implicit",
-  },
-});
-
 let initialSessionPromise: Promise<Session | null> | null = null;
 async function freshAccessToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();

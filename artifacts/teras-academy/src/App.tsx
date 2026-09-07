@@ -10,7 +10,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { FloatingAssistants } from '@/components/floating-assistants';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { getGetCurrentSessionQueryKey, useGetCurrentSession } from '@workspace/api-client-react';
-import { recoverySupabase, SupabaseAuthProvider, supabase, useSupabaseAuth } from '@/lib/supabase-auth';
+import { SupabaseAuthProvider, supabase, useSupabaseAuth } from '@/lib/supabase-auth';
 import { homeForRoles } from '@/lib/role-navigation';
 import { hasIdentityChanged, type PreviousUserId, type UserId } from '@/lib/identity-lifecycle';
 import { clearAllDraftIdempotencyKeys } from '@/lib/draft-idempotency';
@@ -517,24 +517,27 @@ function AuthPage({ mode }: { mode: "sign-in" | "sign-up" }) {
     setEmailCodeRequested(true);
     setEmailCode("");
     setBusy(true); setError(null); setNotice("Meminta kode masuk baru…");
-    const { error: otpError } = await recoverySupabase.auth.signInWithOtp({
+    const { error: otpError } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
-      options: { shouldCreateUser: false },
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}${basePath}/security`,
+      },
     });
     setBusy(false);
     if (otpError) {
       setNotice(null);
-      setError(`Kode belum dapat dikirim: ${otpError.message}`);
+      setError(`Email masuk belum dapat dikirim: ${otpError.message}`);
     }
     else {
-      setNotice("Jika alamat tersebut terdaftar, kode masuk telah dikirim. Gunakan hanya email terbaru.");
+      setNotice("Jika alamat tersebut terdaftar, email masuk telah dikirim. Buka tautannya atau masukkan kode jika email menampilkan kode.");
     }
   };
   const verifyEmailCode = async () => {
     const normalizedEmail = email.trim().toLowerCase();
     if (!/^\d{6,10}$/.test(emailCode)) { setError("Masukkan seluruh kode masuk 6–10 digit dari email."); return; }
     setBusy(true); setError(null); setNotice("Memverifikasi kode masuk…");
-    const verification = await recoverySupabase.auth.verifyOtp({
+    const verification = await supabase.auth.verifyOtp({
       email: normalizedEmail,
       token: emailCode,
       type: "email",
@@ -545,12 +548,7 @@ function AuthPage({ mode }: { mode: "sign-in" | "sign-up" }) {
       setError(verification.error?.message ?? "Kode masuk tidak menghasilkan sesi yang valid.");
       return;
     }
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token: verification.data.session.access_token,
-      refresh_token: verification.data.session.refresh_token,
-    });
     setBusy(false);
-    if (sessionError) { setNotice(null); setError(sessionError.message); return; }
     setLocation("/security");
   };
   return <main className="flex min-h-[100dvh] items-center justify-center bg-background px-4 text-foreground">
@@ -568,9 +566,9 @@ function AuthPage({ mode }: { mode: "sign-in" | "sign-up" }) {
       {isSignUp && awaitingConfirmation && <button type="button" onClick={() => void resendConfirmation()} disabled={busy} className="mt-4 w-full text-center text-sm font-semibold text-primary disabled:opacity-60">Kirim ulang email konfirmasi</button>}
       <p className="mt-5 text-center text-sm text-muted-foreground">{isSignUp ? "Sudah memiliki akun?" : "Belum memiliki akun?"} <Link className="font-semibold text-primary" href={isSignUp ? "/sign-in" : "/sign-up"}>{isSignUp ? "Masuk" : "Daftar"}</Link></p>
       {!isSignUp && <div className="mt-4 border-t border-border pt-4">
-        <button type="button" onClick={() => void requestEmailCode()} disabled={busy} className="w-full text-center text-sm font-semibold text-primary disabled:opacity-60">{emailCodeRequested ? "Kirim kode masuk baru" : "Lupa password? Masuk dengan kode email"}</button>
-        {emailCodeRequested && <><label className="mt-4 block text-sm font-medium" htmlFor="email-login-code">Kode masuk dari email</label><input id="email-login-code" className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2" inputMode="numeric" autoComplete="one-time-code" maxLength={10} value={emailCode} onChange={event => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 10))} /><button type="button" onClick={() => void verifyEmailCode()} disabled={busy} className="mt-3 w-full rounded-md border border-primary px-4 py-2 font-bold text-primary disabled:opacity-60">{busy ? "Memverifikasi…" : "Verifikasi kode dan masuk"}</button></>}
-        <p className="mt-3 text-center text-xs text-muted-foreground">Kode email memulihkan akses pada AAL1. Super Admin tetap wajib memverifikasi authenticator untuk mencapai AAL2.</p>
+        <button type="button" onClick={() => void requestEmailCode()} disabled={busy} className="w-full text-center text-sm font-semibold text-primary disabled:opacity-60">{emailCodeRequested ? "Kirim email masuk baru" : "Lupa password? Masuk lewat email"}</button>
+        {emailCodeRequested && <><p className="mt-4 text-sm text-muted-foreground">Klik tautan masuk pada email. Jika email Anda menampilkan kode, masukkan kode tersebut di bawah.</p><label className="mt-4 block text-sm font-medium" htmlFor="email-login-code">Kode masuk dari email (opsional)</label><input id="email-login-code" className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2" inputMode="numeric" autoComplete="one-time-code" maxLength={10} value={emailCode} onChange={event => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 10))} /><button type="button" onClick={() => void verifyEmailCode()} disabled={busy || !emailCode} className="mt-3 w-full rounded-md border border-primary px-4 py-2 font-bold text-primary disabled:opacity-60">{busy ? "Memverifikasi…" : "Verifikasi kode dan masuk"}</button></>}
+        <p className="mt-3 text-center text-xs text-muted-foreground">Login melalui email memulihkan akses pada AAL1. Super Admin tetap wajib memverifikasi authenticator untuk mencapai AAL2.</p>
       </div>}
     </form>
   </main>;

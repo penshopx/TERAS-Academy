@@ -41,6 +41,9 @@ if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_people') IS
     -f lib/db/migrations/0012_super_admin_governance.sql
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
     -f lib/db/migrations/0013_supabase_external_identity.sql
+  # Persist anonymous not-found chatbot topics before lifecycle tests use them.
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+    -f lib/db/migrations/0014_knowledge_not_found_topics.sql
 fi
 if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_content_resources') IS NOT NULL")" = "t" ]; then
   TERAS_MIGRATION_ACTOR=post-merge-upgrade \
@@ -66,6 +69,8 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f lib/db/migrations/0012_super_admin_governance.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f lib/db/migrations/0013_supabase_external_identity.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+  -f lib/db/migrations/0014_knowledge_not_found_topics.sql
 if [ "$(pnpm --silent --filter @workspace/scripts run demo:fixtures-enabled)" = "1" ]; then
   pnpm --filter @workspace/scripts run seed:demo
 else
