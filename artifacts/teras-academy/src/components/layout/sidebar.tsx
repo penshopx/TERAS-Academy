@@ -1,12 +1,12 @@
 import * as React from "react";
 import { Link, useLocation } from "wouter";
-import { useClerk, useUser } from "@clerk/react";
 import { getGetCurrentSessionQueryKey, useGetCurrentSession } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { 
+import {
   Activity, BookOpen, CheckCircle, Target, ListTodo, Map, Award, UserSquare2, Layers, Briefcase, FileSignature, ShieldAlert, Settings, LogOut
 } from "lucide-react";
+import { useSupabaseAuth } from "@/lib/supabase-auth";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: Activity },
@@ -36,8 +36,7 @@ const ADMIN_VIEW_ITEMS = [
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
-  const { signOut } = useClerk();
-  const { user } = useUser();
+  const { signOut, user } = useSupabaseAuth();
   const [isSigningOut, setIsSigningOut] = React.useState(false);
   const [signOutError, setSignOutError] = React.useState<string | null>(null);
   const session = useGetCurrentSession({
@@ -54,7 +53,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const isLearner = roles.has("learner");
   const isTrainer = roles.has("trainer");
   const isAssessor = roles.has("assessor");
-  const displayName = user?.fullName || user?.primaryEmailAddress?.emailAddress || "Learner";
+  const displayName: string = user?.user_metadata.full_name || user?.email || "Learner";
   const initials = displayName
     .split(/\s+/)
     .map((part) => part[0])
@@ -67,7 +66,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     setIsSigningOut(true);
     setSignOutError(null);
     try {
-      await signOut();
+      const { error } = await signOut();
+      if (error) throw error;
       window.location.replace(`${window.location.origin}${import.meta.env.BASE_URL}`);
     } catch {
       setSignOutError("Logout gagal. Muat ulang halaman lalu coba lagi.");
@@ -176,6 +176,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="mb-3">
           <ThemeToggle />
         </div>
+        <Link href="/security" className="mb-3 flex items-center gap-2 text-xs text-sidebar-foreground/60 hover:text-primary"><Settings className="h-3.5 w-3.5" /> Security & MFA</Link>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs border border-primary/30">
             {initials}

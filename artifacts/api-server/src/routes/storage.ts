@@ -1,5 +1,4 @@
 import { Readable } from "stream";
-import { getAuth } from "@clerk/express";
 import { and, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -35,12 +34,8 @@ router.post("/storage/uploads/request-url", async (req, res): Promise<void> => {
 });
 
 router.get("/storage/objects/*path", async (req, res): Promise<void> => {
-  // Clerk middleware parses the session; test identities are also supported by
-  // authorizeLearningActor, so no caller-controlled identity is accepted here.
-  if (process.env.NODE_ENV === "production") {
-    const { userId } = getAuth(req);
-    if (!userId) { res.status(401).json({ error: "Authentication required" }); return; }
-  }
+  // authorizeLearningActor verifies a Supabase bearer token in production;
+  // the only alternate identity path is the server-injected integration harness.
   const actor = await authorizeLearningActor(req, res);
   if (!actor) return;
   const raw = req.params.path;

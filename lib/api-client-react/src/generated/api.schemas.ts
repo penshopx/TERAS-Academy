@@ -462,6 +462,13 @@ export interface AdminUser {
   /** @nullable */
   organization: string | null;
   /** @nullable */
+  authProvider: string | null;
+  /** @nullable */
+  authSubject: string | null;
+  /**
+     * Legacy read-only identity history.
+     * @nullable
+     */
   clerkUserId: string | null;
   status: AdminUserStatus;
   roles: AdminUserRolesItem[];
@@ -664,8 +671,7 @@ export interface AdminOperationalSummary {
   generatedAt: string;
 }
 
-export type AdminUserInput = AdminUser;
-
+export type AdminUserInputStatus = typeof AdminUserInputStatus[keyof typeof AdminUserInputStatus];
 export type AdminUserUpdateStatus = typeof AdminUserUpdateStatus[keyof typeof AdminUserUpdateStatus];
 
 
@@ -684,7 +690,9 @@ export interface AdminUserUpdate {
   /** @nullable */
   organization?: string | null;
   /** @nullable */
-  clerkUserId?: string | null;
+  authProvider?: string | null;
+  /** @nullable */
+  authSubject?: string | null;
   status?: AdminUserUpdateStatus;
 }
 
@@ -1634,3 +1642,38 @@ export type CompleteRemediation409 = {
   error: CompleteRemediation409Error;
   message: string;
 };
+
+export type AdminUserInputRolesItem = typeof AdminUserInputRolesItem[keyof typeof AdminUserInputRolesItem];
+
+export const AdminUserInputRolesItem = {
+  super_admin: 'super_admin',
+  admin: 'admin',
+  trainer: 'trainer',
+  assessor: 'assessor',
+  learner: 'learner',
+} as const;
+
+export interface AdminUserInput {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  initials: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  organization?: string | null;
+  /** @nullable */
+  authProvider?: string | null;
+  /** @nullable */
+  authSubject?: string | null;
+  status: AdminUserInputStatus;
+  /** @minItems 1 */
+  roles: AdminUserInputRolesItem[];
+}
+
+export const AdminUserInputStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;

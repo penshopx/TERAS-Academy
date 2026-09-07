@@ -14,8 +14,10 @@ const audit = {
 export const peopleTable = pgTable("teras_people", {
   id: text("id").primaryKey(), name: text("name").notNull(), initials: text("initials").notNull(),
   email: text("email").unique(), role: text("role").notNull(), organization: text("organization"),
-  /** Clerk is the identity authority; no credential material is stored locally. */
+  /** Retained only to preserve historical Clerk mappings during the provider migration. */
   clerkUserId: text("clerk_user_id").unique(), status: text("status").notNull().default("active"),
+  /** Provider-neutral external identity; credentials and JWTs are never stored locally. */
+  authProvider: text("auth_provider"), authSubject: text("auth_subject"),
   ...audit,
 });
 export const personRolesTable = pgTable("teras_person_roles", {
@@ -89,7 +91,9 @@ export const enrollmentsTable = pgTable("teras_enrollments", {
 /** Immutable administrative history; write an event for every admin mutation. */
 export const adminAuditEventsTable = pgTable("teras_admin_audit_events", {
   id: text("id").primaryKey(), actorPersonId: text("actor_person_id").references(() => peopleTable.id),
-  actorClerkUserId: text("actor_clerk_user_id").notNull(), action: text("action").notNull(),
+  actorClerkUserId: text("actor_clerk_user_id").notNull(),
+  actorAuthProvider: text("actor_auth_provider"), actorAuthSubject: text("actor_auth_subject"),
+  action: text("action").notNull(),
   entityType: text("entity_type").notNull(), entityId: text("entity_id").notNull(),
   before: jsonb("before"), after: jsonb("after"), ...audit,
 });

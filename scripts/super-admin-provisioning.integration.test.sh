@@ -20,6 +20,8 @@ for database in "$ready_database" "$legacy_database"; do
   createdb --maintenance-db="$DATABASE_URL" "$database"
   pg_dump "$DATABASE_URL" --schema-only --no-owner --no-privileges |
     psql "$(database_url "$database")" -v ON_ERROR_STOP=1 >/dev/null
+  psql "$(database_url "$database")" -v ON_ERROR_STOP=1 \
+    -f lib/db/migrations/0013_supabase_external_identity.sql >/dev/null
 done
 
 ready_url="$(database_url "$ready_database")"

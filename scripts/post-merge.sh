@@ -15,10 +15,10 @@ fi
 pnpm install --frozen-lockfile
 if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_people') IS NOT NULL")" = "t" ]; then
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/post-merge.sql
-  # Explicitly rehearse the additive admin upgrade on existing installations;
-  # 0005 is idempotent and drizzle remains the new-install schema authority.
-  PGOPTIONS="${PGOPTIONS:-} -c teras.admin_clerk_user_ids=${CLERK_ADMIN_USER_IDS:-}" \
-    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f lib/db/migrations/0005_admin_management.sql
+  # Rehearse additive identity migration on existing installations. Bootstrap
+  # is deliberately not environment-driven; Supabase aal2 provisioning is an
+  # explicit operator action.
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f lib/db/migrations/0005_admin_management.sql
   # Preserve existing learner progress while adding immutable course versions,
   # authoring audit history, and managed-resource upload claims.
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
@@ -39,6 +39,8 @@ if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_people') IS
     -f lib/db/migrations/0011_learning_resource_progress.sql
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
     -f lib/db/migrations/0012_super_admin_governance.sql
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+    -f lib/db/migrations/0013_supabase_external_identity.sql
 fi
 if [ "$(psql "$DATABASE_URL" -Atqc "SELECT to_regclass('public.teras_content_resources') IS NOT NULL")" = "t" ]; then
   TERAS_MIGRATION_ACTOR=post-merge-upgrade \
@@ -62,6 +64,8 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f lib/db/migrations/0011_learning_resource_progress.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f lib/db/migrations/0012_super_admin_governance.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+  -f lib/db/migrations/0013_supabase_external_identity.sql
 if [ "$(pnpm --silent --filter @workspace/scripts run demo:fixtures-enabled)" = "1" ]; then
   pnpm --filter @workspace/scripts run seed:demo
 else

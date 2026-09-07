@@ -17,6 +17,8 @@ export interface AdminUserUpdate {
   /** @nullable */
   organization?: string | null;
   /** @nullable */
-  clerkUserId?: string | null;
+  authProvider?: string | null;
+  /** @nullable */
+  authSubject?: string | null;
   status?: AdminUserUpdateStatus;
 }

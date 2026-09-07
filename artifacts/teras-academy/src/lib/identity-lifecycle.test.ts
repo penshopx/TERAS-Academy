@@ -18,14 +18,14 @@ function applyIdentityEvents(events: UserId[]) {
   return { cacheClearCount, subtreeRevision };
 }
 
-test("repeated events for the same Clerk user preserve cache and subtree state", () => {
+test("repeated Supabase token refreshes for the same user preserve cache and subtree state", () => {
   assert.deepEqual(applyIdentityEvents(["user-a", "user-a", "user-a"]), {
     cacheClearCount: 0,
     subtreeRevision: 0,
   });
 });
 
-test("a different Clerk user clears cache and remounts the subtree", () => {
+test("a Supabase auth subject change clears cache and remounts the subtree", () => {
   assert.deepEqual(applyIdentityEvents(["user-a", "user-b"]), {
     cacheClearCount: 1,
     subtreeRevision: 1,

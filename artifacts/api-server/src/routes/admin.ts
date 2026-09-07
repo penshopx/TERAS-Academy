@@ -20,7 +20,10 @@ import {
   remediationActivitiesTable, remediationEventsTable, remediationPlansTable,
 } from "@workspace/db";
 import { authorizeAdmin, authorizeSuperAdmin, type AdminActor } from "../lib/authorization";
+import { supabaseEmailIsVerified, supabaseIdentity } from "../lib/supabase-auth";
+import { allowsSuperAdminMfa } from "@workspace/db/super-admin-mfa-policy";
 import {
+  claimExistingSuperAdminIdentity,
   createManagedUser,
   createAdminAccessRequest,
   replaceManagedUserRoles,
@@ -38,7 +41,7 @@ const parsed = <T>(schema: { safeParse(value: unknown): { success: boolean; data
   const result = schema.safeParse(value); if (!result.success) { res.status(400).json({ error: result.error?.message }); return null; } return result.data!;
 };
 async function audit(tx: any, actor: AdminActor, action: string, entityType: string, entityId: string, before: unknown, after: unknown) {
-  await tx.insert(adminAuditEventsTable).values({ id: crypto.randomUUID(), actorPersonId: actor.personId, actorClerkUserId: actor.clerkUserId, action, entityType, entityId, before, after, createdBy: actor.clerkUserId });
+  await tx.insert(adminAuditEventsTable).values({ id: crypto.randomUUID(), actorPersonId: actor.personId, actorClerkUserId: actor.authSubject, actorAuthProvider: "supabase", actorAuthSubject: actor.authSubject, action, entityType, entityId, before, after, createdBy: `supabase:${actor.authSubject}` });
 }
 async function user(id: string, executor: any = db) {
   const [person] = await executor.select().from(peopleTable).where(eq(peopleTable.id, id)); if (!person) return null;
@@ -110,6 +113,36 @@ async function readOnlyDashboardProjection() {
 router.get("/admin/access", async (req, res): Promise<void> => {
   if (!await authorizeAdmin(req, res)) return;
   res.json(GetAdminAccessResponse.parse({ authorized: true }));
+});
+
+router.post("/admin/claim-supabase-identity", async (req, res): Promise<void> => {
+  const identity = await supabaseIdentity(req);
+  if (!identity) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  if (!allowsSuperAdminMfa({ aal: identity.aal, test: false }, process.env)
+    || !identity.email || !await supabaseEmailIsVerified(req, identity)) {
+    res.status(403).json({ error: "A verified email, MFA (aal2), and locked MFA enrollment are required" });
+    return;
+  }
+  try {
+    const result = await claimExistingSuperAdminIdentity({
+      authSubject: identity.subject,
+      verifiedEmail: identity.email,
+      allowRecoveryRebind: req.body?.confirmRecoveryRebind === true,
+    });
+    res.json(result);
+  } catch (error) {
+    if (String(error).includes("another Supabase identity")) {
+      res.status(409).json({
+        code: "SUPER_ADMIN_REBIND_CONFIRMATION_REQUIRED",
+        error: "This Super Admin is linked to an older Supabase identity",
+      });
+      return;
+    }
+    res.status(409).json({ error: "This account cannot claim the existing Super Admin identity" });
+  }
 });
 
 const serveReadOnlyDashboardProjection = async (req: any, res: any): Promise<void> => {
@@ -226,8 +259,8 @@ router.get("/admin/summary", async (req, res): Promise<void> => {
   }));
 });
 router.get("/admin/users", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); if (!actor) return; const people = await db.select().from(peopleTable); const rows = (await Promise.all(people.map(p => user(p.id)))).filter(Boolean) as any[]; res.json(ListAdminUsersResponse.parse(actor.roles.includes("super_admin") ? rows : rows.filter(person => !person.roles.some((role: string) => role === "admin" || role === "super_admin")))); });
-router.post("/admin/users", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); if (!actor) return; const input = parsed(CreateAdminUserBody, req.body, res); if (!input) return; try { const outcome = await createManagedUser(input, actor); if (outcome.kind === "forbidden") { res.status(403).json({ error: "Only super administrators may grant privileged roles" }); return; } res.status(201).json(CreateAdminUserResponse.parse(outcome.value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: conflict(error) ? "User or Clerk identity already exists" : "Could not create user" }); } });
-router.patch("/admin/users/:personId", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(UpdateAdminUserParams, req.params, res); const input = parsed(UpdateAdminUserBody, req.body, res); if (!actor || !params || !input) return; try { const outcome = await updateManagedUser(params.personId, input, actor, { activeAdminFixtureIds: req.integrationActiveAdminFixtureIds }); if (outcome.kind === "forbidden") { res.status(403).json({ error: "Only super administrators may manage privileged users" }); return; } if (outcome.kind === "not_found") { res.status(404).json({ error: "User not found" }); return; } if (outcome.kind === "last_admin" || outcome.kind === "last_super_admin") { res.status(409).json({ error: "Cannot deactivate the final active super administrator or effective administrator" }); return; } res.json(UpdateAdminUserResponse.parse(outcome.value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: "Clerk identity or email already exists" }); } });
+router.post("/admin/users", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); if (!actor) return; const input = parsed(CreateAdminUserBody, req.body, res); if (!input) return; try { const outcome = await createManagedUser(input, actor); if (outcome.kind === "forbidden") { res.status(403).json({ error: "Only super administrators may grant privileged roles" }); return; } res.status(201).json(CreateAdminUserResponse.parse(outcome.value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: conflict(error) ? "User or external identity already exists" : "Could not create user" }); } });
+router.patch("/admin/users/:personId", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(UpdateAdminUserParams, req.params, res); const input = parsed(UpdateAdminUserBody, req.body, res); if (!actor || !params || !input) return; try { const outcome = await updateManagedUser(params.personId, input, actor, { activeAdminFixtureIds: req.integrationActiveAdminFixtureIds }); if (outcome.kind === "forbidden") { res.status(403).json({ error: "Only super administrators may manage privileged users" }); return; } if (outcome.kind === "not_found") { res.status(404).json({ error: "User not found" }); return; } if (outcome.kind === "last_admin" || outcome.kind === "last_super_admin") { res.status(409).json({ error: "Cannot deactivate the final active super administrator or effective administrator" }); return; } res.json(UpdateAdminUserResponse.parse(outcome.value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: "External identity or email already exists" }); } });
 router.put("/admin/users/:personId/roles", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(ReplaceAdminUserRolesParams, req.params, res); const input = parsed(ReplaceAdminUserRolesBody, req.body, res); if (!actor || !params || !input) return; const outcome = await replaceManagedUserRoles(params.personId, input.roles, actor, { activeAdminFixtureIds: req.integrationActiveAdminFixtureIds }); if (outcome.kind === "forbidden") { res.status(403).json({ error: "Only super administrators may grant or revoke privileged roles" }); return; } if (outcome.kind === "not_found") { res.status(404).json({ error: "User not found" }); return; } if (outcome.kind === "last_admin" || outcome.kind === "last_super_admin") { res.status(409).json({ error: "Cannot remove the final active super administrator or effective administrator role" }); return; } res.json(ReplaceAdminUserRolesResponse.parse(outcome.value)); });
 router.get("/admin/access-requests", async (req, res): Promise<void> => { if (!await authorizeSuperAdmin(req, res)) return; res.json(ListAdminAccessRequestsResponse.parse(await db.select().from(adminAccessRequestsTable).orderBy(desc(adminAccessRequestsTable.createdAt)))); });
 router.post("/admin/access-requests", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const input = parsed(CreateAdminAccessRequestBody, req.body, res); if (!actor || !input || !actor.personId) return; const target = await user(input.targetPersonId); if (!target) { res.status(404).json({ error: "Target user not found" }); return; } try { const value = await createAdminAccessRequest(actor.personId, input.targetPersonId, input.requestedRole, input.reason, actor); res.status(201).json(CreateAdminAccessRequestResponse.parse(value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: conflict(error) ? "A matching administrative access request is already pending" : "Could not create administrative access request" }); } });
@@ -235,14 +268,14 @@ for (const [suffix, decision] of [["approve", "approved"], ["reject", "rejected"
 
 function lifecycle(prefix: string, table: any, listSchema: any, createSchema: any, createResponse: any, updateParams: any, updateBody: any, updateResponse: any, idColumn: any, entity: string) {
   router.get(`/admin/${prefix}`, async (req, res): Promise<void> => { if (!await authorizeAdmin(req, res)) return; res.json(listSchema.parse(normalizeLifecycleRows(await db.select().from(table)))); });
-  router.post(`/admin/${prefix}`, async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const input = parsed(createSchema, req.body, res); if (!actor || !input) return; try { const value = await db.transaction(async tx => { const rows = await tx.insert(table).values({ ...input, createdBy: actor.clerkUserId }).returning() as any[]; await audit(tx as typeof db, actor, "create", entity, rows[0].id, null, rows[0]); return rows[0]; }); res.status(201).json(createResponse.parse(value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: "Conflicting or invalid lifecycle record" }); } });
+  router.post(`/admin/${prefix}`, async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const input = parsed(createSchema, req.body, res); if (!actor || !input) return; try { const value = await db.transaction(async tx => { const rows = await tx.insert(table).values({ ...input, createdBy: `supabase:${actor.authSubject}` }).returning() as any[]; await audit(tx as typeof db, actor, "create", entity, rows[0].id, null, rows[0]); return rows[0]; }); res.status(201).json(createResponse.parse(value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: "Conflicting or invalid lifecycle record" }); } });
   router.patch(`/admin/${prefix}/:${entity}Id`, async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(updateParams, req.params, res); const input = parsed(updateBody, req.body, res); if (!actor || !params || !input) return; const id = (params as any)[`${entity}Id`]; const [before] = await db.select().from(table).where(eq(idColumn, id)); if (!before) { res.status(404).json({ error: `${entity} not found` }); return; } try { const value = await db.transaction(async tx => { const rows = await tx.update(table).set(input).where(eq(idColumn, id)).returning() as any[]; await audit(tx as typeof db, actor, "update", entity, id, before, rows[0]); return rows[0]; }); res.json(updateResponse.parse(value)); } catch (error) { res.status(conflict(error) ? 409 : 400).json({ error: "Conflicting or invalid lifecycle record" }); } });
 }
 lifecycle("programs", programsTable, ListAdminProgramsResponse, CreateAdminProgramBody, CreateAdminProgramResponse, UpdateAdminProgramParams, UpdateAdminProgramBody, UpdateAdminProgramResponse, programsTable.id, "program");
 lifecycle("pathways", pathwaysTable, ListAdminPathwaysResponse, CreateAdminPathwayBody, CreateAdminPathwayResponse, UpdateAdminPathwayParams, UpdateAdminPathwayBody, UpdateAdminPathwayResponse, pathwaysTable.id, "pathway");
 lifecycle("cohorts", cohortsTable, ListAdminCohortsResponse, CreateAdminCohortBody, CreateAdminCohortResponse, UpdateAdminCohortParams, UpdateAdminCohortBody, UpdateAdminCohortResponse, cohortsTable.id, "cohort");
 router.get("/admin/enrollments", async (req, res): Promise<void> => { if (!await authorizeAdmin(req, res)) return; res.json(ListAdminEnrollmentsResponse.parse(await db.select().from(enrollmentsTable))); });
-router.post("/admin/enrollments", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const input = parsed(CreateAdminEnrollmentBody, req.body, res); if (!actor || !input) return; const error = await enrollmentValid(input); if (error) { res.status(409).json({ error }); return; } try { const value = await db.transaction(async tx => { const [record] = await tx.insert(enrollmentsTable).values({ ...input, createdBy: actor.clerkUserId }).returning(); await audit(tx as typeof db, actor, "create", "enrollment", record.id, null, record); return record; }); res.status(201).json(CreateAdminEnrollmentResponse.parse(value)); } catch { res.status(409).json({ error: "Enrollment conflicts with existing lifecycle data" }); } });
+router.post("/admin/enrollments", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const input = parsed(CreateAdminEnrollmentBody, req.body, res); if (!actor || !input) return; const error = await enrollmentValid(input); if (error) { res.status(409).json({ error }); return; } try { const value = await db.transaction(async tx => { const [record] = await tx.insert(enrollmentsTable).values({ ...input, createdBy: `supabase:${actor.authSubject}` }).returning(); await audit(tx as typeof db, actor, "create", "enrollment", record.id, null, record); return record; }); res.status(201).json(CreateAdminEnrollmentResponse.parse(value)); } catch { res.status(409).json({ error: "Enrollment conflicts with existing lifecycle data" }); } });
 router.patch("/admin/enrollments/:enrollmentId", async (req, res): Promise<void> => { const actor = await authorizeAdmin(req, res); const params = parsed(UpdateAdminEnrollmentParams, req.params, res); const input = parsed(UpdateAdminEnrollmentBody, req.body, res); if (!actor || !params || !input) return; const [before] = await db.select().from(enrollmentsTable).where(eq(enrollmentsTable.id, params.enrollmentId)); if (!before) { res.status(404).json({ error: "Enrollment not found" }); return; } const candidate = { ...before, ...input }; const error = await enrollmentValid(candidate); if (error) { res.status(409).json({ error }); return; } try { const value = await db.transaction(async tx => { const [record] = await tx.update(enrollmentsTable).set(input).where(eq(enrollmentsTable.id, params.enrollmentId)).returning(); await audit(tx as typeof db, actor, "update", "enrollment", record.id, before, record); return record; }); res.json(UpdateAdminEnrollmentResponse.parse(value)); } catch { res.status(409).json({ error: "Enrollment conflicts with existing lifecycle data" }); } });
 router.get("/admin/audit", async (req, res): Promise<void> => { if (!await authorizeAdmin(req, res)) return; res.json(ListAdminAuditEventsResponse.parse(await db.select().from(adminAuditEventsTable).orderBy(desc(adminAuditEventsTable.createdAt)))); });
 export default router;

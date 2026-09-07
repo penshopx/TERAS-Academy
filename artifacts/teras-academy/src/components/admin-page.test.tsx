@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { adminErrorMessage, filterQueueItems, isAdminForbidden, queueStateFromSearch, shouldEnableAdminQueries, validateQueueFilters } from "../pages/admin";
+import { adminErrorMessage, filterQueueItems, isAdminForbidden, isAdminMfaRequired, queueStateFromSearch, shouldEnableAdminQueries, validateQueueFilters } from "../pages/admin";
 
 test("admin conflict errors provide an actionable accessible message", () => {
   assert.equal(
@@ -16,6 +16,11 @@ test("admin errors retain the API message when no conflict exists", () => {
 test("admin forbidden response has a safe access-denied state", () => {
   assert.equal(isAdminForbidden({ status: 403 }), true);
   assert.equal(adminErrorMessage({ status: 403 }), "Anda tidak memiliki akses admin.");
+});
+
+test("admin MFA denial is distinguished from a missing role", () => {
+  assert.equal(isAdminMfaRequired({ status: 403, data: { error: "Super administrator MFA (aal2) is required" } }), true);
+  assert.equal(isAdminMfaRequired({ status: 403, data: { error: "Administrator role required" } }), false);
 });
 
 test("admin detail queries wait for a completed successful access gate", () => {

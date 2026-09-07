@@ -1,7 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { ClerkProvider, Show, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
-import { publishableKeyFromHost } from '@clerk/react/internal';
-import { shadcn } from '@clerk/themes';
+import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ArrowRight, BadgeCheck, Route as RouteIcon, ShieldCheck, ExternalLink, Globe, Target, Activity, Zap, ChevronRight } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -13,6 +10,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { FloatingAssistants } from '@/components/floating-assistants';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { getGetCurrentSessionQueryKey, useGetCurrentSession } from '@workspace/api-client-react';
+import { recoverySupabase, SupabaseAuthProvider, supabase, useSupabaseAuth } from '@/lib/supabase-auth';
 import { homeForRoles } from '@/lib/role-navigation';
 import { hasIdentityChanged, type PreviousUserId, type UserId } from '@/lib/identity-lifecycle';
 import { clearAllDraftIdempotencyKeys } from '@/lib/draft-idempotency';
@@ -36,80 +34,15 @@ import Passport from '@/pages/passport';
 import TrainerDesk from '@/pages/trainer';
 import AssessorDesk from '@/pages/assessor';
 import Admin from '@/pages/admin';
+import Security from '@/pages/security';
 
 const queryClient = new QueryClient();
 
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
-
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 // This value is compiled only by the NODE_ENV=test harness.  It never grants
 // API access: that harness injects its identity privately in its own server.
 const integrationTestMode = import.meta.env.MODE === 'test' && import.meta.env.VITE_INTEGRATION_TEST_MODE === 'true';
 
-function stripBase(path: string): string {
-  return basePath && path.startsWith(basePath)
-    ? path.slice(basePath.length) || '/'
-    : path;
-}
-
-if (!clerkPubKey && !integrationTestMode) {
-  throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env file');
-}
-
-const clerkAppearance = {
-  theme: shadcn,
-  cssLayerName: 'clerk',
-  options: {
-    logoPlacement: 'inside' as const,
-    logoLinkUrl: basePath || '/',
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
-    socialButtonsPlacement: 'bottom' as const,
-    socialButtonsVariant: 'blockButton' as const,
-  },
-  variables: {
-    colorPrimary: '#00c3ff',
-    colorForeground: '#f5f5f5',
-    colorMutedForeground: '#a3a3a3',
-    colorDanger: '#ef4444',
-    colorBackground: '#0d0d0d',
-    colorInput: '#171717',
-    colorInputForeground: '#f5f5f5',
-    colorNeutral: '#333333',
-    fontFamily: 'Plus Jakarta Sans, sans-serif',
-    borderRadius: '0.5rem',
-  },
-  elements: {
-    rootBox: 'w-full flex justify-center',
-    cardBox: 'bg-[#0d0d0d] border border-[#262626] rounded-2xl w-[440px] max-w-full overflow-hidden shadow-2xl shadow-black/50',
-    card: '!shadow-none !border-0 !bg-transparent !rounded-none',
-    footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
-    headerTitle: 'text-white font-bold',
-    headerSubtitle: 'text-neutral-300',
-    socialButtonsBlockButtonText: 'text-white font-medium',
-    formFieldLabel: 'text-neutral-100 font-medium',
-    footerActionLink: 'text-[#00c3ff] hover:text-[#70dcff]',
-    footerActionText: 'text-neutral-300',
-    dividerText: 'text-neutral-400',
-    identityPreviewEditButton: 'text-[#00c3ff]',
-    formFieldSuccessText: 'text-[#86efac]',
-    alertText: 'text-white',
-    logoBox: 'mb-5',
-    logoImage: 'h-14 w-auto',
-    socialButtonsBlockButton: 'bg-[#171717] border-[#404040] hover:bg-[#262626]',
-    formButtonPrimary: 'bg-[#00c3ff] text-black hover:bg-[#70dcff] font-bold',
-    formFieldInput: 'bg-[#171717] border-[#404040] text-white',
-    footerAction: 'border-t border-[#262626]',
-    dividerLine: 'bg-[#404040]',
-    alert: 'bg-[#2a1515] border border-red-500/40',
-    otpCodeFieldInput: 'bg-[#171717] border-[#404040] text-white',
-    formFieldRow: 'gap-2',
-    main: 'gap-5',
-  },
-};
 
 function PublicHome() {
   return (
@@ -535,12 +468,112 @@ function PublicHome() {
   );
 }
 
-function SignInPage() {
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
-}
-
-function SignUpPage() {
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
+function AuthPage({ mode }: { mode: "sign-in" | "sign-up" }) {
+  const [, setLocation] = useLocation();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailCode, setEmailCode] = useState("");
+  const [emailCodeRequested, setEmailCodeRequested] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [notice, setNotice] = useState<string | null>(() => {
+    if (window.sessionStorage.getItem("teras.recovery.success") !== "true") return null;
+    window.sessionStorage.removeItem("teras.recovery.success");
+    return "Password baru berhasil disimpan. Silakan masuk dengan password baru.";
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const isSignUp = mode === "sign-up";
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true); setError(null); setNotice(null);
+    const result = isSignUp
+      ? await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}${basePath}/` } })
+      : await supabase.auth.signInWithPassword({ email, password });
+    setBusy(false);
+    if (result.error) { setError(result.error.message); return; }
+    if (isSignUp && !result.data.session) {
+      setAwaitingConfirmation(true);
+      setNotice("Periksa inbox dan folder spam untuk mengonfirmasi akun, lalu masuk.");
+      return;
+    }
+    setLocation("/");
+  };
+  const resendConfirmation = async () => {
+    if (!email) { setError("Masukkan alamat email Anda terlebih dahulu."); return; }
+    setBusy(true); setError(null); setNotice(null);
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: `${window.location.origin}${basePath}/` },
+    });
+    setBusy(false);
+    if (resendError) setError(resendError.message);
+    else setNotice("Email konfirmasi telah diminta ulang. Periksa inbox dan folder spam.");
+  };
+  const requestEmailCode = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) { setError("Masukkan alamat email Anda terlebih dahulu."); return; }
+    setEmail(normalizedEmail);
+    setEmailCodeRequested(true);
+    setEmailCode("");
+    setBusy(true); setError(null); setNotice("Meminta kode masuk baru…");
+    const { error: otpError } = await recoverySupabase.auth.signInWithOtp({
+      email: normalizedEmail,
+      options: { shouldCreateUser: false },
+    });
+    setBusy(false);
+    if (otpError) {
+      setNotice(null);
+      setError(`Kode belum dapat dikirim: ${otpError.message}`);
+    }
+    else {
+      setNotice("Jika alamat tersebut terdaftar, kode masuk telah dikirim. Gunakan hanya email terbaru.");
+    }
+  };
+  const verifyEmailCode = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^\d{6,10}$/.test(emailCode)) { setError("Masukkan seluruh kode masuk 6–10 digit dari email."); return; }
+    setBusy(true); setError(null); setNotice("Memverifikasi kode masuk…");
+    const verification = await recoverySupabase.auth.verifyOtp({
+      email: normalizedEmail,
+      token: emailCode,
+      type: "email",
+    });
+    if (verification.error || !verification.data.session) {
+      setBusy(false);
+      setNotice(null);
+      setError(verification.error?.message ?? "Kode masuk tidak menghasilkan sesi yang valid.");
+      return;
+    }
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: verification.data.session.access_token,
+      refresh_token: verification.data.session.refresh_token,
+    });
+    setBusy(false);
+    if (sessionError) { setNotice(null); setError(sessionError.message); return; }
+    setLocation("/security");
+  };
+  return <main className="flex min-h-[100dvh] items-center justify-center bg-background px-4 text-foreground">
+    <form className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-2xl" onSubmit={submit}>
+      <p className="font-mono text-xs font-bold tracking-[.2em] text-primary">TERAS ACADEMY</p>
+      <h1 className="mt-4 text-3xl font-extrabold">{isSignUp ? "Buat akun" : "Masuk"}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">{isSignUp ? "Mulai perjalanan capability Anda." : "Masuk ke capability cockpit Anda."}</p>
+      <label className="mt-6 block text-sm font-medium" htmlFor="auth-email">Email</label>
+      <input id="auth-email" className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2" type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} required />
+      <label className="mt-4 block text-sm font-medium" htmlFor="auth-password">Password</label>
+      <input id="auth-password" className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2" type="password" autoComplete={isSignUp ? "new-password" : "current-password"} minLength={6} value={password} onChange={event => setPassword(event.target.value)} required />
+      {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
+      {notice && <p role="status" className="mt-4 text-sm text-primary">{notice}</p>}
+      <button className="mt-6 w-full rounded-md bg-primary px-4 py-2 font-bold text-primary-foreground disabled:opacity-60" disabled={busy}>{busy ? "Memproses…" : isSignUp ? "Daftar" : "Masuk"}</button>
+      {isSignUp && awaitingConfirmation && <button type="button" onClick={() => void resendConfirmation()} disabled={busy} className="mt-4 w-full text-center text-sm font-semibold text-primary disabled:opacity-60">Kirim ulang email konfirmasi</button>}
+      <p className="mt-5 text-center text-sm text-muted-foreground">{isSignUp ? "Sudah memiliki akun?" : "Belum memiliki akun?"} <Link className="font-semibold text-primary" href={isSignUp ? "/sign-in" : "/sign-up"}>{isSignUp ? "Masuk" : "Daftar"}</Link></p>
+      {!isSignUp && <div className="mt-4 border-t border-border pt-4">
+        <button type="button" onClick={() => void requestEmailCode()} disabled={busy} className="w-full text-center text-sm font-semibold text-primary disabled:opacity-60">{emailCodeRequested ? "Kirim kode masuk baru" : "Lupa password? Masuk dengan kode email"}</button>
+        {emailCodeRequested && <><label className="mt-4 block text-sm font-medium" htmlFor="email-login-code">Kode masuk dari email</label><input id="email-login-code" className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2" inputMode="numeric" autoComplete="one-time-code" maxLength={10} value={emailCode} onChange={event => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 10))} /><button type="button" onClick={() => void verifyEmailCode()} disabled={busy} className="mt-3 w-full rounded-md border border-primary px-4 py-2 font-bold text-primary disabled:opacity-60">{busy ? "Memverifikasi…" : "Verifikasi kode dan masuk"}</button></>}
+        <p className="mt-3 text-center text-xs text-muted-foreground">Kode email memulihkan akses pada AAL1. Super Admin tetap wajib memverifikasi authenticator untuk mencapai AAL2.</p>
+      </div>}
+    </form>
+  </main>;
 }
 
 function ProtectedPageMessage() {
@@ -561,20 +594,20 @@ function ProtectedPageMessage() {
 }
 
 function HomeRedirect() {
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded, user } = useSupabaseAuth();
   const session = useGetCurrentSession({
     query: {
-      enabled: Boolean(isSignedIn && user),
+       enabled: Boolean(user),
       queryKey: getGetCurrentSessionQueryKey(),
       retry: false,
       staleTime: 60_000,
     },
   });
 
-  if (!isLoaded || (isSignedIn && session.isLoading)) {
+  if (!isLoaded || (user && session.isLoading)) {
     return <main className="flex min-h-[100dvh] items-center justify-center bg-background text-foreground"><Activity className="h-8 w-8 animate-pulse text-primary" aria-label="Memeriksa akses" /></main>;
   }
-  if (!isSignedIn) return <PublicHome />;
+  if (!user) return <PublicHome />;
   const destination = homeForRoles(session.data?.roles ?? []);
   if (destination) return <Redirect to={destination} />;
   return (
@@ -582,6 +615,9 @@ function HomeRedirect() {
       <div className="max-w-lg rounded-2xl border border-amber-500/40 bg-card p-8 text-center shadow-xl">
         <h1 className="text-2xl font-bold">Akses TERAS belum ditetapkan</h1>
         <p className="mt-3 text-muted-foreground">Akun Anda sudah berhasil masuk, tetapi belum memiliki role aktif. Administrator perlu menetapkan role dan enrollment sebelum workspace dapat digunakan.</p>
+        <Link href="/security" className="mt-6 inline-flex rounded-md bg-primary px-5 py-3 font-bold text-primary-foreground">
+          Buka Security &amp; MFA
+        </Link>
       </div>
     </main>
   );
@@ -589,8 +625,7 @@ function HomeRedirect() {
 
 function WorkspaceRoutes() {
   return (
-    <Show when="signed-in">
-      <AppLayout>
+    <AppLayout>
         <RoutedErrorBoundary>
           <Switch>
             <Route path="/dashboard" component={Dashboard} />
@@ -613,16 +648,18 @@ function WorkspaceRoutes() {
             <Route path="/trainer" component={TrainerDesk} />
             <Route path="/assessor" component={AssessorDesk} />
             <Route path="/admin" component={Admin} />
+            <Route path="/security" component={Security} />
             <Route component={NotFound} />
           </Switch>
         </RoutedErrorBoundary>
-      </AppLayout>
-    </Show>
+    </AppLayout>
   );
 }
 
 function ProtectedWorkspace() {
-  return <><Show when="signed-in"><WorkspaceRoutes /></Show><Show when="signed-out"><ProtectedPageMessage /></Show></>;
+  const { isLoaded, user } = useSupabaseAuth();
+  if (!isLoaded) return <main className="flex min-h-[100dvh] items-center justify-center"><Activity className="h-8 w-8 animate-pulse text-primary" /></main>;
+  return user ? <WorkspaceRoutes /> : <ProtectedPageMessage />;
 }
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
@@ -652,42 +689,41 @@ function IdentityScopedQueryClientProvider({ children, register }: { children: R
   return <QueryClientProvider key={identityRevision} client={queryClient}>{children}</QueryClientProvider>;
 }
 
-function ClerkIdentityScopedQueryClientProvider({ children }: { children: ReactNode }) {
-  const { addListener } = useClerk();
+function SupabaseIdentityScopedQueryClientProvider({ children }: { children: ReactNode }) {
+  const { user } = useSupabaseAuth();
   const register = useCallback(
-    (listener: IdentityListener) => addListener(({ user }) => listener(user?.id ?? null)),
-    [addListener],
+    (listener: IdentityListener) => {
+      listener(user?.id ?? null);
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => listener(session?.user.id ?? null));
+      return () => data.subscription.unsubscribe();
+    }, [user?.id],
   );
   return <IdentityScopedQueryClientProvider register={register}>{children}</IdentityScopedQueryClientProvider>;
 }
 
-function ClerkProviderWithRoutes() {
-  const [, setLocation] = useLocation();
+function SupabaseProviderWithRoutes() {
+  const { isLoaded, user } = useSupabaseAuth();
   return (
-    <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={{ signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to your TERAS capability cockpit' } }, signUp: { start: { title: 'Begin your TERAS journey', subtitle: 'Create your capability workspace' } } }} routerPush={(to) => setLocation(stripBase(to))} routerReplace={(to) => setLocation(stripBase(to), { replace: true })}>
-      <ClerkIdentityScopedQueryClientProvider>
+      <SupabaseIdentityScopedQueryClientProvider>
         <TooltipProvider>
           <Switch>
-            <Route path="/sign-in/*?" component={SignInPage} />
-            <Route path="/sign-up/*?" component={SignUpPage} />
+            <Route path="/sign-in" component={() => <AuthPage mode="sign-in" />} />
+            <Route path="/sign-up" component={() => <AuthPage mode="sign-up" />} />
             <Route path="/" component={HomeRedirect} />
             <Route component={ProtectedWorkspace} />
           </Switch>
-          <Show when="signed-out">
+          {isLoaded && !user && (
             <div className="fixed right-4 top-4 z-50 rounded-full border border-border bg-card shadow-lg">
               <ThemeToggle compact />
             </div>
-          </Show>
-          {/* Assistant knowledge is internal, authenticated workspace content.
-              Do not mount this component until Clerk has resolved a signed-in
-              session: its chat panel owns the knowledge-query mutation. */}
-          <Show when="signed-in">
+          )}
+          {/* Assistant knowledge is authenticated workspace content. */}
+          {isLoaded && user && (
             <FloatingAssistants />
-          </Show>
+          )}
           <Toaster />
         </TooltipProvider>
-      </ClerkIdentityScopedQueryClientProvider>
-    </ClerkProvider>
+      </SupabaseIdentityScopedQueryClientProvider>
   );
 }
 
@@ -737,7 +773,7 @@ function IntegrationTestApp() {
 }
 
 function App() {
-  return <WouterRouter base={basePath}>{integrationTestMode ? <IntegrationTestApp /> : <ClerkProviderWithRoutes />}</WouterRouter>;
+  return <WouterRouter base={basePath}>{integrationTestMode ? <IntegrationTestApp /> : <SupabaseAuthProvider><SupabaseProviderWithRoutes /></SupabaseAuthProvider>}</WouterRouter>;
 }
 
 export default App;

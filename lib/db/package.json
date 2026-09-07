@@ -6,12 +6,15 @@
   "exports": {
     ".": "./src/index.ts",
     "./admin-membership": "./src/admin-membership.ts",
+    "./supabase-auth": "./src/supabase-auth.ts",
+    "./super-admin-mfa-policy": "./src/super-admin-mfa-policy.ts",
     "./demo-access": "./src/demo-access.ts",
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
+    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
+    "test:supabase-auth": "tsx --test src/supabase-auth.test.ts"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",
@@ -22,6 +25,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/pg": "^8.20.0",
-    "drizzle-kit": "^0.31.10"
+    "drizzle-kit": "^0.31.10",
+    "tsx": "catalog:"
   }
 }

@@ -10,7 +10,9 @@ import {
 } from "./index";
 
 export type AdminMutationActor = {
-  clerkUserId: string;
+  /** Provider-qualified audit identity. clerkUserId is accepted only for old tests/callers. */
+  authSubject?: string;
+  clerkUserId?: string;
   personId: string | null;
   roles?: string[];
 };
@@ -26,6 +28,8 @@ type UserInput = {
   email: string;
   organization?: string | null;
   clerkUserId?: string | null;
+  authProvider?: string | null;
+  authSubject?: string | null;
   status: string;
   roles: string[];
 };
@@ -46,6 +50,13 @@ const effectiveAdminRoles = ["admin", "super_admin"];
 // Omitted roles are reserved for trusted non-HTTP maintenance callers; HTTP
 // authorization always supplies the locally-derived role set.
 const actorIsSuperAdmin = (actor: AdminMutationActor) => actor.roles === undefined || actor.roles.includes("super_admin");
+const actorSubject = (actor: AdminMutationActor) => actor.authSubject ?? actor.clerkUserId ?? "unknown";
+const actorProvider = (actor: AdminMutationActor) => actor.authSubject ? "supabase" : "clerk";
+const actorCreatedBy = (actor: AdminMutationActor) => `${actorProvider(actor)}:${actorSubject(actor)}`;
+const validExternalIdentity = (input: { authProvider?: unknown; authSubject?: unknown }) =>
+  (input.authProvider == null && input.authSubject == null)
+  || (typeof input.authProvider === "string" && input.authProvider.length > 0
+    && typeof input.authSubject === "string" && input.authSubject.length > 0);
 const rolesPermittedFor = (roles: string[], before: string[] | null = null) => {
   const addedPrivileged = roles.some(role => PRIVILEGED_ROLES.includes(role as typeof PRIVILEGED_ROLES[number])
     && !(before ?? []).includes(role));
@@ -56,13 +67,15 @@ async function audit(tx: any, actor: AdminMutationActor, action: string, entityI
   await tx.insert(adminAuditEventsTable).values({
     id: crypto.randomUUID(),
     actorPersonId: actor.personId,
-    actorClerkUserId: actor.clerkUserId,
+    actorClerkUserId: actorSubject(actor),
+    actorAuthProvider: actorProvider(actor),
+    actorAuthSubject: actorSubject(actor),
     action,
     entityType: "user",
     entityId,
     before,
     after,
-    createdBy: actor.clerkUserId,
+    createdBy: actorCreatedBy(actor),
   });
 }
 
@@ -96,18 +109,19 @@ async function activeSuperAdminCount(tx: any, scope?: AdminMutationScope) {
 }
 
 export async function createManagedUser(input: UserInput, actor: AdminMutationActor) {
+  if (!validExternalIdentity(input)) throw new Error("External auth provider and subject must be supplied together.");
   if (!rolesPermittedFor(input.roles)) return { kind: "forbidden" as const };
   return db.transaction(async tx => {
     await tx.execute(mutationLock);
     await tx.insert(peopleTable).values({
       ...input,
       role: input.roles[0],
-      createdBy: actor.clerkUserId,
+      createdBy: actorCreatedBy(actor),
     });
     await tx.insert(personRolesTable).values(input.roles.map(role => ({
       personId: input.id,
       role,
-      createdBy: actor.clerkUserId,
+      createdBy: actorCreatedBy(actor),
     })));
     const result = { ...input };
     await audit(tx, actor, "create", input.id, null, result);
@@ -121,6 +135,7 @@ export async function updateManagedUser(
   actor: AdminMutationActor,
   scope?: AdminMutationScope,
 ) {
+  if (!validExternalIdentity(input)) throw new Error("External auth provider and subject must be supplied together.");
   return db.transaction(async tx => {
     await tx.execute(mutationLock);
     const before = await user(tx, personId);
@@ -173,7 +188,7 @@ export async function replaceManagedUserRoles(
     await tx.insert(personRolesTable).values(roles.map(role => ({
       personId,
       role,
-      createdBy: actor.clerkUserId,
+      createdBy: actorCreatedBy(actor),
     })));
     const result = { ...before, roles };
     await audit(tx, actor, "replace_roles", personId, before, result);
@@ -192,7 +207,7 @@ export async function createAdminAccessRequest(
     await tx.execute(mutationLock);
     const [request] = await tx.insert(adminAccessRequestsTable).values({
       id: crypto.randomUUID(), requesterPersonId, targetPersonId, requestedRole, reason,
-      createdBy: actor.clerkUserId,
+      createdBy: actorCreatedBy(actor),
     }).returning();
     await audit(tx, actor, "admin_request", request.id, null, request);
     return request;
@@ -212,17 +227,18 @@ export async function reviewAdminAccessRequest(
       status: decision, reviewNote: note, reviewedByPersonId: actor.personId, reviewedAt: new Date(),
     }).where(eq(adminAccessRequestsTable.id, requestId)).returning();
     if (decision === "approved") await tx.insert(personRolesTable).values({
-      personId: before.targetPersonId, role: before.requestedRole, createdBy: actor.clerkUserId,
+      personId: before.targetPersonId, role: before.requestedRole, createdBy: actorCreatedBy(actor),
     }).onConflictDoNothing();
     await audit(tx, actor, decision === "approved" ? "admin_request_approved" : "admin_request_rejected", requestId, before, value);
     return { kind: "updated" as const, value };
   });
 }
 
-/** One-time operator provisioning after the identity has been verified by Clerk. */
+/** One-time operator provisioning after a Supabase aal2 identity is verified by the caller. */
 export async function provisionSuperAdmin(identity: {
-  clerkUserId: string; email: string; name: string; initials: string;
+  authSubject: string; email: string; name: string; initials: string;
 }) {
+  const { authSubject } = identity;
   return db.transaction(async tx => {
     await tx.execute(mutationLock);
     const schemaReadiness = await tx.execute(sql`
@@ -243,7 +259,7 @@ export async function provisionSuperAdmin(identity: {
     if (!readiness?.has_people || !readiness.has_roles || !readiness.allows_super_admin) {
       throw new Error("Production schema is not ready for super_admin; complete the publish schema update before provisioning.");
     }
-    let [person] = await tx.select().from(peopleTable).where(eq(peopleTable.clerkUserId, identity.clerkUserId)).limit(1);
+    let [person] = await tx.select().from(peopleTable).where(and(eq(peopleTable.authProvider, "supabase"), eq(peopleTable.authSubject, authSubject))).limit(1);
     const before = person ? await user(tx, person.id) : null;
     const existingActiveSuperAdmins = await tx.select({ personId: peopleTable.id })
       .from(peopleTable)
@@ -255,12 +271,12 @@ export async function provisionSuperAdmin(identity: {
     if (!person) {
       [person] = await tx.insert(peopleTable).values({
         id: crypto.randomUUID(), name: identity.name, initials: identity.initials,
-        email: identity.email, role: "Super Administrator", clerkUserId: identity.clerkUserId,
+        email: identity.email, role: "Super Administrator", authProvider: "supabase", authSubject,
         status: "active", createdBy: "super-admin-provisioning",
       }).returning();
     } else {
       [person] = await tx.update(peopleTable).set({
-        name: identity.name, initials: identity.initials, email: identity.email, status: "active",
+        name: identity.name, initials: identity.initials, email: identity.email, status: "active", authProvider: "supabase", authSubject,
       }).where(eq(peopleTable.id, person.id)).returning();
     }
     await tx.insert(personRolesTable).values({
@@ -272,18 +288,79 @@ export async function provisionSuperAdmin(identity: {
     }
     await audit(
       tx,
-      { clerkUserId: identity.clerkUserId, personId: person.id },
+      { authSubject, personId: person.id },
       "super_admin_provisioned",
       person.id,
       before,
-      { personId: person.id, clerkUserId: identity.clerkUserId, status: after.status, roles: after.roles },
+      { personId: person.id, authProvider: "supabase", authSubject, status: after.status, roles: after.roles },
     );
     return {
       personId: person.id,
-      clerkUserId: identity.clerkUserId,
+      authSubject,
       status: after.status,
       roles: after.roles,
     };
+  });
+}
+
+/**
+ * One-time Clerk-to-Supabase cutover for the existing owner. The signed
+ * Supabase identity is verified by the HTTP layer before this function runs.
+ */
+export async function claimExistingSuperAdminIdentity(identity: {
+  authSubject: string;
+  verifiedEmail: string;
+  allowRecoveryRebind?: boolean;
+}) {
+  return db.transaction(async tx => {
+    await tx.execute(mutationLock);
+    const activeOwners = await tx.select({ person: peopleTable })
+      .from(peopleTable)
+      .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+      .where(and(eq(peopleTable.status, "active"), eq(personRolesTable.role, "super_admin")));
+    if (activeOwners.length !== 1) {
+      throw new Error("Identity claim requires exactly one active super administrator.");
+    }
+
+    const person = activeOwners[0].person;
+    if (!person.email || person.email.trim().toLowerCase() !== identity.verifiedEmail.trim().toLowerCase()) {
+      throw new Error("The verified Supabase email does not match the existing super administrator.");
+    }
+    if (person.authProvider === "supabase" && person.authSubject === identity.authSubject) {
+      return { personId: person.id, status: "already_claimed" as const };
+    }
+    const isRecoveryRebind = person.authProvider === "supabase";
+    if (isRecoveryRebind && !identity.allowRecoveryRebind) {
+      throw new Error("The existing super administrator is already linked to another Supabase identity.");
+    }
+    if (!isRecoveryRebind && person.authSubject && person.authProvider !== "clerk") {
+      throw new Error("The existing super administrator is already linked to another identity.");
+    }
+
+    const [subjectOwner] = await tx.select({ id: peopleTable.id })
+      .from(peopleTable)
+      .where(and(
+        eq(peopleTable.authProvider, "supabase"),
+        eq(peopleTable.authSubject, identity.authSubject),
+      ))
+      .limit(1);
+    if (subjectOwner && subjectOwner.id !== person.id) {
+      throw new Error("This Supabase identity is already linked to another TERAS person.");
+    }
+
+    await tx.update(peopleTable).set({
+      authProvider: "supabase",
+      authSubject: identity.authSubject,
+    }).where(eq(peopleTable.id, person.id));
+    await audit(
+      tx,
+      { authSubject: identity.authSubject, personId: person.id, roles: ["super_admin"] },
+      isRecoveryRebind ? "super_admin_identity_recovered" : "super_admin_identity_claimed",
+      person.id,
+      { authProvider: person.authProvider, authSubject: person.authSubject },
+      { authProvider: "supabase", authSubject: identity.authSubject },
+    );
+    return { personId: person.id, status: isRecoveryRebind ? "recovered" as const : "claimed" as const };
   });
 }
 

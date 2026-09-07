@@ -5,6 +5,25 @@
  * TERAS Academy capability development API
  * OpenAPI spec version: 0.1.0
  */
-import type { AdminUser } from './adminUser';
+import type { AdminUserInputRolesItem } from './adminUserInputRolesItem';
+import type { AdminUserInputStatus } from './adminUserInputStatus';
 
-export type AdminUserInput = AdminUser;
+export interface AdminUserInput {
+  /** @minLength 1 */
+  id: string;
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  initials: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  organization?: string | null;
+  /** @nullable */
+  authProvider?: string | null;
+  /** @nullable */
+  authSubject?: string | null;
+  status: AdminUserInputStatus;
+  /** @minItems 1 */
+  roles: AdminUserInputRolesItem[];
+}

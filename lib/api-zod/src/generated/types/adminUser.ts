@@ -17,6 +17,13 @@ export interface AdminUser {
   /** @nullable */
   organization: string | null;
   /** @nullable */
+  authProvider: string | null;
+  /** @nullable */
+  authSubject: string | null;
+  /**
+     * Legacy read-only identity history.
+     * @nullable
+     */
   clerkUserId: string | null;
   status: AdminUserStatus;
   roles: AdminUserRolesItem[];

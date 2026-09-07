@@ -28,7 +28,7 @@ async function lockFamily(tx: any, familyId: string) {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${familyId}, 0))`);
 }
 async function audit(tx: any, actor: AdminActor, action: string, id: string, before: unknown, after: unknown) {
-  await tx.insert(adminAuditEventsTable).values({ id: crypto.randomUUID(), actorPersonId: actor.personId, actorClerkUserId: actor.clerkUserId, action, entityType: "knowledge_article", entityId: id, before, after, createdBy: actor.clerkUserId });
+  await tx.insert(adminAuditEventsTable).values({ id: crypto.randomUUID(), actorPersonId: actor.personId, actorClerkUserId: actor.authSubject, actorAuthProvider: "supabase", actorAuthSubject: actor.authSubject, action, entityType: "knowledge_article", entityId: id, before, after, createdBy: `supabase:${actor.authSubject}` });
 }
 
 router.post("/assistant/knowledge/search", async (req, res): Promise<void> => {
@@ -80,7 +80,7 @@ router.post("/admin/knowledge", async (req, res): Promise<void> => {
   if (!actor || !input) return;
   if (hasUnsafeKnowledgeLink(input.body)) { res.status(400).json({ error: "Unsafe links are not allowed in knowledge articles." }); return; }
   try {
-    const article = await db.transaction(async tx => { const [created] = await tx.insert(knowledgeArticlesTable).values({ ...input, createdBy: actor.clerkUserId }).returning(); await audit(tx, actor, "create", created.id, null, created); return created; });
+    const article = await db.transaction(async tx => { const [created] = await tx.insert(knowledgeArticlesTable).values({ ...input, createdBy: `supabase:${actor.authSubject}` }).returning(); await audit(tx, actor, "create", created.id, null, created); return created; });
     res.status(201).json(CreateAdminKnowledgeArticleResponse.parse(article));
   } catch { res.status(409).json({ error: "Knowledge article ID already exists." }); }
 });
@@ -102,7 +102,7 @@ router.patch("/admin/knowledge/:articleId", async (req, res): Promise<void> => {
       if (before.status === "published") {
         const drafts = await tx.select({ id: knowledgeArticlesTable.id }).from(knowledgeArticlesTable).where(and(eq(knowledgeArticlesTable.parentArticleId, family), eq(knowledgeArticlesTable.status, "draft"))).limit(1);
         if (drafts.length) throw conflict("A draft revision already exists for this article.");
-        const [draft] = await tx.insert(knowledgeArticlesTable).values({ ...before, ...input, id: crypto.randomUUID(), parentArticleId: family, status: "draft", publishedAt: null, version: before.version + 1, updatedAt: new Date(), createdBy: actor.clerkUserId }).returning();
+        const [draft] = await tx.insert(knowledgeArticlesTable).values({ ...before, ...input, id: crypto.randomUUID(), parentArticleId: family, status: "draft", publishedAt: null, version: before.version + 1, updatedAt: new Date(), createdBy: `supabase:${actor.authSubject}` }).returning();
         await audit(tx, actor, "create_draft_version", draft.id, before, draft); return draft;
       }
       const [updated] = await tx.update(knowledgeArticlesTable).set({ ...input, version: before.version + 1, updatedAt: new Date() }).where(and(eq(knowledgeArticlesTable.id, before.id), eq(knowledgeArticlesTable.version, before.version), eq(knowledgeArticlesTable.status, "draft"))).returning();

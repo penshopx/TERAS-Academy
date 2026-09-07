@@ -4,8 +4,8 @@ const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
 export enum ObjectPermission { READ = "read", WRITE = "write" }
 export interface ObjectAclPolicy { owner: string; visibility: "private"; }
 
-/** Object ACLs are deliberately person-id based: Clerk stays the identity
- * authority while local role/pathway authorization remains server-side. */
+/** Object ACLs are deliberately person-id based; external authentication is
+ * resolved into a local role/pathway identity before object authorization. */
 export async function setObjectAclPolicy(file: File, policy: ObjectAclPolicy): Promise<void> {
   const [exists] = await file.exists();
   if (!exists) throw new Error(`Object not found: ${file.name}`);

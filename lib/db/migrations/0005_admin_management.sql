@@ -30,16 +30,9 @@ FROM teras_people
 WHERE lower(trim(role)) IN ('admin', 'trainer', 'assessor', 'learner')
 ON CONFLICT (person_id, role) DO NOTHING;
 
--- Bootstrap only explicitly configured Clerk identities which already have a
--- local active person record.  The custom setting is supplied by post-merge;
--- an absent/empty setting grants nobody administrative authority.
-INSERT INTO teras_person_roles (person_id, role, created_by)
-SELECT p.id, 'admin', 'migration-0005-bootstrap'
-FROM teras_people p
-JOIN unnest(string_to_array(coalesce(current_setting('teras.admin_clerk_user_ids', true), ''), ',')) configured(id)
-  ON p.clerk_user_id = trim(configured.id)
-WHERE p.status = 'active' AND trim(configured.id) <> ''
-ON CONFLICT (person_id, role) DO NOTHING;
+-- Identity-provider configuration must never grant administrator membership.
+-- Supabase super-admin bootstrap is a separate explicit aal2-verified
+-- operator action, and ordinary admin elevation is governed in-app.
 CREATE TABLE IF NOT EXISTS teras_cohorts (
   id text PRIMARY KEY,
   program_id text NOT NULL REFERENCES teras_programs(id),

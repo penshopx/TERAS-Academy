@@ -50,6 +50,8 @@ export * from './adminProgramUpdate';
 export * from './adminProgramUpdateStatus';
 export * from './adminUser';
 export * from './adminUserInput';
+export * from './adminUserInputRolesItem';
+export * from './adminUserInputStatus';
 export * from './adminUserRolesItem';
 export * from './adminUserStatus';
 export * from './adminUserUpdate';

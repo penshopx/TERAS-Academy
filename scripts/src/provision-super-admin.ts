@@ -1,41 +1,45 @@
-import { createClerkClient } from "@clerk/backend";
 import { provisionSuperAdmin } from "@workspace/db/admin-membership";
+import { verifySupabaseJwt } from "@workspace/db/supabase-auth";
+import { allowsSuperAdminMfa } from "@workspace/db/super-admin-mfa-policy";
 
 const argumentsByName = new Map<string, string>();
 for (let index = 2; index < process.argv.length; index += 2) {
   const name = process.argv[index];
   const value = process.argv[index + 1];
   if (!name?.startsWith("--") || !value) {
-    throw new Error("Usage: provision:super-admin --clerk-user-id <user_id> --verified-email <email> --confirm-production PROVISION");
+    throw new Error("Usage: provision:super-admin --verified-email <email> --confirm-production PROVISION [--name <name>]");
   }
   argumentsByName.set(name, value);
 }
-
-const clerkUserId = argumentsByName.get("--clerk-user-id")?.trim();
-const email = argumentsByName.get("--verified-email")?.trim().toLowerCase();
+const token = process.env.SUPABASE_BOOTSTRAP_ACCESS_TOKEN?.trim();
+const requestedEmail = argumentsByName.get("--verified-email")?.trim().toLowerCase();
 const confirmation = argumentsByName.get("--confirm-production");
-if (!clerkUserId?.startsWith("user_")) throw new Error("--clerk-user-id must be an explicit Clerk user ID.");
-if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("--verified-email must be a valid email address.");
+const requestedName = argumentsByName.get("--name")?.trim();
+if (!token) throw new Error("SUPABASE_BOOTSTRAP_ACCESS_TOKEN must be supplied as a temporary Replit Secret.");
+if (!requestedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requestedEmail)) throw new Error("--verified-email must be a valid email address.");
 if (confirmation !== "PROVISION") throw new Error("Refusing provisioning without --confirm-production PROVISION.");
 if (process.env.NODE_ENV !== "production" || process.env.REPLIT_DEPLOYMENT !== "1") {
   throw new Error("Refusing provisioning outside a Replit Production deployment.");
 }
 
-const secretKey = process.env.CLERK_SECRET_KEY;
-if (!secretKey) throw new Error("CLERK_SECRET_KEY is required to resolve the existing verified Clerk user.");
-
-const clerk = createClerkClient({ secretKey });
-const account = await clerk.users.getUser(clerkUserId);
-const verifiedEmail = account.emailAddresses.find(address =>
-  address.emailAddress.toLowerCase() === email && address.verification?.status === "verified",
-);
-if (!verifiedEmail) {
-  throw new Error("The explicit Production Clerk user does not own this verified email; provisioning refused.");
+// Verification includes issuer, audience, expiry, signature/JWKS and subject.
+// Do not log token parsing failures: an access token must never reach output.
+let identity;
+try {
+  identity = await verifySupabaseJwt(token);
+} catch {
+  throw new Error("The supplied Supabase access token is invalid for this Production project.");
 }
-const name = [account.firstName, account.lastName].filter(Boolean).join(" ") || email;
-const initials = name.split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
-const result = await provisionSuperAdmin({ clerkUserId: account.id, email: verifiedEmail.emailAddress, name, initials });
+if (!allowsSuperAdminMfa({ aal: identity.aal, test: false }, process.env)) {
+  throw new Error("Supabase aal2 with locked MFA enrollment is required to provision a Production super administrator.");
+}
+if (!identity.email || !identity.emailVerified || identity.email !== requestedEmail) {
+  throw new Error("The supplied Supabase access token does not contain the requested verified email.");
+}
+const name = requestedName || identity.email;
+const initials = name.split(/\s+/).filter(Boolean).map(part => part[0]).join("").slice(0, 2).toUpperCase() || "SA";
+const result = await provisionSuperAdmin({ authSubject: identity.subject, email: identity.email, name, initials });
 if (result.status !== "active" || !result.roles.includes("super_admin")) {
   throw new Error("Provisioning completed without an active local super_admin assignment.");
 }
-process.stdout.write(`Verified active super_admin for Clerk user ${account.id} (person ${result.personId}).\n`);
+process.stdout.write(`Verified active Supabase super_admin (person ${result.personId}).\n`);

@@ -1572,13 +1572,15 @@ x-pathway-selection-components:
       required: [assessor, pendingAssessmentCount, pendingEvidenceCount, reassessmentCount, blockedGateCount, recentActivity]
     LegacyAdminUser:
       type: object
-      required: [id, name, initials, email, organization, clerkUserId, status, roles]
+      required: [id, name, initials, email, organization, authProvider, authSubject, clerkUserId, status, roles]
       properties:
         id: { type: string }
         name: { type: string }
         initials: { type: string }
         email: { type: ["string", "null"] }
         organization: { type: ["string", "null"] }
+        authProvider: { type: ["string", "null"], description: External identity provider; Clerk value is retained only as legacy history. }
+        authSubject: { type: ["string", "null"], description: Provider-issued external identity subject. }
         clerkUserId: { type: ["string", "null"] }
         status: { type: string, enum: [active, inactive] }
         roles: { type: array, items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] } }
@@ -1591,7 +1593,8 @@ x-pathway-selection-components:
         initials: { type: string, minLength: 1 }
         email: { type: ["string", "null"], format: email }
         organization: { type: ["string", "null"] }
-        clerkUserId: { type: ["string", "null"] }
+        authProvider: { type: ["string", "null"] }
+        authSubject: { type: ["string", "null"] }
         status: { type: string, enum: [active, inactive] }
     LegacyRoleAssignmentInput:
       type: object
@@ -1635,14 +1638,16 @@ x-pathway-selection-components:
       properties: { id: { type: string }, actorClerkUserId: { type: string }, action: { type: string }, entityType: { type: string }, entityId: { type: string }, before: {}, after: {}, createdAt: { type: string, format: date-time } }
     AdminUser:
       type: object
-      required: [id, name, initials, email, organization, clerkUserId, status, roles]
+      required: [id, name, initials, email, organization, authProvider, authSubject, clerkUserId, status, roles]
       properties:
         id: { type: string }
         name: { type: string }
         initials: { type: string }
         email: { type: ["string", "null"] }
         organization: { type: ["string", "null"] }
-        clerkUserId: { type: ["string", "null"] }
+        authProvider: { type: ["string", "null"] }
+        authSubject: { type: ["string", "null"] }
+        clerkUserId: { type: ["string", "null"], description: Legacy read-only identity history. }
         status: { type: string, enum: [active, inactive] }
         roles: { type: array, items: { type: string, enum: [admin, trainer, assessor, learner] } }
     AdminUserInput:
@@ -1654,7 +1659,8 @@ x-pathway-selection-components:
         initials: { type: string, minLength: 1 }
         email: { type: ["string", "null"], format: email }
         organization: { type: ["string", "null"] }
-        clerkUserId: { type: ["string", "null"] }
+        authProvider: { type: ["string", "null"] }
+        authSubject: { type: ["string", "null"] }
         status: { type: string, enum: [active, inactive] }
         roles: { type: array, minItems: 1, items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] } }
     AdminUserUpdate:
@@ -1664,7 +1670,8 @@ x-pathway-selection-components:
         initials: { type: string, minLength: 1 }
         email: { type: ["string", "null"], format: email }
         organization: { type: ["string", "null"] }
-        clerkUserId: { type: ["string", "null"] }
+        authProvider: { type: ["string", "null"] }
+        authSubject: { type: ["string", "null"] }
         status: { type: string, enum: [active, inactive] }
     RoleAssignmentInput:
       type: object
@@ -2489,8 +2496,8 @@ components:
       required: [status, reason, message, currentState]
     AdminUser:
       type: object
-      required: [id, name, initials, email, organization, clerkUserId, status, roles]
-      properties: { id: { type: string }, name: { type: string }, initials: { type: string }, email: { type: ["string", "null"] }, organization: { type: ["string", "null"] }, clerkUserId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive] }, roles: { type: array, items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] } } }
+      required: [id, name, initials, email, organization, authProvider, authSubject, clerkUserId, status, roles]
+      properties: { id: { type: string }, name: { type: string }, initials: { type: string }, email: { type: ["string", "null"] }, organization: { type: ["string", "null"] }, authProvider: { type: ["string", "null"] }, authSubject: { type: ["string", "null"] }, clerkUserId: { type: ["string", "null"], description: Legacy read-only identity history. }, status: { type: string, enum: [active, inactive] }, roles: { type: array, items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] } } }
     AdminAccessRequest:
       type: object
       required: [id, requesterPersonId, targetPersonId, requestedRole, status, reason, reviewNote, reviewedByPersonId, reviewedAt, createdAt]
@@ -2593,10 +2600,13 @@ components:
           type: array
           items: { $ref: "#/components/schemas/AdminOperationalAction" }
         generatedAt: { type: string, format: date-time }
-    AdminUserInput: { allOf: [{ $ref: "#/components/schemas/AdminUser" }] }
+    AdminUserInput:
+      type: object
+      required: [id, name, initials, status, roles]
+      properties: { id: { type: string, minLength: 1 }, name: { type: string, minLength: 1 }, initials: { type: string, minLength: 1 }, email: { type: ["string", "null"], format: email }, organization: { type: ["string", "null"] }, authProvider: { type: ["string", "null"] }, authSubject: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive] }, roles: { type: array, minItems: 1, items: { type: string, enum: [super_admin, admin, trainer, assessor, learner] } } }
     AdminUserUpdate:
       type: object
-      properties: { name: { type: string, minLength: 1 }, initials: { type: string, minLength: 1 }, email: { type: ["string", "null"], format: email }, organization: { type: ["string", "null"] }, clerkUserId: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive] } }
+      properties: { name: { type: string, minLength: 1 }, initials: { type: string, minLength: 1 }, email: { type: ["string", "null"], format: email }, organization: { type: ["string", "null"] }, authProvider: { type: ["string", "null"] }, authSubject: { type: ["string", "null"] }, status: { type: string, enum: [active, inactive] } }
     RoleAssignmentInput:
       type: object
       required: [roles]
