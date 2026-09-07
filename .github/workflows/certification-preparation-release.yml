@@ -180,11 +180,18 @@ jobs:
             exit 1
           }
            jq -e '
-             (.checks | map(select(
-               (.name == "Super Admin provisioning policy" or
-                .name == "Super Admin ready and legacy provisioning") and
-               .status == "PASS"
-             )) | length) == 2
+             [
+               .checks[] |
+               select(
+                 (.name == "Super Admin provisioning policy" or
+                  .name == "Super Admin ready and legacy provisioning") and
+                 .status == "PASS"
+               ) |
+               .name
+             ] | sort == [
+               "Super Admin provisioning policy",
+               "Super Admin ready and legacy provisioning"
+             ]
            ' "$json_report" >/dev/null || {
              echo "::error::Release-gate evidence is missing a required passing Super Admin check."
              exit 1
@@ -260,11 +267,18 @@ jobs:
             exit 1
           }
            jq -e '
-             (.checks | map(select(
-               (.name == "Super Admin provisioning policy" or
-                .name == "Super Admin ready and legacy provisioning") and
-               .status == "PASS"
-             )) | length) == 2
+             [
+               .checks[] |
+               select(
+                 (.name == "Super Admin provisioning policy" or
+                  .name == "Super Admin ready and legacy provisioning") and
+                 .status == "PASS"
+               ) |
+               .name
+             ] | sort == [
+               "Super Admin provisioning policy",
+               "Super Admin ready and legacy provisioning"
+             ]
            ' "$json_report" >/dev/null || {
              echo "::error::Approved evidence is missing a required passing Super Admin check."
              exit 1

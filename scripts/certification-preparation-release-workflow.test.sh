@@ -125,6 +125,60 @@ grep -Fq 'pnpm --filter @workspace/scripts run test:super-admin-provisioning-pol
 mock_dir="$(mktemp -d)"
 trap 'rm -rf "$mock_dir"' EXIT
 
+fixture_dir="$mock_dir/release-evidence-fixtures"
+mkdir -p "$fixture_dir"
+
+write_evidence_fixture() {
+  local name="$1"
+  local test_status="$2"
+  local checks="$3"
+  jq -n \
+    --arg test_status "$test_status" \
+    --argjson checks "$checks" \
+    '{testStatus: $test_status, checks: $checks}' >"$fixture_dir/$name.json"
+}
+
+verify_super_admin_evidence() {
+  local report="$1"
+  [[ "$(jq -er '.testStatus' "$report")" == "PASS" ]] &&
+    jq -e '
+      [
+        .checks[] |
+        select(
+          (.name == "Super Admin provisioning policy" or
+           .name == "Super Admin ready and legacy provisioning") and
+          .status == "PASS"
+        ) |
+        .name
+      ] | sort == [
+        "Super Admin provisioning policy",
+        "Super Admin ready and legacy provisioning"
+      ]
+    ' "$report" >/dev/null
+}
+
+policy_pass='{"name":"Super Admin provisioning policy","status":"PASS","detail":"Policy check passed."}'
+ready_pass='{"name":"Super Admin ready and legacy provisioning","status":"PASS","detail":"Provisioning check passed."}'
+ready_fail='{"name":"Super Admin ready and legacy provisioning","status":"FAIL","detail":"Provisioning check failed."}'
+
+write_evidence_fixture valid PASS "[$policy_pass,$ready_pass]"
+write_evidence_fixture missing-policy PASS "[$ready_pass]"
+write_evidence_fixture missing-ready PASS "[$policy_pass]"
+write_evidence_fixture failed-check PASS "[$policy_pass,$ready_fail]"
+write_evidence_fixture duplicate-name PASS "[$policy_pass,$policy_pass]"
+write_evidence_fixture global-fail FAIL "[$policy_pass,$ready_pass]"
+
+verify_super_admin_evidence "$fixture_dir/valid.json" ||
+  fail "valid evidence with exactly two distinct passing Super Admin checks must be accepted"
+for invalid_fixture in missing-policy missing-ready failed-check duplicate-name global-fail; do
+  if verify_super_admin_evidence "$fixture_dir/$invalid_fixture.json"; then
+    fail "invalid $invalid_fixture evidence must be rejected"
+  fi
+done
+if grep -Eiq 'email|identity|@' "$fixture_dir"/*.json; then
+  fail "release evidence fixtures must not contain identity or email data"
+fi
+
 gate_report_dir="$mock_dir/gate-reports"
 gate_run_id="admin-browser-failure"
 gate_candidate_sha="1111111111111111111111111111111111111111"
