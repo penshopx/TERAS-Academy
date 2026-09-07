@@ -6,6 +6,7 @@ workflow="$repo_root/.github/workflows/certification-preparation-release.yml"
 gate="$repo_root/scripts/certification-preparation-gate.sh"
 release_guide="$repo_root/.github/RELEASING.md"
 publisher="$repo_root/scripts/publish-approved-release.sh"
+evidence_verifier="$repo_root/scripts/verify-certification-preparation-evidence.sh"
 
 fail() {
   echo "Certification-preparation release workflow contract failed: $1" >&2
@@ -15,6 +16,7 @@ fail() {
 [[ -f "$workflow" ]] || fail "workflow is missing"
 [[ -f "$release_guide" ]] || fail "release path documentation is missing"
 [[ -f "$publisher" ]] || fail "release publisher is missing"
+[[ -f "$evidence_verifier" ]] || fail "shared release evidence verifier is missing"
 
 job_block() {
   local job="$1"
@@ -68,11 +70,7 @@ grep -Fq "needs: certification-preparation-evidence" <<<"$release_evidence_block
   grep -Fq "actions/download-artifact@v4" <<<"$release_evidence_block" &&
   grep -Fq "gh attestation verify" <<<"$release_evidence_block" &&
   grep -Fq -- "--signer-workflow" <<<"$release_evidence_block" &&
-  grep -Fq "report_sha" <<<"$release_evidence_block" &&
-  grep -Fq '[[ "$report_sha" == "$TARGET_SHA" ]]' <<<"$release_evidence_block" &&
-  grep -Fq '[[ "$report_status" == "PASS" ]]' <<<"$release_evidence_block" &&
-  grep -Fq '"Super Admin provisioning policy"' <<<"$release_evidence_block" &&
-  grep -Fq '"Super Admin ready and legacy provisioning"' <<<"$release_evidence_block" ||
+  grep -Fq 'bash scripts/verify-certification-preparation-evidence.sh "$json_report" "$TARGET_SHA"' <<<"$release_evidence_block" ||
   fail "Gate Review must verify provenance, PASS status, candidate SHA, and both Super Admin checks first"
 grep -Fq -- "- gate-review" <<<"$publish_block" &&
   grep -Fq "run: bash scripts/publish-approved-release.sh" <<<"$publish_block" ||
@@ -90,11 +88,15 @@ grep -Fq "actions/attest-build-provenance@v2" <<<"$evidence_block" &&
   fail "both evidence reports must receive GitHub provenance attestations"
 grep -Fq "actions/download-artifact@v4" <<<"$publish_block" &&
   grep -Fq "gh attestation verify" <<<"$publish_block" &&
-  grep -Fq 'candidateSha' <<<"$publish_block" &&
-  grep -Fq 'testStatus' <<<"$publish_block" &&
-  grep -Fq '"Super Admin provisioning policy"' <<<"$publish_block" &&
-  grep -Fq '"Super Admin ready and legacy provisioning"' <<<"$publish_block" ||
+  grep -Fq 'bash scripts/verify-certification-preparation-evidence.sh "$json_report" "$TARGET_SHA"' <<<"$publish_block" ||
   fail "publisher must reverify attestation, candidate SHA, PASS status, and both Super Admin checks"
+[[ "$(grep -Fc 'bash scripts/verify-certification-preparation-evidence.sh "$json_report" "$TARGET_SHA"' "$workflow")" -eq 2 ]] ||
+  fail "review and publication must call the same release evidence verifier"
+grep -Fq 'report_sha="$(jq -er '\''.candidateSha'\'' "$json_report")"' "$evidence_verifier" &&
+  grep -Fq 'report_status="$(jq -er '\''.testStatus'\'' "$json_report")"' "$evidence_verifier" &&
+  grep -Fq '"Super Admin provisioning policy"' "$evidence_verifier" &&
+  grep -Fq '"Super Admin ready and legacy provisioning"' "$evidence_verifier" ||
+  fail "shared verifier must own candidate SHA, PASS status, and both Super Admin rules"
 grep -Fq 'RELEASE_TAG: ${{ inputs.tag_name }}' <<<"$publish_block" &&
   grep -Fq 'RELEASE_NAME: ${{ inputs.release_name || inputs.tag_name }}' <<<"$publish_block" ||
   fail "dispatcher input must reach the shell only through environment variables"
@@ -130,48 +132,35 @@ mkdir -p "$fixture_dir"
 
 write_evidence_fixture() {
   local name="$1"
-  local test_status="$2"
-  local checks="$3"
+  local candidate_sha="$2"
+  local test_status="$3"
+  local checks="$4"
   jq -n \
+    --arg candidate_sha "$candidate_sha" \
     --arg test_status "$test_status" \
     --argjson checks "$checks" \
-    '{testStatus: $test_status, checks: $checks}' >"$fixture_dir/$name.json"
+    '{candidateSha: $candidate_sha, testStatus: $test_status, checks: $checks}' >"$fixture_dir/$name.json"
 }
 
-verify_super_admin_evidence() {
-  local report="$1"
-  [[ "$(jq -er '.testStatus' "$report")" == "PASS" ]] &&
-    jq -e '
-      [
-        .checks[] |
-        select(
-          (.name == "Super Admin provisioning policy" or
-           .name == "Super Admin ready and legacy provisioning") and
-          .status == "PASS"
-        ) |
-        .name
-      ] | sort == [
-        "Super Admin provisioning policy",
-        "Super Admin ready and legacy provisioning"
-      ]
-    ' "$report" >/dev/null
-}
-
+fixture_candidate_sha="1111111111111111111111111111111111111111"
+wrong_candidate_sha="2222222222222222222222222222222222222222"
 policy_pass='{"name":"Super Admin provisioning policy","status":"PASS","detail":"Policy check passed."}'
 ready_pass='{"name":"Super Admin ready and legacy provisioning","status":"PASS","detail":"Provisioning check passed."}'
 ready_fail='{"name":"Super Admin ready and legacy provisioning","status":"FAIL","detail":"Provisioning check failed."}'
 
-write_evidence_fixture valid PASS "[$policy_pass,$ready_pass]"
-write_evidence_fixture missing-policy PASS "[$ready_pass]"
-write_evidence_fixture missing-ready PASS "[$policy_pass]"
-write_evidence_fixture failed-check PASS "[$policy_pass,$ready_fail]"
-write_evidence_fixture duplicate-name PASS "[$policy_pass,$policy_pass]"
-write_evidence_fixture global-fail FAIL "[$policy_pass,$ready_pass]"
+write_evidence_fixture valid "$fixture_candidate_sha" PASS "[$policy_pass,$ready_pass]"
+write_evidence_fixture wrong-sha "$wrong_candidate_sha" PASS "[$policy_pass,$ready_pass]"
+write_evidence_fixture missing-policy "$fixture_candidate_sha" PASS "[$ready_pass]"
+write_evidence_fixture missing-ready "$fixture_candidate_sha" PASS "[$policy_pass]"
+write_evidence_fixture failed-check "$fixture_candidate_sha" PASS "[$policy_pass,$ready_fail]"
+write_evidence_fixture duplicate-name "$fixture_candidate_sha" PASS "[$policy_pass,$policy_pass]"
+write_evidence_fixture global-fail "$fixture_candidate_sha" FAIL "[$policy_pass,$ready_pass]"
 
-verify_super_admin_evidence "$fixture_dir/valid.json" ||
+if ! bash "$evidence_verifier" "$fixture_dir/valid.json" "$fixture_candidate_sha"; then
   fail "valid evidence with exactly two distinct passing Super Admin checks must be accepted"
-for invalid_fixture in missing-policy missing-ready failed-check duplicate-name global-fail; do
-  if verify_super_admin_evidence "$fixture_dir/$invalid_fixture.json"; then
+fi
+for invalid_fixture in wrong-sha missing-policy missing-ready failed-check duplicate-name global-fail; do
+  if bash "$evidence_verifier" "$fixture_dir/$invalid_fixture.json" "$fixture_candidate_sha"; then
     fail "invalid $invalid_fixture evidence must be rejected"
   fi
 done

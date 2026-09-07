@@ -144,6 +144,11 @@ jobs:
     env:
       TARGET_SHA: ${{ needs.certification-preparation-evidence.outputs.candidate_sha }}
     steps:
+      - name: Check out release evidence verifier
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
       - name: Download release-gate evidence
         uses: actions/download-artifact@v4
         with:
@@ -169,33 +174,7 @@ jobs:
           done
           json_report="$(find release-gate-reports -maxdepth 1 -type f -name '*.json' -print -quit)"
           markdown_report="$(find release-gate-reports -maxdepth 1 -type f -name '*.md' -print -quit)"
-          report_sha="$(jq -er '.candidateSha' "$json_report")"
-          report_status="$(jq -er '.testStatus' "$json_report")"
-          [[ "$report_sha" == "$TARGET_SHA" ]] || {
-            echo "::error::Evidence SHA $report_sha does not match release candidate $TARGET_SHA."
-            exit 1
-          }
-          [[ "$report_status" == "PASS" ]] || {
-            echo "::error::Release-gate evidence status is $report_status, not PASS."
-            exit 1
-          }
-           jq -e '
-             [
-               .checks[] |
-               select(
-                 (.name == "Super Admin provisioning policy" or
-                  .name == "Super Admin ready and legacy provisioning") and
-                 .status == "PASS"
-               ) |
-               .name
-             ] | sort == [
-               "Super Admin provisioning policy",
-               "Super Admin ready and legacy provisioning"
-             ]
-           ' "$json_report" >/dev/null || {
-             echo "::error::Release-gate evidence is missing a required passing Super Admin check."
-             exit 1
-           }
+          bash scripts/verify-certification-preparation-evidence.sh "$json_report" "$TARGET_SHA"
           expected_markdown_line="$(printf -- '- Release candidate SHA: `%s`' "$TARGET_SHA")"
           grep -Fqx -- "$expected_markdown_line" "$markdown_report" || {
             echo "::error::Markdown evidence does not identify release candidate $TARGET_SHA."
@@ -258,31 +237,7 @@ jobs:
           done
           json_report="$(find release-gate-reports -maxdepth 1 -type f -name '*.json' -print -quit)"
           markdown_report="$(find release-gate-reports -maxdepth 1 -type f -name '*.md' -print -quit)"
-          [[ "$(jq -er '.candidateSha' "$json_report")" == "$TARGET_SHA" ]] || {
-            echo "::error::Approved evidence does not belong to release candidate $TARGET_SHA."
-            exit 1
-          }
-          [[ "$(jq -er '.testStatus' "$json_report")" == "PASS" ]] || {
-            echo "::error::Approved evidence is not a PASS report."
-            exit 1
-          }
-           jq -e '
-             [
-               .checks[] |
-               select(
-                 (.name == "Super Admin provisioning policy" or
-                  .name == "Super Admin ready and legacy provisioning") and
-                 .status == "PASS"
-               ) |
-               .name
-             ] | sort == [
-               "Super Admin provisioning policy",
-               "Super Admin ready and legacy provisioning"
-             ]
-           ' "$json_report" >/dev/null || {
-             echo "::error::Approved evidence is missing a required passing Super Admin check."
-             exit 1
-           }
+          bash scripts/verify-certification-preparation-evidence.sh "$json_report" "$TARGET_SHA"
           expected_markdown_line="$(printf -- '- Release candidate SHA: `%s`' "$TARGET_SHA")"
           grep -Fqx -- "$expected_markdown_line" "$markdown_report" || {
             echo "::error::Approved Markdown evidence does not belong to release candidate $TARGET_SHA."
