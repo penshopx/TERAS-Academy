@@ -35,4 +35,7 @@ packages = ["freetype", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf
 VITE_SUPABASE_URL = "https://qgeupsirjiupybuwmkzz.supabase.co"
 VITE_SUPABASE_ANON_KEY = "sb_publishable_leTJhAJ93ki2oEeeeLqn2w_L8w01PNP"
 
+[userenv.production]
+SUPABASE_MFA_ENROLLMENT_LOCKED = "true"
+
 
