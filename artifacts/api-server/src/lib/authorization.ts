@@ -3,8 +3,9 @@ import { and, eq, or, sql } from "drizzle-orm";
 import { db, peopleTable, personRolesTable } from "@workspace/db";
 import { allowsDemoAccess } from "@workspace/db/demo-access";
 import { allowsAdministrativeRoles } from "@workspace/db/super-admin-mfa-policy";
+import { ensureVerifiedSupabaseLearner } from "@workspace/db/learner-provisioning";
 import { learnerContext } from "./teras";
-import { supabaseIdentity } from "./supabase-auth";
+import { supabaseEmailIsVerified, supabaseIdentity } from "./supabase-auth";
 
 type WorkspaceRole = "trainer" | "assessor";
 type AdminRole = "admin" | "super_admin";
@@ -24,7 +25,13 @@ export type AdminActor = { authSubject: string; personId: string | null; roles: 
 export type KnowledgeRole = "super_admin" | "admin" | "trainer" | "assessor" | "learner";
 export type KnowledgeActor = { authSubject: string; roles: KnowledgeRole[] };
 export type CurrentSession = { personId: string; name: string; roles: KnowledgeRole[] };
-type AuthenticatedIdentity = { subject: string; aal: string | null; test: boolean };
+type AuthenticatedIdentity = {
+  subject: string;
+  aal: string | null;
+  email: string | null;
+  emailVerified: boolean;
+  test: boolean;
+};
 
 const knownRoles = (roles: string[]) => [...new Set(roles.filter((role): role is KnowledgeRole =>
   ["super_admin", "admin", "trainer", "assessor", "learner"].includes(role)))];
@@ -36,7 +43,9 @@ const subjectWhere = (subject: string, test: boolean) => test
 
 async function identity(req: Request): Promise<AuthenticatedIdentity | null> {
   const test = integrationIdentity(req);
-  if (test) return test.userId ? { subject: test.userId, aal: "aal2", test: true } : null;
+  if (test) return test.userId
+    ? { subject: test.userId, aal: "aal2", email: null, emailVerified: true, test: true }
+    : null;
   const verified = await supabaseIdentity(req);
   return verified ? { ...verified, test: false } : null;
 }
@@ -51,6 +60,22 @@ async function assignments(subject: string, test: boolean, roles?: string[]) {
       roles ? sql`${personRolesTable.role} IN (${sql.join(roles.map(role => sql`${role}`), sql`, `)})` : undefined));
 }
 
+async function assignmentsWithLearnerProvisioning(req: Request, actor: AuthenticatedIdentity) {
+  let rows = await assignments(actor.subject, actor.test);
+  if (rows.length || actor.test || !actor.email) return rows;
+  if (!await supabaseEmailIsVerified(req, actor)) return rows;
+  const provisioned = await ensureVerifiedSupabaseLearner({
+    subject: actor.subject,
+    email: actor.email,
+  });
+  if (provisioned.status === "email_conflict") {
+    req.log.warn({ authSubject: actor.subject }, "Verified learner email conflicts with an existing TERAS identity");
+    return rows;
+  }
+  rows = await assignments(actor.subject, actor.test);
+  return rows;
+}
+
 export async function authorizeCurrentSession(req: Request, res: Response): Promise<CurrentSession | null> {
   const actor = await identity(req);
   if (!actor) return deny(req, res, false, "Authentication required");
@@ -58,7 +83,7 @@ export async function authorizeCurrentSession(req: Request, res: Response): Prom
     const test = integrationIdentity(req)!;
     if (test.role) return { personId: test.learnerId ?? actor.subject, name: "Test user", roles: [test.role] };
   }
-  const rows = await assignments(actor.subject, actor.test);
+  const rows = await assignmentsWithLearnerProvisioning(req, actor);
   const roles = knownRoles(rows.map(row => row.role));
   return rows[0] && roles.length ? { personId: rows[0].personId, name: rows[0].name, roles }
     : deny(req, res, true, "A local TERAS role is required");
@@ -69,7 +94,7 @@ export async function authorizeKnowledgeActor(req: Request, res: Response): Prom
   if (!actor) return deny(req, res, false, "Authentication required");
   const test = integrationIdentity(req);
   if (actor.test && test?.role) return { authSubject: actor.subject, roles: [test.role] };
-  const roles = knownRoles((await assignments(actor.subject, actor.test)).map(row => row.role));
+  const roles = knownRoles((await assignmentsWithLearnerProvisioning(req, actor)).map(row => row.role));
   return roles.length ? { authSubject: actor.subject, roles } : deny(req, res, true, "A local TERAS role is required");
 }
 

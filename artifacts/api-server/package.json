@@ -14,6 +14,7 @@
     "test:course-authoring:contract": "NODE_ENV=test tsx ./src/course-authoring.contract.test.ts",
     "test:course-authoring": "pnpm run test:course-authoring:contract && bash ../../scripts/course-authoring.integration.test.sh",
     "test:identity-isolation": "NODE_ENV=test tsx ./src/identity-isolation.integration.ts",
+    "test:learner-provisioning": "NODE_ENV=test tsx ./src/learner-provisioning.integration.ts",
     "test:learner-isolation": "NODE_ENV=test tsx ./src/learner-isolation.integration.ts",
     "test:readiness-dashboard-isolation": "NODE_ENV=test tsx ./src/readiness-dashboard-isolation.integration.ts",
     "test:admin-authorization": "NODE_ENV=test tsx ./src/admin-authorization.integration.ts",

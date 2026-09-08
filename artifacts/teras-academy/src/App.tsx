@@ -9,7 +9,12 @@ import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } fr
 import { AppLayout } from '@/components/layout/app-layout';
 import { FloatingAssistants } from '@/components/floating-assistants';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { getGetCurrentSessionQueryKey, useGetCurrentSession } from '@workspace/api-client-react';
+import {
+  getGetCurrentSessionQueryKey,
+  getGetLearnerDashboardQueryKey,
+  useGetCurrentSession,
+  useGetLearnerDashboard,
+} from '@workspace/api-client-react';
 import { SupabaseAuthProvider, supabase, useSupabaseAuth } from '@/lib/supabase-auth';
 import { homeForRoles } from '@/lib/role-navigation';
 import { hasIdentityChanged, type PreviousUserId, type UserId } from '@/lib/identity-lifecycle';
@@ -591,6 +596,24 @@ function ProtectedPageMessage() {
   );
 }
 
+function LearnerAwaitingEnrollment() {
+  return (
+    <main className="flex min-h-[100dvh] items-center justify-center bg-background px-6 text-foreground">
+      <div className="w-full max-w-xl rounded-2xl border border-primary/30 bg-card p-8 text-center shadow-xl">
+        <p className="font-mono text-xs font-bold tracking-[.2em] text-primary">AKUN LEARNER AKTIF</p>
+        <h1 className="mt-4 text-3xl font-extrabold">Selamat datang di TERAS</h1>
+        <p className="mt-4 leading-7 text-muted-foreground">
+          Email Anda sudah terverifikasi dan akun Learner sudah aktif. Admin perlu menambahkan Anda
+          ke program dan pathway sebelum aktivitas pembelajaran tersedia.
+        </p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Sambil menunggu enrollment, Anda tetap dapat menggunakan TERAS Help Desk dan TERAS Energy Assistant.
+        </p>
+      </div>
+    </main>
+  );
+}
+
 function HomeRedirect() {
   const { isLoaded, user } = useSupabaseAuth();
   const session = useGetCurrentSession({
@@ -601,12 +624,23 @@ function HomeRedirect() {
       staleTime: 60_000,
     },
   });
+  const roles = Array.isArray(session.data?.roles) ? session.data.roles : [];
+  const learnerOnly = roles.includes("learner")
+    && !roles.some(role => ["super_admin", "admin", "trainer", "assessor"].includes(role));
+  const learnerDashboard = useGetLearnerDashboard({
+    query: {
+      enabled: learnerOnly,
+      queryKey: getGetLearnerDashboardQueryKey(),
+      retry: false,
+    },
+  });
 
-  if (!isLoaded || (user && session.isLoading)) {
+  if (!isLoaded || (user && session.isLoading) || (learnerOnly && learnerDashboard.isLoading)) {
     return <main className="flex min-h-[100dvh] items-center justify-center bg-background text-foreground"><Activity className="h-8 w-8 animate-pulse text-primary" aria-label="Memeriksa akses" /></main>;
   }
   if (!user) return <PublicHome />;
-  const destination = homeForRoles(session.data?.roles ?? []);
+  if (learnerOnly && learnerDashboard.isError) return <LearnerAwaitingEnrollment />;
+  const destination = homeForRoles(roles);
   if (destination) return <Redirect to={destination} />;
   return (
     <main className="flex min-h-[100dvh] items-center justify-center bg-background px-6 text-foreground">
@@ -699,6 +733,23 @@ function SupabaseIdentityScopedQueryClientProvider({ children }: { children: Rea
   return <IdentityScopedQueryClientProvider register={register}>{children}</IdentityScopedQueryClientProvider>;
 }
 
+function AuthenticatedFloatingAssistants() {
+  const { isLoaded, user } = useSupabaseAuth();
+  const [location] = useLocation();
+  const localSession = useGetCurrentSession({
+    query: {
+      enabled: Boolean(user),
+      queryKey: getGetCurrentSessionQueryKey(),
+      retry: false,
+      staleTime: 60_000,
+    },
+  });
+  const isAuthRoute = location === "/sign-in" || location === "/sign-up";
+  return isLoaded && user && localSession.isSuccess && !isAuthRoute
+    ? <FloatingAssistants />
+    : null;
+}
+
 function SupabaseProviderWithRoutes() {
   const { isLoaded, user } = useSupabaseAuth();
   return (
@@ -716,9 +767,7 @@ function SupabaseProviderWithRoutes() {
             </div>
           )}
           {/* Assistant knowledge is authenticated workspace content. */}
-          {isLoaded && user && (
-            <FloatingAssistants />
-          )}
+          <AuthenticatedFloatingAssistants />
           <Toaster />
         </TooltipProvider>
       </SupabaseIdentityScopedQueryClientProvider>

@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./admin-membership": "./src/admin-membership.ts",
+    "./learner-provisioning": "./src/learner-provisioning.ts",
     "./supabase-auth": "./src/supabase-auth.ts",
     "./super-admin-mfa-policy": "./src/super-admin-mfa-policy.ts",
     "./demo-access": "./src/demo-access.ts",
