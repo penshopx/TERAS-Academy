@@ -1,6 +1,6 @@
 // All writes that can change active administrator membership belong here.
 // @ts-nocheck
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import {
   adminAuditEventsTable,
   adminAccessRequestsTable,
@@ -332,11 +332,29 @@ export async function claimExistingSuperAdminIdentity(identity: {
         .where(and(
           eq(peopleTable.status, "active"),
           eq(personRolesTable.role, "admin"),
-          eq(peopleTable.authProvider, "clerk"),
+          or(
+            eq(peopleTable.authProvider, "clerk"),
+            and(
+              isNull(peopleTable.authProvider),
+              isNull(peopleTable.authSubject),
+              isNotNull(peopleTable.clerkUserId),
+            ),
+          ),
         ));
+      const legacyIdentityIsConsistent = activeLegacyAdmins.length === 1
+        && !!activeLegacyAdmins[0].person.clerkUserId
+        && (
+          (
+            activeLegacyAdmins[0].person.authProvider === "clerk"
+            && activeLegacyAdmins[0].person.authSubject === activeLegacyAdmins[0].person.clerkUserId
+          )
+          || (
+            activeLegacyAdmins[0].person.authProvider == null
+            && activeLegacyAdmins[0].person.authSubject == null
+          )
+        );
       if (activeLegacyAdmins.length !== 1
-        || !activeLegacyAdmins[0].person.clerkUserId
-        || activeLegacyAdmins[0].person.authSubject !== activeLegacyAdmins[0].person.clerkUserId) {
+        || !legacyIdentityIsConsistent) {
         throw new Error("Identity claim requires exactly one active legacy Clerk administrator.");
       }
       person = activeLegacyAdmins[0].person;

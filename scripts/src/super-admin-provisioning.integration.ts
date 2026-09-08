@@ -83,8 +83,8 @@ try {
     const first = await provisionSuperAdmin(identity);
     const legacySubject = `legacy-${authSubject}`;
     await db.update(peopleTable).set({
-      authProvider: "clerk",
-      authSubject: legacySubject,
+      authProvider: null,
+      authSubject: null,
       clerkUserId: legacySubject,
       role: "admin",
     }).where(eq(peopleTable.id, first.personId));
