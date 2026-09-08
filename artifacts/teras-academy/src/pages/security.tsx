@@ -17,25 +17,39 @@ export default function Security() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [currentLevel, setCurrentLevel] = useState<string | null>(null);
+  const roles = Array.isArray(currentSession.data?.roles) ? currentSession.data.roles : [];
+  const isSuperAdmin = roles.includes("super_admin");
+
   const loadFactors = async () => {
-    const [{ data, error: factorError }, assurance] = await Promise.all([
-      supabase.auth.mfa.listFactors(),
-      supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-    ]);
-    if (factorError) setError(factorError.message);
-    else setFactors(([...(data?.all ?? [])] as Factor[]).filter(factor => factor.status === "verified"));
-    const level = assurance.data?.currentLevel ?? null;
-    setCurrentLevel(level);
-    if (level === "aal2") {
-      await queryClient.invalidateQueries({ queryKey: getGetCurrentSessionQueryKey() });
+    try {
+      const [{ data, error: factorError }, assurance] = await Promise.all([
+        supabase.auth.mfa.listFactors(),
+        supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+      ]);
+      if (factorError) setError(factorError.message);
+      const allFactors = Array.isArray(data?.all) ? data.all : [];
+      setFactors((allFactors as Factor[]).filter(
+        factor => factor && factor.status === "verified" && typeof factor.id === "string",
+      ));
+      const level = typeof assurance.data?.currentLevel === "string"
+        ? assurance.data.currentLevel
+        : null;
+      setCurrentLevel(level);
+      if (level === "aal2") {
+        await queryClient.invalidateQueries({ queryKey: getGetCurrentSessionQueryKey() });
+      }
+    } catch {
+      setFactors([]);
+      setCurrentLevel(null);
+      setError("Status MFA belum dapat dimuat. Muat ulang halaman dan coba kembali.");
     }
   };
   useEffect(() => { void loadFactors(); }, []);
   useEffect(() => {
-    if (currentSession.data?.roles.includes("super_admin")) {
+    if (isSuperAdmin) {
       setError(null);
     }
-  }, [currentSession.data?.roles]);
+  }, [isSuperAdmin]);
   const challengeExisting = async (factorId: string, event: FormEvent) => {
     event.preventDefault();
     if (!isValidTotpCode(code)) { setError("Masukkan kode 6 digit dari aplikasi authenticator."); return; }
@@ -90,12 +104,12 @@ export default function Security() {
       <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">Pendaftaran, penggantian, dan penghapusan authenticator dikelola oleh operator melalui Supabase. Hubungi operator untuk perubahan lifecycle MFA; TERAS hanya dapat memverifikasi faktor yang sudah terdaftar dan terverifikasi.</p>
     </section>
     {factors.map(factor => <form className="mt-6 rounded-xl border border-border bg-card p-5" onSubmit={event => void challengeExisting(factor.id, event)} key={`challenge-${factor.id}`}><h2 className="font-bold">Tingkatkan sesi dengan MFA</h2><p className="mt-2 text-sm text-muted-foreground">{factor.friendly_name || "Authenticator terverifikasi"}</p><label className="mt-3 block text-sm font-medium" htmlFor={`challenge-${factor.id}`}>Kode 6 digit</label><input id={`challenge-${factor.id}`} className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} value={code} onChange={e => setCode(normalizeTotpCode(e.target.value))} required /><button className="mt-3 rounded-md bg-primary px-4 py-2 font-bold text-primary-foreground" disabled={busy}>Verifikasi sesi</button></form>)}
-    {currentSession.data?.roles.includes("super_admin") && <section className="mt-6 rounded-xl border border-primary/40 bg-card p-5">
+    {isSuperAdmin && <section className="mt-6 rounded-xl border border-primary/40 bg-card p-5">
       <h2 className="font-bold">Akses Super Admin terhubung</h2>
       <p className="mt-2 text-sm text-muted-foreground">Identitas Supabase, role TERAS, dan MFA akun ini sudah aktif.</p>
       <button type="button" className="mt-4 rounded-md bg-primary px-4 py-2 font-bold text-primary-foreground" onClick={() => window.location.assign(`${import.meta.env.BASE_URL}admin`)}>Buka Admin Control Room</button>
     </section>}
-    {!currentSession.data?.roles.includes("super_admin") && <section className="mt-6 rounded-xl border border-primary/40 bg-card p-5">
+    {!isSuperAdmin && <section className="mt-6 rounded-xl border border-primary/40 bg-card p-5">
       <h2 className="font-bold">Hubungkan akses pemilik</h2>
       <p className="mt-2 text-sm text-muted-foreground">Gunakan ini satu kali hanya jika akun belum terhubung ke Super Admin lama.</p>
       {currentLevel !== "aal2" && <p className="mt-3 text-sm text-amber-500">Verifikasi kode authenticator pada bagian “Tingkatkan sesi dengan MFA” terlebih dahulu sampai status sesi menjadi AAL2.</p>}

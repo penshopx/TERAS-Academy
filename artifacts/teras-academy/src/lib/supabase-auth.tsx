@@ -39,9 +39,9 @@ function initialSession() {
     const code = currentUrl.searchParams.get("code");
     if (code) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      currentUrl.searchParams.delete("code");
+      window.history.replaceState({}, "", `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
       if (!error) {
-        currentUrl.searchParams.delete("code");
-        window.history.replaceState({}, "", `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
         return data.session;
       }
     }
