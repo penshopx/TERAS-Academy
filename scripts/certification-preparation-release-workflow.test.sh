@@ -7,6 +7,8 @@ gate="$repo_root/scripts/certification-preparation-gate.sh"
 release_guide="$repo_root/.github/RELEASING.md"
 publisher="$repo_root/scripts/publish-approved-release.sh"
 evidence_verifier="$repo_root/scripts/verify-certification-preparation-evidence.sh"
+workflow_validator="$repo_root/scripts/validate-github-actions-workflow.mjs"
+invalid_workflow_fixture="$repo_root/scripts/fixtures/certification-preparation-release.invalid.yml"
 
 fail() {
   echo "Certification-preparation release workflow contract failed: $1" >&2
@@ -17,6 +19,14 @@ fail() {
 [[ -f "$release_guide" ]] || fail "release path documentation is missing"
 [[ -f "$publisher" ]] || fail "release publisher is missing"
 [[ -f "$evidence_verifier" ]] || fail "shared release evidence verifier is missing"
+[[ -f "$workflow_validator" ]] || fail "GitHub Actions workflow validator is missing"
+[[ -f "$invalid_workflow_fixture" ]] || fail "invalid workflow fixture is missing"
+
+node "$workflow_validator" "$workflow" ||
+  fail "release workflow must parse and pass GitHub Actions semantic validation"
+if node "$workflow_validator" "$invalid_workflow_fixture"; then
+  fail "invalid GitHub Actions syntax fixture must be rejected"
+fi
 
 job_block() {
   local job="$1"

@@ -20,3 +20,4 @@
 - [Identity-scoped query lifecycle](identity-scoped-query-lifecycle.md) — auth changes must clear cache and remount query consumers; cache.clear alone can leave active observer data visible.
 - [Browser identity harness contracts](browser-identity-harness-contracts.md) — make page creation and identity installation atomic; source-order checks cannot prove per-page isolation.
 - [Supabase owner recovery](supabase-owner-recovery.md) — trust AAL2 only while factor enrollment is provider-locked; keep recovery operator-controlled and audited.
+- [GitHub Actions lint compatibility](github-actions-lint-compatibility.md) — keep narrow suppressions for valid GitHub features unsupported by the pinned WASM linter.
