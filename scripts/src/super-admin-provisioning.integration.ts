@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { and, eq } from "drizzle-orm";
-import { db, peopleTable, personRolesTable, pool } from "@workspace/db";
+import { adminAuditEventsTable, db, peopleTable, personRolesTable, pool } from "@workspace/db";
 import {
   claimExistingSuperAdminIdentity,
   provisionSuperAdmin,
@@ -79,8 +79,55 @@ try {
       .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
       .where(and(eq(peopleTable.authSubject, authSubject), eq(personRolesTable.role, "super_admin")));
     assert.equal(assignments.length, 0);
+  } else if (mode === "legacy-admin-cutover") {
+    const first = await provisionSuperAdmin(identity);
+    const legacySubject = `legacy-${authSubject}`;
+    await db.update(peopleTable).set({
+      authProvider: "clerk",
+      authSubject: legacySubject,
+      clerkUserId: legacySubject,
+      role: "admin",
+    }).where(eq(peopleTable.id, first.personId));
+    await db.delete(personRolesTable).where(eq(personRolesTable.personId, first.personId));
+    await db.insert(personRolesTable).values({
+      personId: first.personId,
+      role: "admin",
+      createdBy: "legacy-fixture",
+    });
+
+    await assert.rejects(
+      claimExistingSuperAdminIdentity({
+        authSubject,
+        verifiedEmail: `different-${identity.email}`,
+      }),
+      /does not match/,
+    );
+    const claim = await claimExistingSuperAdminIdentity({
+      authSubject,
+      verifiedEmail: identity.email,
+    });
+    assert.equal(claim.status, "claimed");
+
+    const [person] = await db.select().from(peopleTable).where(eq(peopleTable.id, first.personId));
+    const roles = await db.select({ role: personRolesTable.role })
+      .from(personRolesTable)
+      .where(eq(personRolesTable.personId, first.personId));
+    const auditEvents = await db.select({ action: adminAuditEventsTable.action })
+      .from(adminAuditEventsTable)
+      .where(eq(adminAuditEventsTable.entityId, first.personId));
+    assert.equal(person.authProvider, "supabase");
+    assert.equal(person.authSubject, authSubject);
+    assert.equal(person.role, "super_admin");
+    assert.deepEqual(roles.map(item => item.role), ["super_admin"]);
+    assert.ok(auditEvents.some(event => event.action === "legacy_admin_promoted_and_identity_claimed"));
+
+    const repeated = await claimExistingSuperAdminIdentity({
+      authSubject,
+      verifiedEmail: identity.email,
+    });
+    assert.equal(repeated.status, "already_claimed");
   } else {
-    throw new Error("Expected integration mode: ready or legacy");
+    throw new Error("Expected integration mode: ready, legacy, or legacy-admin-cutover");
   }
 } finally {
   await pool.end();

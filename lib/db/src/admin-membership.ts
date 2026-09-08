@@ -319,11 +319,30 @@ export async function claimExistingSuperAdminIdentity(identity: {
       .from(peopleTable)
       .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
       .where(and(eq(peopleTable.status, "active"), eq(personRolesTable.role, "super_admin")));
-    if (activeOwners.length !== 1) {
+    if (activeOwners.length > 1) {
       throw new Error("Identity claim requires exactly one active super administrator.");
     }
 
-    const person = activeOwners[0].person;
+    let person = activeOwners[0]?.person;
+    let legacyAdminCutover = false;
+    if (!person) {
+      const activeLegacyAdmins = await tx.select({ person: peopleTable })
+        .from(peopleTable)
+        .innerJoin(personRolesTable, eq(personRolesTable.personId, peopleTable.id))
+        .where(and(
+          eq(peopleTable.status, "active"),
+          eq(personRolesTable.role, "admin"),
+          eq(peopleTable.authProvider, "clerk"),
+        ));
+      if (activeLegacyAdmins.length !== 1
+        || !activeLegacyAdmins[0].person.clerkUserId
+        || activeLegacyAdmins[0].person.authSubject !== activeLegacyAdmins[0].person.clerkUserId) {
+        throw new Error("Identity claim requires exactly one active legacy Clerk administrator.");
+      }
+      person = activeLegacyAdmins[0].person;
+      legacyAdminCutover = true;
+    }
+
     if (!person.email || person.email.trim().toLowerCase() !== identity.verifiedEmail.trim().toLowerCase()) {
       throw new Error("The verified Supabase email does not match the existing super administrator.");
     }
@@ -352,14 +371,32 @@ export async function claimExistingSuperAdminIdentity(identity: {
     await tx.update(peopleTable).set({
       authProvider: "supabase",
       authSubject: identity.authSubject,
+      role: legacyAdminCutover ? "super_admin" : person.role,
     }).where(eq(peopleTable.id, person.id));
+    if (legacyAdminCutover) {
+      await tx.delete(personRolesTable).where(and(
+        eq(personRolesTable.personId, person.id),
+        eq(personRolesTable.role, "admin"),
+      ));
+      await tx.insert(personRolesTable).values({
+        personId: person.id,
+        role: "super_admin",
+        createdBy: "supabase:legacy-owner-cutover",
+      });
+    }
     await audit(
       tx,
       { authSubject: identity.authSubject, personId: person.id, roles: ["super_admin"] },
-      isRecoveryRebind ? "super_admin_identity_recovered" : "super_admin_identity_claimed",
+      legacyAdminCutover
+        ? "legacy_admin_promoted_and_identity_claimed"
+        : isRecoveryRebind ? "super_admin_identity_recovered" : "super_admin_identity_claimed",
       person.id,
-      { authProvider: person.authProvider, authSubject: person.authSubject },
-      { authProvider: "supabase", authSubject: identity.authSubject },
+      {
+        authProvider: person.authProvider,
+        authSubject: person.authSubject,
+        roles: legacyAdminCutover ? ["admin"] : ["super_admin"],
+      },
+      { authProvider: "supabase", authSubject: identity.authSubject, roles: ["super_admin"] },
     );
     return { personId: person.id, status: isRecoveryRebind ? "recovered" as const : "claimed" as const };
   });
