@@ -754,16 +754,8 @@ function SupabaseIdentityScopedQueryClientProvider({ children }: { children: Rea
 function AuthenticatedFloatingAssistants() {
   const { isLoaded, user } = useSupabaseAuth();
   const [location] = useLocation();
-  const localSession = useGetCurrentSession({
-    query: {
-      enabled: Boolean(user),
-      queryKey: getGetCurrentSessionQueryKey(),
-      retry: false,
-      staleTime: 60_000,
-    },
-  });
   const isAuthRoute = location === "/sign-in" || location === "/sign-up";
-  return isLoaded && user && localSession.isSuccess && !isAuthRoute
+  return isLoaded && user && !isAuthRoute
     ? <FloatingAssistants />
     : null;
 }

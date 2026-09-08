@@ -7,4 +7,4 @@ Verified Supabase users without a local identity are automatically provisioned a
 
 **Why:** Ordinary users should be able to start after email verification without Admin intervention, while email matching alone could let a new external identity take over a pre-existing TERAS person. Requiring exactly one active Primary target prevents arbitrary enrollment.
 
-**How to apply:** Provision person, learner role, and Primary enrollment transactionally and idempotently. If there is not exactly one active Primary pathway, choose nothing and show a temporary safe state. Guard all learner routes, including stale tabs. Administrative elevation remains a separate Super Admin approval flow.
+**How to apply:** Provision person, learner role, and Primary enrollment transactionally and idempotently. If there is not exactly one active Primary pathway, choose nothing and show a temporary safe state. Guard all learner routes, including stale tabs. Show assistants for authenticated users without a second client-side session gate; authorize every assistant request on the server. Administrative elevation remains a separate Super Admin approval flow.

@@ -149,6 +149,7 @@ export function FloatingAssistants() {
               key={kind}
               type="button"
               onClick={() => setActive(selected ? null : kind)}
+              data-testid={`button-floating-assistant-${kind}`}
               aria-label={selected ? `Tutup ${copy.title}` : `Buka ${copy.title}`}
               aria-expanded={selected}
               className={cn(
