@@ -83,6 +83,7 @@ try {
     const first = await provisionSuperAdmin(identity);
     const legacySubject = `legacy-${authSubject}`;
     await db.update(peopleTable).set({
+      email: null,
       authProvider: null,
       authSubject: null,
       clerkUserId: legacySubject,
@@ -98,13 +99,22 @@ try {
     await assert.rejects(
       claimExistingSuperAdminIdentity({
         authSubject,
-        verifiedEmail: `different-${identity.email}`,
+        verifiedEmail: identity.email,
       }),
-      /does not match/,
+      /configured legacy owner/,
+    );
+    await assert.rejects(
+      claimExistingSuperAdminIdentity({
+        authSubject,
+        verifiedEmail: `different-${identity.email}`,
+        expectedOwnerEmail: identity.email,
+      }),
+      /configured legacy owner/,
     );
     const claim = await claimExistingSuperAdminIdentity({
       authSubject,
       verifiedEmail: identity.email,
+      expectedOwnerEmail: identity.email,
     });
     assert.equal(claim.status, "claimed");
 
@@ -117,6 +127,7 @@ try {
       .where(eq(adminAuditEventsTable.entityId, first.personId));
     assert.equal(person.authProvider, "supabase");
     assert.equal(person.authSubject, authSubject);
+    assert.equal(person.email, identity.email);
     assert.equal(person.role, "super_admin");
     assert.deepEqual(roles.map(item => item.role), ["super_admin"]);
     assert.ok(auditEvents.some(event => event.action === "legacy_admin_promoted_and_identity_claimed"));

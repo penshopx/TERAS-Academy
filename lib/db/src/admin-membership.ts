@@ -311,6 +311,7 @@ export async function provisionSuperAdmin(identity: {
 export async function claimExistingSuperAdminIdentity(identity: {
   authSubject: string;
   verifiedEmail: string;
+  expectedOwnerEmail?: string;
   allowRecoveryRebind?: boolean;
 }) {
   return db.transaction(async tx => {
@@ -361,8 +362,14 @@ export async function claimExistingSuperAdminIdentity(identity: {
       legacyAdminCutover = true;
     }
 
-    if (!person.email || person.email.trim().toLowerCase() !== identity.verifiedEmail.trim().toLowerCase()) {
+    const verifiedEmail = identity.verifiedEmail.trim().toLowerCase();
+    const existingEmail = person.email?.trim().toLowerCase();
+    const expectedOwnerEmail = identity.expectedOwnerEmail?.trim().toLowerCase();
+    if (existingEmail && existingEmail !== verifiedEmail) {
       throw new Error("The verified Supabase email does not match the existing super administrator.");
+    }
+    if (!existingEmail && (!expectedOwnerEmail || expectedOwnerEmail !== verifiedEmail)) {
+      throw new Error("The verified Supabase email does not match the configured legacy owner.");
     }
     if (person.authProvider === "supabase" && person.authSubject === identity.authSubject) {
       return { personId: person.id, status: "already_claimed" as const };
@@ -387,6 +394,7 @@ export async function claimExistingSuperAdminIdentity(identity: {
     }
 
     await tx.update(peopleTable).set({
+      email: person.email ?? verifiedEmail,
       authProvider: "supabase",
       authSubject: identity.authSubject,
       role: legacyAdminCutover ? "super_admin" : person.role,

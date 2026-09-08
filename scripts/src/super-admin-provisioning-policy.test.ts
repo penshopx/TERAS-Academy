@@ -33,6 +33,7 @@ assert.match(provisioning, /result\.status !== "active"/);
 assert.match(provisioning, /result\.roles\.includes\("super_admin"\)/);
 assert.match(membership, /An active super_admin already exists/);
 assert.match(membership, /Production schema is not ready for super_admin/);
+assert.match(membership, /expectedOwnerEmail/);
 assert.match(schema, /teras_person_roles_role_check/);
 assert.match(schema, /IN \('super_admin', 'admin', 'trainer', 'assessor', 'learner'\)/);
 assert.doesNotMatch(securityPage, /mfa\.(?:enroll|unenroll)\s*\(/);

@@ -130,6 +130,7 @@ router.post("/admin/claim-supabase-identity", async (req, res): Promise<void> =>
     const result = await claimExistingSuperAdminIdentity({
       authSubject: identity.subject,
       verifiedEmail: identity.email,
+      expectedOwnerEmail: process.env.TERAS_SUPER_ADMIN_OWNER_EMAIL,
       allowRecoveryRebind: req.body?.confirmRecoveryRebind === true,
     });
     res.json(result);
@@ -138,6 +139,13 @@ router.post("/admin/claim-supabase-identity", async (req, res): Promise<void> =>
       res.status(409).json({
         code: "SUPER_ADMIN_REBIND_CONFIRMATION_REQUIRED",
         error: "This Super Admin is linked to an older Supabase identity",
+      });
+      return;
+    }
+    if (String(error).includes("configured legacy owner")) {
+      res.status(409).json({
+        code: "LEGACY_OWNER_EMAIL_NOT_CONFIGURED_OR_MISMATCHED",
+        error: "The verified account does not match the configured legacy owner",
       });
       return;
     }
