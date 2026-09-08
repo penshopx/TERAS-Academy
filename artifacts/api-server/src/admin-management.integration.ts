@@ -1,7 +1,8 @@
 import { createIntegrationTestApp } from "./integration-test-app";
-import { adminAuditEventsTable, cohortsTable, db, enrollmentsTable, pathwaysTable, peopleTable, personRolesTable, programsTable } from "@workspace/db";
+import { adminAccessRequestsTable, adminAuditEventsTable, cohortsTable, db, enrollmentsTable, pathwaysTable, peopleTable, personRolesTable, programsTable } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { updateManagedUser } from "@workspace/db/admin-membership";
+import type { TestAuthorizationIdentity } from "./lib/authorization";
 
 const suffix = crypto.randomUUID();
 const ids = {
@@ -19,8 +20,10 @@ async function run() {
   if (!schema.rows[0]?.audit_table) {
     throw new Error("Admin management migration 0005 is not installed; refusing to run integration fixtures against an unupgraded database");
   }
+  let activeIdentity: TestAuthorizationIdentity = { userId: `admin-${suffix}`, role: "super_admin" };
+  let promotionRequestId: string | null = null;
   const app = createIntegrationTestApp(
-    () => ({ userId: `admin-${suffix}`, role: "super_admin" }),
+    () => activeIdentity,
     { activeAdminFixtureIds: [ids.administrator, ids.controlAdministrator] },
   );
   const server = await new Promise<ReturnType<typeof app.listen>>(resolve => { const listener = app.listen(0, () => resolve(listener)); });
@@ -70,6 +73,27 @@ async function run() {
     response = await request(`/admin/users/${ids.learner}/roles`, { roles: ["learner", "assessor"] }, "PUT");
     assert(response.status === 200 && (await response.json() as any).roles.includes("assessor"), "Admin role assignment failed");
     response = await request(`/admin/users/${ids.learner}`, { status: "active" }, "PATCH"); assert(response.status === 200, "Admin did not reactivate user");
+    activeIdentity = { userId: ids.learner, role: "learner", learnerId: ids.learner };
+    response = await request("/admin/access-requests", { targetPersonId: ids.trainer, requestedRole: "admin", reason: "Forbidden other-user request" });
+    assert(response.status === 403, "Learner must not request administrator access for another user");
+    response = await request("/admin/access-requests", { targetPersonId: ids.learner, requestedRole: "admin", reason: "Self-service administrator request" });
+    const promotionResponseText = await response.text();
+    assert(response.status === 201, `Learner self-service admin request failed: ${promotionResponseText}`);
+    const promotionRequest = JSON.parse(promotionResponseText) as { id: string };
+    promotionRequestId = promotionRequest.id;
+    response = await request("/admin/access-requests", undefined, "GET");
+    const learnerRequests = await response.json() as Array<{ id: string; targetPersonId: string }>;
+    assert(response.status === 200 && learnerRequests.length === 1 && learnerRequests[0].targetPersonId === ids.learner, "Learner must only see their own administrator requests");
+    activeIdentity = { userId: activeFixtureAdmins[0].id, role: "admin" };
+    response = await request("/admin/access-requests", undefined, "GET");
+    const administratorRequests = await response.json() as Array<{ id: string }>;
+    assert(response.status === 200 && administratorRequests.some(item => item.id === promotionRequestId), "Administrator must see pending promotion requests");
+    response = await request(`/admin/access-requests/${promotionRequestId}/approve`, {});
+    assert(response.status === 200, `Administrator approval failed: ${await response.text()}`);
+    const promotedRoles = await db.select({ role: personRolesTable.role }).from(personRolesTable).where(eq(personRolesTable.personId, ids.learner));
+    assert(promotedRoles.some(item => item.role === "admin"), "Approved request must grant the admin role");
+    assert(!promotedRoles.some(item => item.role === "super_admin"), "Promotion approval must never grant the super_admin role");
+    activeIdentity = { userId: `admin-${suffix}`, role: "super_admin" };
     for (const [id, domain] of [[ids.program, "Admin Test"], [ids.otherProgram, "Other Test"]] as const) {
       response = await request("/admin/programs", { id, domain, name: `${domain} Program`, description: "Integration lifecycle fixture", status: "active" });
       assert(response.status === 201, `Program create failed: ${await response.text()}`);
@@ -102,7 +126,12 @@ async function run() {
     response = await request("/admin/audit", undefined, "GET"); const audit = await response.json() as any[];
     assert(response.status === 200 && audit.some((event: any) => event.entityId === ids.enrollment && event.action === "create"), "Admin audit event was not recorded");
   } finally {
+    if (promotionRequestId) {
+      await db.delete(adminAuditEventsTable).where(eq(adminAuditEventsTable.entityId, promotionRequestId));
+      await db.delete(adminAccessRequestsTable).where(eq(adminAccessRequestsTable.id, promotionRequestId));
+    }
     await db.delete(adminAuditEventsTable).where(inArray(adminAuditEventsTable.entityId, Object.values(ids)));
+    await db.delete(adminAuditEventsTable).where(inArray(adminAuditEventsTable.actorPersonId, [ids.learner, ids.trainer, ids.administrator, ids.controlAdministrator]));
     await db.delete(enrollmentsTable).where(eq(enrollmentsTable.id, ids.enrollment));
     await db.delete(cohortsTable).where(inArray(cohortsTable.id, [ids.cohort, ids.otherCohort]));
     await db.delete(pathwaysTable).where(inArray(pathwaysTable.id, [ids.pathway, ids.otherPathway]));

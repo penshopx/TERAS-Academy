@@ -1,6 +1,12 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGetCurrentSessionQueryKey, useGetCurrentSession } from "@workspace/api-client-react";
+import {
+  getGetCurrentSessionQueryKey,
+  getListAdminAccessRequestsQueryKey,
+  useCreateAdminAccessRequest,
+  useGetCurrentSession,
+  useListAdminAccessRequests,
+} from "@workspace/api-client-react";
 import { supabase } from "@/lib/supabase-auth";
 import { isValidTotpCode, normalizeTotpCode } from "@/lib/mfa";
 
@@ -19,6 +25,20 @@ export default function Security() {
   const [currentLevel, setCurrentLevel] = useState<string | null>(null);
   const roles = Array.isArray(currentSession.data?.roles) ? currentSession.data.roles : [];
   const isSuperAdmin = roles.includes("super_admin");
+  const isAdmin = roles.includes("admin");
+  const isAdministrative = isAdmin || isSuperAdmin;
+  const accessRequests = useListAdminAccessRequests({
+    query: {
+      enabled: currentSession.isSuccess,
+      queryKey: getListAdminAccessRequestsQueryKey(),
+      retry: false,
+      refetchInterval: isAdministrative ? false : 5_000,
+    },
+  });
+  const promotionRequest = useCreateAdminAccessRequest();
+  const ownPromotion = accessRequests.data?.find(
+    request => request.targetPersonId === currentSession.data?.personId && request.requestedRole === "admin",
+  );
 
   const loadFactors = async () => {
     try {
@@ -50,6 +70,36 @@ export default function Security() {
       setError(null);
     }
   }, [isSuperAdmin]);
+  useEffect(() => {
+    if (ownPromotion?.status === "approved" && !isAdministrative) {
+      void queryClient.invalidateQueries({ queryKey: getGetCurrentSessionQueryKey() });
+    }
+  }, [isAdministrative, ownPromotion?.status, queryClient]);
+  const requestAdminPromotion = () => {
+    const personId = currentSession.data?.personId;
+    if (!personId) {
+      setError("Identitas TERAS belum siap. Muat ulang halaman lalu coba lagi.");
+      return;
+    }
+    setError(null);
+    setStatus(null);
+    promotionRequest.mutate({
+      data: {
+        targetPersonId: personId,
+        requestedRole: "admin",
+        reason: "Saya ingin membantu mengelola TERAS Academy.",
+      },
+    }, {
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getListAdminAccessRequestsQueryKey() });
+        setStatus("Permohonan Admin berhasil diajukan dan menunggu persetujuan.");
+      },
+      onError: errorValue => {
+        const candidate = errorValue as { data?: { error?: string }; message?: string };
+        setError(candidate.data?.error ?? candidate.message ?? "Permohonan belum dapat diajukan.");
+      },
+    });
+  };
   const challengeExisting = async (factorId: string, event: FormEvent) => {
     event.preventDefault();
     if (!isValidTotpCode(code)) { setError("Masukkan kode 6 digit dari aplikasi authenticator."); return; }
@@ -60,36 +110,6 @@ export default function Security() {
     if (result.error) { setError(result.error.message); return; }
     setCode(""); setStatus("Tantangan MFA berhasil. Sesi ditingkatkan.");
     void loadFactors();
-  };
-  const claimOwnerAccess = async (confirmRecoveryRebind = false) => {
-    setBusy(true); setError(null); setStatus(null);
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) { setBusy(false); setError("Sesi Supabase tidak tersedia."); return; }
-    const response = await fetch(`${import.meta.env.BASE_URL}api/admin/claim-supabase-identity`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${token}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ confirmRecoveryRebind }),
-    });
-    const body = await response.json().catch(() => ({})) as { code?: string; error?: string };
-    setBusy(false);
-    if (!response.ok) {
-      if (body.code === "SUPER_ADMIN_REBIND_CONFIRMATION_REQUIRED") {
-        const confirmed = window.confirm(
-          "Akun Super Admin masih terhubung ke ID Supabase lama. Ganti tautan ke akun AAL2 yang sedang login? ID lama akan kehilangan akses Admin dan perubahan akan dicatat.",
-        );
-        if (confirmed) await claimOwnerAccess(true);
-        return;
-      }
-      setError(body.error ?? "Akun ini tidak dapat mengambil alih akses Super Admin.");
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: getGetCurrentSessionQueryKey() });
-    setStatus("Identitas Super Admin berhasil dipindahkan ke Supabase.");
-    window.location.assign(`${import.meta.env.BASE_URL}admin`);
   };
   return <main className="mx-auto w-full max-w-2xl p-6">
     <p className="font-mono text-xs font-bold tracking-[.2em] text-primary">ACCOUNT SECURITY</p>
@@ -104,16 +124,16 @@ export default function Security() {
       <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">Pendaftaran, penggantian, dan penghapusan authenticator dikelola oleh operator melalui Supabase. Hubungi operator untuk perubahan lifecycle MFA; TERAS hanya dapat memverifikasi faktor yang sudah terdaftar dan terverifikasi.</p>
     </section>
     {factors.map(factor => <form className="mt-6 rounded-xl border border-border bg-card p-5" onSubmit={event => void challengeExisting(factor.id, event)} key={`challenge-${factor.id}`}><h2 className="font-bold">Tingkatkan sesi dengan MFA</h2><p className="mt-2 text-sm text-muted-foreground">{factor.friendly_name || "Authenticator terverifikasi"}</p><label className="mt-3 block text-sm font-medium" htmlFor={`challenge-${factor.id}`}>Kode 6 digit</label><input id={`challenge-${factor.id}`} className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} value={code} onChange={e => setCode(normalizeTotpCode(e.target.value))} required /><button className="mt-3 rounded-md bg-primary px-4 py-2 font-bold text-primary-foreground" disabled={busy}>Verifikasi sesi</button></form>)}
-    {isSuperAdmin && <section className="mt-6 rounded-xl border border-primary/40 bg-card p-5">
-      <h2 className="font-bold">Akses Super Admin terhubung</h2>
-      <p className="mt-2 text-sm text-muted-foreground">Identitas Supabase, role TERAS, dan MFA akun ini sudah aktif.</p>
+    {isAdministrative && <section className="mt-6 rounded-xl border border-primary/40 bg-card p-5">
+      <h2 className="font-bold">Akses {isSuperAdmin ? "Super Admin" : "Admin"} aktif</h2>
+      <p className="mt-2 text-sm text-muted-foreground">Identitas Supabase dan role TERAS akun ini sudah aktif.</p>
       <button type="button" className="mt-4 rounded-md bg-primary px-4 py-2 font-bold text-primary-foreground" onClick={() => window.location.assign(`${import.meta.env.BASE_URL}admin`)}>Buka Admin Control Room</button>
     </section>}
-    {!isSuperAdmin && <section className="mt-6 rounded-xl border border-primary/40 bg-card p-5">
-      <h2 className="font-bold">Hubungkan akses pemilik</h2>
-      <p className="mt-2 text-sm text-muted-foreground">Gunakan ini satu kali hanya jika akun belum terhubung ke Super Admin lama.</p>
-      {currentLevel !== "aal2" && <p className="mt-3 text-sm text-amber-500">Verifikasi kode authenticator pada bagian “Tingkatkan sesi dengan MFA” terlebih dahulu sampai status sesi menjadi AAL2.</p>}
-      <button type="button" className="mt-4 rounded-md bg-primary px-4 py-2 font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50" onClick={() => void claimOwnerAccess()} disabled={busy || currentLevel !== "aal2"}>Hubungkan akses Super Admin</button>
+    {!isAdministrative && <section className="mt-6 rounded-xl border border-primary/40 bg-card p-5">
+      <h2 className="font-bold">Ajukan menjadi Admin</h2>
+      <p className="mt-2 text-sm text-muted-foreground">Kirim permohonan satu kali. Admin atau Super Admin akan menyetujui atau menolaknya.</p>
+      {ownPromotion && <p className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-sm" role="status">Status permohonan: <strong>{ownPromotion.status === "pending" ? "Menunggu persetujuan" : ownPromotion.status === "approved" ? "Disetujui" : "Ditolak"}</strong></p>}
+      <button type="button" className="mt-4 rounded-md bg-primary px-4 py-2 font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50" onClick={requestAdminPromotion} disabled={promotionRequest.isPending || ownPromotion?.status === "pending"}>{promotionRequest.isPending ? "Mengirim…" : ownPromotion?.status === "pending" ? "Permohonan sedang diproses" : "Ajukan menjadi Admin"}</button>
     </section>}
     <p className="mt-6 text-sm text-muted-foreground">Jika Anda kehilangan perangkat, gunakan proses pemulihan akun yang dikonfigurasi di Supabase. TERAS tidak menyimpan atau menampilkan recovery secret maupun backup code.</p>
   </main>;

@@ -22,6 +22,7 @@ function integrationIdentity(req: Request): TestAuthorizationIdentity | undefine
 }
 
 export type AdminActor = { authSubject: string; personId: string | null; roles: AdminRole[] };
+export type LocalActor = { authSubject: string; personId: string; roles: KnowledgeRole[] };
 export type KnowledgeRole = "super_admin" | "admin" | "trainer" | "assessor" | "learner";
 export type KnowledgeActor = { authSubject: string; roles: KnowledgeRole[] };
 export type CurrentSession = { personId: string; name: string; roles: KnowledgeRole[] };
@@ -87,6 +88,24 @@ export async function authorizeCurrentSession(req: Request, res: Response): Prom
   const rows = await assignmentsWithLearnerProvisioning(req, actor);
   const roles = knownRoles(rows.map(row => row.role));
   return rows[0] && roles.length ? { personId: rows[0].personId, name: rows[0].name, roles }
+    : deny(req, res, true, "A local TERAS role is required");
+}
+
+export async function authorizeLocalUser(req: Request, res: Response): Promise<LocalActor | null> {
+  const actor = await identity(req);
+  if (!actor) return deny(req, res, false, "Authentication required");
+  const test = integrationIdentity(req);
+  if (actor.test && test?.role) {
+    return {
+      authSubject: actor.subject,
+      personId: test.learnerId ?? actor.subject,
+      roles: [test.role],
+    };
+  }
+  const rows = await assignmentsWithLearnerProvisioning(req, actor);
+  const roles = knownRoles(rows.map(row => row.role));
+  return rows[0] && roles.length
+    ? { authSubject: actor.subject, personId: rows[0].personId, roles }
     : deny(req, res, true, "A local TERAS role is required");
 }
 

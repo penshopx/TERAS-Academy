@@ -26,6 +26,9 @@ export const personRolesTable = pgTable("teras_person_roles", {
 }, table => [
   primaryKey({ columns: [table.personId, table.role] }),
   check("teras_person_roles_role_check_v2", sql`${table.role} IN ('super_admin', 'admin', 'trainer', 'assessor', 'learner')`),
+  uniqueIndex("teras_person_roles_single_super_admin")
+    .on(table.role)
+    .where(sql`${table.role} = 'super_admin'`),
 ]);
 /** Durable, reviewable requests for elevated administrative access. */
 export const adminAccessRequestsTable = pgTable("teras_admin_access_requests", {

@@ -120,7 +120,7 @@ export default function Admin() {
   const [editing, setEditing] = useState<{ kind: "user" | "program" | "pathway" | "cohort" | "enrollment" | "knowledge"; item: Record<string, unknown> } | null>(null);
   const access = useGetAdminAccess({ query: { ...queryOptions, queryKey: getGetAdminAccessQueryKey(), retry: false } });
   const session = useGetCurrentSession({ query: { ...queryOptions, queryKey: getGetCurrentSessionQueryKey(), retry: false } });
-  const isSuperAdmin = session.data?.roles.includes("super_admin") === true;
+  const isSuperAdmin = session.data?.roles.some(role => role === "super_admin" || role === "admin") === true;
   const adminQueriesEnabled = shouldEnableAdminQueries(access);
   const assignableRoles = roles;
   const users = useListAdminUsers({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminUsersQueryKey() } });
@@ -129,7 +129,7 @@ export default function Admin() {
   const cohorts = useListAdminCohorts({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminCohortsQueryKey() } });
   const enrollments = useListAdminEnrollments({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminEnrollmentsQueryKey() } });
   const audit = useListAdminAuditEvents({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminAuditEventsQueryKey() } });
-  const accessRequests = useListAdminAccessRequests({ query: { ...queryOptions, enabled: adminQueriesEnabled && isSuperAdmin, queryKey: getListAdminAccessRequestsQueryKey() } });
+  const accessRequests = useListAdminAccessRequests({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminAccessRequestsQueryKey() } });
   const knowledge = useListAdminKnowledgeArticles({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminKnowledgeArticlesQueryKey() } });
   const unansweredTopics = useListAdminKnowledgeNotFoundTopics({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getListAdminKnowledgeNotFoundTopicsQueryKey() } });
   const summary = useGetAdminOperationalSummary<AdminOperationalSummary>({ query: { ...queryOptions, enabled: adminQueriesEnabled, queryKey: getGetAdminOperationalSummaryQueryKey() } });

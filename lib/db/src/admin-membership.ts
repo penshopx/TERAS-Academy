@@ -50,6 +50,8 @@ const effectiveAdminRoles = ["admin", "super_admin"];
 // Omitted roles are reserved for trusted non-HTTP maintenance callers; HTTP
 // authorization always supplies the locally-derived role set.
 const actorIsSuperAdmin = (actor: AdminMutationActor) => actor.roles === undefined || actor.roles.includes("super_admin");
+const actorCanReviewAdminRequests = (actor: AdminMutationActor) =>
+  actor.roles === undefined || actor.roles.some(role => role === "admin" || role === "super_admin");
 const actorSubject = (actor: AdminMutationActor) => actor.authSubject ?? actor.clerkUserId ?? "unknown";
 const actorProvider = (actor: AdminMutationActor) => actor.authSubject ? "supabase" : "clerk";
 const actorCreatedBy = (actor: AdminMutationActor) => `${actorProvider(actor)}:${actorSubject(actor)}`;
@@ -204,6 +206,9 @@ export async function createAdminAccessRequest(
   reason: string,
   actor: AdminMutationActor,
 ) {
+  if (requestedRole !== "admin") {
+    throw new Error("Only the admin role may be requested through the approval workflow.");
+  }
   return db.transaction(async tx => {
     await tx.execute(mutationLock);
     const [request] = await tx.insert(adminAccessRequestsTable).values({
@@ -218,12 +223,13 @@ export async function createAdminAccessRequest(
 export async function reviewAdminAccessRequest(
   requestId: string, decision: "approved" | "rejected", note: string | null, actor: AdminMutationActor,
 ) {
-  if (!actorIsSuperAdmin(actor)) return { kind: "forbidden" as const };
+  if (!actorCanReviewAdminRequests(actor)) return { kind: "forbidden" as const };
   return db.transaction(async tx => {
     await tx.execute(mutationLock);
     const [before] = await tx.select().from(adminAccessRequestsTable).where(eq(adminAccessRequestsTable.id, requestId));
     if (!before) return { kind: "not_found" as const };
     if (before.status !== "pending") return { kind: "already_reviewed" as const };
+    if (before.requestedRole !== "admin") return { kind: "forbidden" as const };
     const [value] = await tx.update(adminAccessRequestsTable).set({
       status: decision, reviewNote: note, reviewedByPersonId: actor.personId, reviewedAt: new Date(),
     }).where(eq(adminAccessRequestsTable.id, requestId)).returning();
