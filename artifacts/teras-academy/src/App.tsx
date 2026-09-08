@@ -603,11 +603,11 @@ function LearnerAwaitingEnrollment() {
         <p className="font-mono text-xs font-bold tracking-[.2em] text-primary">AKUN LEARNER AKTIF</p>
         <h1 className="mt-4 text-3xl font-extrabold">Selamat datang di TERAS</h1>
         <p className="mt-4 leading-7 text-muted-foreground">
-          Email Anda sudah terverifikasi dan akun Learner sudah aktif. Admin perlu menambahkan Anda
-          ke program dan pathway sebelum aktivitas pembelajaran tersedia.
+          Email Anda sudah terverifikasi dan akun Learner sudah aktif. Akses ke pathway utama sedang
+          disiapkan otomatis. Muat ulang halaman ini beberapa saat lagi.
         </p>
         <p className="mt-4 text-sm text-muted-foreground">
-          Sambil menunggu enrollment, Anda tetap dapat menggunakan TERAS Help Desk dan TERAS Energy Assistant.
+          Anda tetap dapat menggunakan TERAS Help Desk dan TERAS Energy Assistant selama proses ini berlangsung.
         </p>
       </div>
     </main>

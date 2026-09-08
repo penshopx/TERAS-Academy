@@ -62,7 +62,8 @@ async function assignments(subject: string, test: boolean, roles?: string[]) {
 
 async function assignmentsWithLearnerProvisioning(req: Request, actor: AuthenticatedIdentity) {
   let rows = await assignments(actor.subject, actor.test);
-  if (rows.length || actor.test || !actor.email) return rows;
+  const canCompleteLearnerOnboarding = rows.length === 0 || rows.some(row => row.role === "learner");
+  if (!canCompleteLearnerOnboarding || actor.test || !actor.email) return rows;
   if (!await supabaseEmailIsVerified(req, actor)) return rows;
   const provisioned = await ensureVerifiedSupabaseLearner({
     subject: actor.subject,

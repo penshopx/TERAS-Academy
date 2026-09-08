@@ -1,5 +1,12 @@
 import { and, eq, sql } from "drizzle-orm";
-import { db, peopleTable, personRolesTable } from "./index";
+import {
+  db,
+  enrollmentsTable,
+  pathwaysTable,
+  peopleTable,
+  personRolesTable,
+  programsTable,
+} from "./index";
 
 export type VerifiedLearnerIdentity = {
   subject: string;
@@ -23,9 +30,45 @@ function initials(name: string) {
   return value || "LT";
 }
 
+async function ensurePrimaryEnrollment(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  personId: string,
+  createdBy: string,
+) {
+  const [activeEnrollment] = await tx.select({ id: enrollmentsTable.id })
+    .from(enrollmentsTable)
+    .where(and(eq(enrollmentsTable.learnerId, personId), eq(enrollmentsTable.status, "active")))
+    .limit(1);
+  if (activeEnrollment) return;
+
+  const targets = await tx.select({
+    programId: programsTable.id,
+    pathwayId: pathwaysTable.id,
+  })
+    .from(pathwaysTable)
+    .innerJoin(programsTable, eq(programsTable.id, pathwaysTable.programId))
+    .where(and(
+      sql`lower(${programsTable.status}) = 'active'`,
+      sql`lower(${pathwaysTable.status}) = 'active'`,
+      sql`lower(${pathwaysTable.type}) = 'primary'`,
+    ))
+    .limit(2);
+  if (targets.length !== 1) return;
+
+  await tx.insert(enrollmentsTable).values({
+    id: crypto.randomUUID(),
+    learnerId: personId,
+    programId: targets[0].programId,
+    pathwayId: targets[0].pathwayId,
+    status: "active",
+    createdBy,
+  });
+}
+
 /**
- * Creates only a brand-new operational identity. Existing people are never
- * adopted by email because the verified provider subject is the authority.
+ * Creates a brand-new operational identity or completes onboarding for an
+ * existing bound learner. Existing people are never adopted by email because
+ * the verified provider subject is the authority.
  */
 export async function ensureVerifiedSupabaseLearner(
   identity: VerifiedLearnerIdentity,
@@ -41,7 +84,15 @@ export async function ensureVerifiedSupabaseLearner(
       .from(peopleTable)
       .where(and(eq(peopleTable.authProvider, "supabase"), eq(peopleTable.authSubject, identity.subject)))
       .limit(1);
-    if (existing) return { status: "existing", personId: existing.id };
+    if (existing) {
+      const [learnerRole] = await tx.select({ role: personRolesTable.role })
+        .from(personRolesTable)
+        .where(and(eq(personRolesTable.personId, existing.id), eq(personRolesTable.role, "learner")))
+        .limit(1);
+      if (!learnerRole) return { status: "email_conflict" };
+      await ensurePrimaryEnrollment(tx, existing.id, `supabase:${identity.subject}`);
+      return { status: "existing", personId: existing.id };
+    }
 
     const [emailOwner] = await tx.select({ id: peopleTable.id })
       .from(peopleTable)
@@ -68,6 +119,7 @@ export async function ensureVerifiedSupabaseLearner(
       role: "learner",
       createdBy,
     });
+    await ensurePrimaryEnrollment(tx, personId, createdBy);
     return { status: "created", personId };
   });
 }

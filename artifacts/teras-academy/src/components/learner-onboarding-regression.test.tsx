@@ -9,5 +9,5 @@ test("new verified learners receive a safe waiting state until enrollment", () =
   assert.match(app, /const requiresEnrollment = learnerOnly && location !== "\/security"/);
   assert.match(app, /enabled:\s*requiresEnrollment/);
   assert.match(app, /requiresEnrollment && learnerDashboard\.isError/);
-  assert.match(app, /Admin perlu menambahkan Anda[\s\S]*program dan pathway/);
+  assert.match(app, /Akses ke pathway utama sedang[\s\S]*disiapkan otomatis/);
 });
