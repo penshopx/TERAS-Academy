@@ -10,5 +10,7 @@ test("signed-out visitors do not mount floating assistants or their knowledge re
   // mounts the mutation owner and cannot issue a knowledge request.
   assert.match(app, /isLoaded && user && \(\s*<FloatingAssistants\s*\/>/);
   assert.match(assistants, /function ChatPanel[\s\S]*useSearchAssistantKnowledge/);
+  assert.match(assistants, /Authorization:\s*`Bearer \$\{session\.access_token\}`/);
+  assert.match(assistants, /mutation:\s*\{\s*throwOnError:\s*false\s*\}/);
   assert.doesNotMatch(assistants.match(/export function FloatingAssistants[\s\S]*/)?.[0] ?? "", /useSearchAssistantKnowledge/);
 });

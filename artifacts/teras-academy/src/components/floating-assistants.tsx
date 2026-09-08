@@ -3,6 +3,7 @@ import { Bot, Headphones, Leaf, Send, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useSupabaseAuth } from "@/lib/supabase-auth";
 import { useSearchAssistantKnowledge } from "@workspace/api-client-react";
 
 type AssistantKind = "help" | "energy";
@@ -31,7 +32,15 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
   const nextId = useRef(1);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
-  const knowledge = useSearchAssistantKnowledge();
+  const { session } = useSupabaseAuth();
+  const knowledge = useSearchAssistantKnowledge({
+    request: {
+      headers: session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {},
+    },
+    mutation: { throwOnError: false },
+  });
   const [messages, setMessages] = useState<Message[]>([
     { id: 0, role: "assistant", text: copy.greeting },
   ]);
