@@ -7,4 +7,4 @@ Verified Supabase users without a local identity are automatically provisioned a
 
 **Why:** Ordinary users should be able to join after email verification, while email matching alone could let a new external identity take over a pre-existing TERAS person.
 
-**How to apply:** Provision the person and learner role transactionally and idempotently. Do not invent an enrollment; show a waiting state until an Admin assigns a program and pathway. Authenticated assistants require a successfully resolved local session.
+**How to apply:** Provision the person and learner role transactionally and idempotently. Do not invent an enrollment; guard every learner workspace route, including direct navigation and stale tabs, with a waiting state until an Admin assigns a program and pathway. Authenticated assistants require a successfully resolved local session.

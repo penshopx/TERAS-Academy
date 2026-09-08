@@ -625,21 +625,11 @@ function HomeRedirect() {
     },
   });
   const roles = Array.isArray(session.data?.roles) ? session.data.roles : [];
-  const learnerOnly = roles.includes("learner")
-    && !roles.some(role => ["super_admin", "admin", "trainer", "assessor"].includes(role));
-  const learnerDashboard = useGetLearnerDashboard({
-    query: {
-      enabled: learnerOnly,
-      queryKey: getGetLearnerDashboardQueryKey(),
-      retry: false,
-    },
-  });
 
-  if (!isLoaded || (user && session.isLoading) || (learnerOnly && learnerDashboard.isLoading)) {
+  if (!isLoaded || (user && session.isLoading)) {
     return <main className="flex min-h-[100dvh] items-center justify-center bg-background text-foreground"><Activity className="h-8 w-8 animate-pulse text-primary" aria-label="Memeriksa akses" /></main>;
   }
   if (!user) return <PublicHome />;
-  if (learnerOnly && learnerDashboard.isError) return <LearnerAwaitingEnrollment />;
   const destination = homeForRoles(roles);
   if (destination) return <Redirect to={destination} />;
   return (
@@ -690,7 +680,35 @@ function WorkspaceRoutes() {
 
 function ProtectedWorkspace() {
   const { isLoaded, user } = useSupabaseAuth();
-  if (!isLoaded) return <main className="flex min-h-[100dvh] items-center justify-center"><Activity className="h-8 w-8 animate-pulse text-primary" /></main>;
+  const [location] = useLocation();
+  const session = useGetCurrentSession({
+    query: {
+      enabled: Boolean(user),
+      queryKey: getGetCurrentSessionQueryKey(),
+      retry: false,
+      staleTime: 60_000,
+    },
+  });
+  const roles = Array.isArray(session.data?.roles) ? session.data.roles : [];
+  const learnerOnly = roles.includes("learner")
+    && !roles.some(role => ["super_admin", "admin", "trainer", "assessor"].includes(role));
+  const requiresEnrollment = learnerOnly && location !== "/security";
+  const learnerDashboard = useGetLearnerDashboard({
+    query: {
+      enabled: requiresEnrollment,
+      queryKey: getGetLearnerDashboardQueryKey(),
+      retry: false,
+    },
+  });
+
+  if (
+    !isLoaded
+    || (user && session.isLoading)
+    || (requiresEnrollment && learnerDashboard.isLoading)
+  ) {
+    return <main className="flex min-h-[100dvh] items-center justify-center"><Activity className="h-8 w-8 animate-pulse text-primary" aria-label="Memeriksa enrollment" /></main>;
+  }
+  if (requiresEnrollment && learnerDashboard.isError) return <LearnerAwaitingEnrollment />;
   return user ? <WorkspaceRoutes /> : <ProtectedPageMessage />;
 }
 
