@@ -7,6 +7,9 @@ Schema constraints that must reach production through Replit Publish should use 
 
 They must also be declared in the canonical Drizzle schema; a standalone SQL
 migration can update Development while leaving Publish with no Production diff.
+When expanding an existing CHECK constraint, use a new constraint name if the
+schema diff does not detect definition-only changes; this forces Publish to
+remove the restrictive legacy constraint and add the expanded one.
 
 **Why:** Publish derives the Production change from the canonical schema, not
 from the historical migration sequence. It can diff tables and constraints

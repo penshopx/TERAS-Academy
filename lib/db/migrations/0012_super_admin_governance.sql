@@ -3,7 +3,8 @@ BEGIN;
 -- Expand only the normalized privilege vocabulary. Existing role assignments
 -- remain untouched and this script is safe to rehearse on an upgraded install.
 ALTER TABLE teras_person_roles DROP CONSTRAINT IF EXISTS teras_person_roles_role_check;
-ALTER TABLE teras_person_roles ADD CONSTRAINT teras_person_roles_role_check
+ALTER TABLE teras_person_roles DROP CONSTRAINT IF EXISTS teras_person_roles_role_check_v2;
+ALTER TABLE teras_person_roles ADD CONSTRAINT teras_person_roles_role_check_v2
   CHECK (role IN ('super_admin', 'admin', 'trainer', 'assessor', 'learner'));
 
 CREATE TABLE IF NOT EXISTS teras_admin_access_requests (
