@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuth } from "@/lib/supabase-auth";
+import { normalizeAssistantResponse, type AssistantAnswerMode } from "@/lib/floating-assistant-response";
 import { useSearchAssistantKnowledge } from "@workspace/api-client-react";
 
 type AssistantKind = "help" | "energy";
-type AnswerMode = "ai" | "knowledge_fallback" | "not_found";
-type Message = { id: number; role: "assistant" | "user"; text: string; citations?: Array<{ title: string; version: number }>; mode?: AnswerMode };
+type Message = { id: number; role: "assistant" | "user"; text: string; citations?: Array<{ title: string; version: number }>; mode?: AssistantAnswerMode };
 
 const assistantCopy = {
   help: {
@@ -44,7 +44,7 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
   const [messages, setMessages] = useState<Message[]>([
     { id: 0, role: "assistant", text: copy.greeting },
   ]);
-  const statusCopy: Record<AnswerMode, string> = {
+  const statusCopy: Record<AssistantAnswerMode, string> = {
     ai: "AI berbasis Knowledge TERAS",
     knowledge_fallback: "Jawaban dari sumber terkurasi",
     not_found: "Tidak ditemukan",
@@ -63,7 +63,16 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
       { id, role: "user", text: clean },
     ]);
     knowledge.mutate({ data: { category: kind, question: clean } }, {
-      onSuccess: (result) => setMessages((current) => [...current, { id: id + 1, role: "assistant", text: result.answer, citations: result.citations, mode: result.mode }]),
+      onSuccess: (result) => {
+        const response = normalizeAssistantResponse(result);
+        setMessages((current) => [...current, {
+          id: id + 1,
+          role: "assistant",
+          text: response.answer,
+          citations: response.citations,
+          mode: response.mode,
+        }]);
+      },
       onError: () => setMessages((current) => [...current, { id: id + 1, role: "assistant", text: "Maaf, pengetahuan TERAS sedang tidak dapat dimuat. Silakan coba lagi." }]),
     });
     setInput("");

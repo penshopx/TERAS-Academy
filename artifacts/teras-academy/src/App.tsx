@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ArrowRight, BadgeCheck, Route as RouteIcon, ShieldCheck, ExternalLink, Globe, Target, Activity, Zap, ChevronRight } from 'lucide-react';
-import { ErrorBoundary } from '@/components/error-boundary';
+import { ErrorBoundary, type ErrorFallbackProps } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
@@ -760,6 +760,18 @@ function AuthenticatedFloatingAssistants() {
     : null;
 }
 
+function AssistantErrorFallback({ resetError }: ErrorFallbackProps) {
+  return (
+    <button
+      type="button"
+      className="fixed bottom-4 right-4 z-50 rounded-full border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground shadow-xl"
+      onClick={resetError}
+    >
+      Muat ulang bantuan
+    </button>
+  );
+}
+
 function SupabaseProviderWithRoutes() {
   const { isLoaded, user } = useSupabaseAuth();
   return (
@@ -777,7 +789,9 @@ function SupabaseProviderWithRoutes() {
             </div>
           )}
           {/* Assistant knowledge is authenticated workspace content. */}
-          <AuthenticatedFloatingAssistants />
+          <ErrorBoundary FallbackComponent={AssistantErrorFallback}>
+            <AuthenticatedFloatingAssistants />
+          </ErrorBoundary>
           <Toaster />
         </TooltipProvider>
       </SupabaseIdentityScopedQueryClientProvider>
