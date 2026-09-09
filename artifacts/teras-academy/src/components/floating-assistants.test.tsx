@@ -7,7 +7,8 @@ test("floating assistants expose grounded-answer status without provider keys", 
   assert.match(source, /AI berbasis Knowledge TERAS/);
   assert.match(source, /Jawaban dari sumber terkurasi/);
   assert.match(source, /Tidak ditemukan/);
-  assert.match(source, /scrollIntoView/);
-  assert.match(source, /knowledge\.isPending/);
+  assert.match(source, /await searchAssistantKnowledge/);
+  assert.doesNotMatch(source, /useSearchAssistantKnowledge/);
+  assert.doesNotMatch(source, /scrollIntoView/);
   assert.doesNotMatch(source, /AI_INTEGRATIONS_OPENROUTER_/);
 });

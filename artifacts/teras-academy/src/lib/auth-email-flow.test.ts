@@ -7,7 +7,8 @@ const authSource = readFileSync(new URL("./supabase-auth.tsx", import.meta.url),
 
 test("email login uses the primary PKCE client and supports magic-link callbacks", () => {
   assert.match(appSource, /supabase\.auth\.signInWithOtp/);
-  assert.match(appSource, /emailRedirectTo: `\$\{window\.location\.origin\}\$\{basePath\}\/security`/);
+  assert.match(appSource, /emailRedirectTo: `\$\{window\.location\.origin\}\$\{basePath\}\/`/);
+  assert.match(appSource, /verifyOtp\([\s\S]*setLocation\("\/"\)/);
   assert.match(authSource, /exchangeCodeForSession\(code\)/);
   assert.doesNotMatch(appSource, /recoverySupabase/);
   assert.doesNotMatch(authSource, /flowType: "implicit"/);

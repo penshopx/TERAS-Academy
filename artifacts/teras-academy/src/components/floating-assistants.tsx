@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useSupabaseAuth } from "@/lib/supabase-auth";
 import { normalizeAssistantResponse, type AssistantAnswerMode } from "@/lib/floating-assistant-response";
-import { useSearchAssistantKnowledge } from "@workspace/api-client-react";
+import { searchAssistantKnowledge } from "@workspace/api-client-react";
 
 type AssistantKind = "help" | "energy";
 type Message = { id: number; role: "assistant" | "user"; text: string; citations?: Array<{ title: string; version: number }>; mode?: AssistantAnswerMode };
@@ -32,15 +32,8 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
   const nextId = useRef(1);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
+  const [isPending, setIsPending] = useState(false);
   const { session } = useSupabaseAuth();
-  const knowledge = useSearchAssistantKnowledge({
-    request: {
-      headers: session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : {},
-    },
-    mutation: { throwOnError: false },
-  });
   const [messages, setMessages] = useState<Message[]>([
     { id: 0, role: "assistant", text: copy.greeting },
   ]);
@@ -50,32 +43,49 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
     not_found: "Tidak ditemukan",
   };
 
-  // Keep the most recent question and answer visible without moving the page.
-  useEffect(() => messagesEndRef.current?.scrollIntoView({ block: "end" }), [messages, knowledge.isPending]);
+  // Scroll only the chat transcript; never move the workspace behind the fixed panel.
+  useEffect(() => {
+    const transcript = messagesEndRef.current?.parentElement;
+    if (transcript) transcript.scrollTop = transcript.scrollHeight;
+  }, [messages, isPending]);
 
-  const respond = (question: string) => {
+  const respond = async (question: string) => {
     const clean = question.trim();
-    if (!clean || knowledge.isPending) return;
+    if (!clean || isPending) return;
     const id = nextId.current;
     nextId.current += 2;
     setMessages((current) => [
       ...current,
       { id, role: "user", text: clean },
     ]);
-    knowledge.mutate({ data: { category: kind, question: clean } }, {
-      onSuccess: (result) => {
-        const response = normalizeAssistantResponse(result);
-        setMessages((current) => [...current, {
-          id: id + 1,
-          role: "assistant",
-          text: response.answer,
-          citations: response.citations,
-          mode: response.mode,
-        }]);
-      },
-      onError: () => setMessages((current) => [...current, { id: id + 1, role: "assistant", text: "Maaf, pengetahuan TERAS sedang tidak dapat dimuat. Silakan coba lagi." }]),
-    });
     setInput("");
+    setIsPending(true);
+    try {
+      const result = await searchAssistantKnowledge(
+        { category: kind, question: clean },
+        {
+          headers: session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {},
+        },
+      );
+      const response = normalizeAssistantResponse(result);
+      setMessages((current) => [...current, {
+        id: id + 1,
+        role: "assistant",
+        text: response.answer,
+        citations: response.citations,
+        mode: response.mode,
+      }]);
+    } catch {
+      setMessages((current) => [...current, {
+        id: id + 1,
+        role: "assistant",
+        text: "Maaf, pengetahuan TERAS sedang tidak dapat dimuat. Silakan coba lagi.",
+      }]);
+    } finally {
+      setIsPending(false);
+    }
   };
 
   const submit = (event: FormEvent) => {
@@ -119,21 +129,21 @@ function ChatPanel({ kind, onClose }: { kind: AssistantKind; onClose: () => void
             {message.role === "user" && <User className="mt-1 h-4 w-4 shrink-0 text-primary" />}
           </div>
         ))}
-        {knowledge.isPending ? <div className="flex gap-2"><Bot className="mt-1 h-4 w-4 shrink-0 text-primary" /><p className="rounded-2xl rounded-tl-sm bg-muted px-3 py-2 text-sm text-muted-foreground">Menyiapkan jawaban dari Knowledge TERAS…</p></div> : null}
+        {isPending ? <div className="flex gap-2"><Bot className="mt-1 h-4 w-4 shrink-0 text-primary" /><p className="rounded-2xl rounded-tl-sm bg-muted px-3 py-2 text-sm text-muted-foreground">Menyiapkan jawaban dari Knowledge TERAS…</p></div> : null}
         <div ref={messagesEndRef} />
       </div>
 
       <div className="border-t border-border p-3">
         <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
           {copy.prompts.map((prompt) => (
-            <button key={prompt} type="button" disabled={knowledge.isPending} onClick={() => respond(prompt)} className="shrink-0 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+            <button key={prompt} type="button" disabled={isPending} onClick={() => void respond(prompt)} className="shrink-0 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
               {prompt}
             </button>
           ))}
         </div>
         <form onSubmit={submit} className="flex gap-2">
-          <Input value={input} onChange={(event) => setInput(event.target.value)} placeholder={knowledge.isPending ? "Mencari panduan terbit…" : "Tulis pertanyaan..."} aria-label={`Pertanyaan untuk ${copy.title}`} disabled={knowledge.isPending} />
-          <Button type="submit" size="icon" disabled={!input.trim() || knowledge.isPending} aria-label="Kirim pertanyaan">
+          <Input value={input} onChange={(event) => setInput(event.target.value)} placeholder={isPending ? "Mencari panduan terbit…" : "Tulis pertanyaan..."} aria-label={`Pertanyaan untuk ${copy.title}`} disabled={isPending} />
+          <Button type="submit" size="icon" disabled={!input.trim() || isPending} aria-label="Kirim pertanyaan">
             <Send className="h-4 w-4" />
           </Button>
         </form>

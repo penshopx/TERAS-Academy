@@ -526,7 +526,7 @@ function AuthPage({ mode }: { mode: "sign-in" | "sign-up" }) {
       email: normalizedEmail,
       options: {
         shouldCreateUser: false,
-        emailRedirectTo: `${window.location.origin}${basePath}/security`,
+        emailRedirectTo: `${window.location.origin}${basePath}/`,
       },
     });
     setBusy(false);
@@ -554,7 +554,7 @@ function AuthPage({ mode }: { mode: "sign-in" | "sign-up" }) {
       return;
     }
     setBusy(false);
-    setLocation("/security");
+    setLocation("/");
   };
   return <main className="flex min-h-[100dvh] items-center justify-center bg-background px-4 text-foreground">
     <form className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-2xl" onSubmit={submit}>
