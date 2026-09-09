@@ -11,7 +11,7 @@ import {
 import { adminAuditEventsTable, db, knowledgeArticlesTable, knowledgeNotFoundTopicsTable } from "@workspace/db";
 import { authorizeAdmin, authorizeKnowledgeActor, type AdminActor } from "../lib/authorization";
 import { hasUnsafeKnowledgeLink, isUnsafeKnowledgeInput, withReadinessDisclaimer } from "../lib/knowledge-safety";
-import { buildGroundedAssistantMessages } from "../lib/assistant-grounding";
+import { buildGroundedAssistantMessages, findCanonicalKnowledge, knowledgeSearchTerms } from "../lib/assistant-grounding";
 import { KNOWLEDGE_NOT_FOUND_RETENTION_DAYS, normalizeNotFoundTopic } from "../lib/knowledge-not-found-topics";
 
 const router: IRouter = Router();
@@ -56,12 +56,19 @@ router.post("/assistant/knowledge/search", async (req, res): Promise<void> => {
   if (isUnsafeKnowledgeInput(input.question) || hasUnsafeKnowledgeLink(input.question)) {
     res.status(400).json({ error: "Unsafe or instruction-like input is not accepted." }); return;
   }
-  const terms = input.question.trim().split(/\s+/).filter((term: string) => term.length > 2).slice(0, 8);
+  const terms = knowledgeSearchTerms(input.question);
   if (!terms.length) { await recordNotFoundTopic(input.category, input.question); res.json(SearchAssistantKnowledgeResponse.parse({ found: false, mode: "not_found", answer: "Saya belum menemukan informasi yang sesuai. Coba gunakan kata kunci yang lebih spesifik.", citations: [] })); return; }
   const clauses = terms.map((term: string) => or(ilike(knowledgeArticlesTable.title, `%${term}%`), ilike(knowledgeArticlesTable.body, `%${term}%`)));
-  const matches = await db.select().from(knowledgeArticlesTable).where(and(eq(knowledgeArticlesTable.category, input.category), eq(knowledgeArticlesTable.status, "published"), audienceOverlap(actor.roles), or(...clauses))).orderBy(desc(knowledgeArticlesTable.version)).limit(12);
+  const audienceRoles = actor.roles.includes("super_admin")
+    ? [...new Set([...actor.roles, "admin"])]
+    : actor.roles;
+  const matches = await db.select().from(knowledgeArticlesTable).where(and(eq(knowledgeArticlesTable.category, input.category), eq(knowledgeArticlesTable.status, "published"), audienceOverlap(audienceRoles), or(...clauses))).orderBy(desc(knowledgeArticlesTable.version)).limit(12);
   const seen = new Set<string>();
   const articles = matches.filter(article => { const key = article.parentArticleId ?? article.id; if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, 3);
+  const baseline = findCanonicalKnowledge(input.category, terms);
+  if (!articles.length && baseline) {
+    articles.push(baseline);
+  }
   if (!articles.length) {
     await recordNotFoundTopic(input.category, input.question);
     res.json(SearchAssistantKnowledgeResponse.parse({ found: false, mode: "not_found", answer: "Saya belum menemukan artikel terbit yang sesuai. Saya tidak akan menebak; coba ubah pertanyaan atau hubungi admin TERAS.", citations: [] })); return;

@@ -23,3 +23,4 @@
 - [GitHub Actions lint compatibility](github-actions-lint-compatibility.md) — keep narrow suppressions for valid GitHub features unsupported by the pinned WASM linter.
 - [Legacy Clerk identity shape](legacy-clerk-identity-shape.md) — old admin rows may retain a Clerk ID while provider and subject are null; secure cutover must recognize this exact state.
 - [Verified learner self-provisioning](verified-learner-self-provisioning.md) — verified users auto-join the sole active Primary pathway; email alone never binds an existing identity.
+- [Assistant runtime grounding](assistant-runtime-grounding.md) — keep canonical TERAS context available when Production has no published Knowledge rows; never fall through to ungrounded chat.
