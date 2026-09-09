@@ -8,9 +8,21 @@ test("normalizes a valid grounded assistant response", () => {
     mode: "ai",
     citations: [{ title: "Panduan Admin", version: 2 }],
   }), {
-    answer: "Gunakan menu Security & Access.",
+    answer: "Gunakan menu Security Access.",
     mode: "ai",
     citations: [{ title: "Panduan Admin", version: 2 }],
+  });
+});
+
+test("removes Markdown and formatting symbols from assistant content", () => {
+  assert.deepEqual(normalizeAssistantResponse({
+    answer: "## Mulai **belajar**\n- Buka [Learning Plan](/learning-plan)\n- Progres 50% > lanjut.",
+    mode: "ai",
+    citations: [{ title: "**Panduan** (Admin)", version: 3 }],
+  }), {
+    answer: "Mulai belajar\nBuka Learning Plan\nProgres 50 lanjut.",
+    mode: "ai",
+    citations: [{ title: "Panduan Admin", version: 3 }],
   });
 });
 
